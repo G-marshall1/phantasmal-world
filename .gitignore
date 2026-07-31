@@ -16,3 +16,9 @@ karma.config.generated.js
 
 # Kotlin
 /.kotlin
+
+# Mobile (Capacitor)
+mobile/node_modules
+mobile/ios/App/Pods
+mobile/ios/App/output
+mobile/ios/App/App/public

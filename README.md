@@ -1,8 +1,7 @@
 # Phantasmal World
 
-Phantasmal World is a collection of software for Phantasy Star Online.
-The [web application](https://www.phantasmal.world/) has a model viewer, quest editor and hunt
-optimizer. There is also a work-in-progress [PSO server](psoserv/README.md).
+Phantasmal World is a collection of software for Phantasy Star Online using copy right free assets and tech presented by a 3rd party.
+
 
 ## Developers
 
@@ -65,8 +64,8 @@ Core contains the basic utilities that all other subprojects directly or indirec
 
 #### psolib
 
-Psolib contains PSO file format parsers, compression/decompression code, a PSO script
-assembler/disassembler and a work-in-progress script engine/VM. It also has a model of the PSO
+Psolib contains file format parsers, compression/decompression code, a PSO script
+assembler/disassembler and a work-in-progress script engine/VM. It also has a model of the
 scripting bytecode and data flow analysis for it. This subproject can be used as a library in other
 projects.
 

@@ -28,6 +28,7 @@ kotlin {
                 implementation(kotlin("reflect"))
                 implementation(project(":psolib"))
                 implementation(project(":webui"))
+                implementation(project(":web:rendering"))
                 implementation(project(":web:shared"))
 
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")

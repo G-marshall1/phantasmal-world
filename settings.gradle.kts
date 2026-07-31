@@ -13,6 +13,8 @@ include(
     ":web",
     ":web:assembly-worker",
     ":web:assets-generation",
+    ":web:mobileGame",
+    ":web:rendering",
     ":web:shared",
     ":webui",
 )

@@ -248,8 +248,13 @@ private fun parseChunks(cursor: Cursor): List<NjChunk> {
                     typeId,
                 )
 
-                // Skip volume information.
-                cursor.seek(2 * cursor.short())
+                // Volume data itself isn't parsed, just skipped -- the chunk loop below always
+                // reseeks to chunkDataPosition + size afterwards regardless, which already skips
+                // over it. (A stray second read of the length here, from the wrong position, used
+                // to also seek forward with it: harmless if in-bounds since it gets overridden by
+                // that reseek anyway, but if it read past the end of the buffer entirely -- e.g. a
+                // volume chunk near the end of a mesh's data -- it threw and broke the whole
+                // parse.)
             }
             in 64..75 -> {
                 size = 2 + 2 * cursor.short()
