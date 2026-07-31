@@ -99,8 +99,12 @@ fun parseNinjaRoomStaticModels(cursor: Cursor): List<NjObject> {
     return roots
 }
 
-/** Mirrors psolib's own (private) NJCM sibling-object parser -- see Ninja.kt's parseSiblingObjects. */
-private fun parseNjObjectSiblings(cursor: Cursor): MutableList<NjObject> {
+/**
+ * Mirrors psolib's own (private) NJCM sibling-object parser -- see Ninja.kt's parseSiblingObjects.
+ * Not private: also used by Psov2StageGeometry.kt, since stage sections' static/animated models
+ * are the exact same bone/chunk object graph format room sections' are.
+ */
+fun parseNjObjectSiblings(cursor: Cursor): MutableList<NjObject> {
     val offset = cursor.position
     val evalFlags = cursor.int()
     val modelOffset = cursor.int()

@@ -6,7 +6,12 @@ import world.phantasmal.web.externals.three.AnimationMixer
 import world.phantasmal.web.externals.three.SkinnedMesh
 import world.phantasmal.web.externals.three.Vector3
 
-class Enemy(val mesh: SkinnedMesh, var hp: Int, val animationMixer: AnimationMixer? = null)
+class Enemy(
+    val mesh: SkinnedMesh,
+    var hp: Int,
+    val animationMixer: AnimationMixer? = null,
+    val ai: EnemyAI? = null,
+)
 
 /**
  * Handles attack timing (locks out repeated attacks until the current swing finishes) and simple

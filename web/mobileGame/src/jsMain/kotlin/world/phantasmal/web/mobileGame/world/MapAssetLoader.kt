@@ -2,6 +2,7 @@ package world.phantasmal.web.mobileGame.world
 
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.sqrt
 import world.phantasmal.core.isBitSet
 import world.phantasmal.psolib.Endianness
@@ -17,6 +18,7 @@ import world.phantasmal.web.core.rendering.conversion.MeshBuilder
 import world.phantasmal.web.core.rendering.conversion.collisionGeometryToGroup
 import world.phantasmal.web.core.rendering.conversion.ninjaObjectToMeshBuilder
 import world.phantasmal.web.core.rendering.conversion.setFromVec3
+import world.phantasmal.web.externals.three.Group
 import world.phantasmal.web.externals.three.Object3D
 import world.phantasmal.web.externals.three.Vector3
 
@@ -73,15 +75,78 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
         )
     }
 
+    /**
+     * Loads a static hub stage like Pioneer 2 (see STAGE_SPECS in :web:assets-generation's
+     * StageSpecs.kt). Structurally different from [loadArea]: each *section's own* position/
+     * rotation.y has to be applied on top of its models rather than being pre-baked in (see
+     * Psov2StageGeometry.kt), so this builds one mesh per section instead of one mesh for the
+     * whole map, positioning/rotating each individually, and applies the same transform to that
+     * section's collision data by hand (there's no scene-graph equivalent for the raw
+     * triangle/vertex collision representation the way there is for the render mesh).
+     */
+    suspend fun loadStage(slug: String): GameMap {
+        val sections = parseNinjaStageSections(
+            assetLoader.loadArrayBuffer("/stages/map_${slug}n.rel").cursor(Endianness.Little)
+        ) + parseNinjaStageSections(
+            assetLoader.loadArrayBuffer("/stages/map_${slug}d.rel").cursor(Endianness.Little)
+        )
+        val xvm = parseXvm(
+            assetLoader.loadArrayBuffer("/stages/map_$slug.xvm").cursor(Endianness.Little)
+        ).unwrap()
+
+        val renderObject = Group()
+        val collisionMeshes = mutableListOf<CollisionMesh>()
+
+        for (section in sections) {
+            if (section.roots.isEmpty()) continue
+
+            val builder = MeshBuilder(xvm.textures)
+            for (root in section.roots) {
+                ninjaObjectToMeshBuilder(root, builder)
+            }
+
+            val sectionMesh = builder.buildMesh()
+            sectionMesh.position.set(
+                section.position.x.toDouble(),
+                section.position.y.toDouble(),
+                section.position.z.toDouble(),
+            )
+            sectionMesh.rotation.y = section.rotationY
+            renderObject.add(sectionMesh)
+
+            collisionMeshes.add(buildCollisionMesh(builder, sectionTransform(section)))
+        }
+
+        val collisionGeometry = CollisionGeometry(collisionMeshes)
+
+        return GameMap(
+            renderObject = renderObject,
+            collisionGeometry = collisionGeometry,
+            walkableCollisionObject = collisionGeometryToGroup(collisionGeometry, ::isWalkable),
+        )
+    }
+
     companion object {
         private val UP = Vector3(.0, 1.0, .0)
         private val COS_75_DEG = cos(PI / 180 * 75)
         private val tmpVec = Vector3()
 
-        private fun buildCollisionGeometry(builder: MeshBuilder): CollisionGeometry {
+        private fun buildCollisionGeometry(builder: MeshBuilder): CollisionGeometry =
+            CollisionGeometry(listOf(buildCollisionMesh(builder)))
+
+        /**
+         * [transform] bakes a section's position/rotation.y into the collision data the same way
+         * setting it on the render mesh's own Object3D.position/rotation does visually -- see
+         * [loadStage]. Room maps (see [loadArea]) don't need this (identity by default) since
+         * their models are already in final world-space coordinates.
+         */
+        private fun buildCollisionMesh(
+            builder: MeshBuilder,
+            transform: (Vec3) -> Vec3 = { it },
+        ): CollisionMesh {
             val vertices = (0 until builder.vertexCount).map { i ->
                 val p = builder.getPosition(i)
-                Vec3(p.x.toFloat(), p.y.toFloat(), p.z.toFloat())
+                transform(Vec3(p.x.toFloat(), p.y.toFloat(), p.z.toFloat()))
             }
 
             val indices = builder.allIndices()
@@ -124,7 +189,26 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
                 triangles.add(CollisionTriangle(i1, i2, i3, flags = 1, normal = Vec3(nx, ny, nz)))
             }
 
-            return CollisionGeometry(listOf(CollisionMesh(vertices, triangles)))
+            return CollisionMesh(vertices, triangles)
+        }
+
+        /**
+         * Pure Y-axis rotation + translation, matching what setting Object3D.position/rotation.y
+         * does to the render mesh -- derived directly from three.js's own Matrix4.makeRotationY so
+         * the two stay consistent (render and collision geometry lining up is the whole point).
+         */
+        private fun sectionTransform(section: StageSection): (Vec3) -> Vec3 {
+            val cosY = cos(section.rotationY)
+            val sinY = sin(section.rotationY)
+            val pos = section.position
+
+            return { v ->
+                Vec3(
+                    (v.x * cosY + v.z * sinY).toFloat() + pos.x,
+                    v.y + pos.y,
+                    (-v.x * sinY + v.z * cosY).toFloat() + pos.z,
+                )
+            }
         }
 
         /** Same ground-triangle heuristic used by the Quest Editor's AreaAssetLoader. */

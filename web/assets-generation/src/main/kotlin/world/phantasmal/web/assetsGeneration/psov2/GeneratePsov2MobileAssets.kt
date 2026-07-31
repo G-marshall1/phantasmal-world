@@ -21,8 +21,9 @@ private val logger = KotlinLogging.logger {}
  * Covers 9 of the 12 playable classes (see PLAYER_CLASS_SPECS in PlayerClassSpecs.kt for the
  * missing 3), 69 enemies (see ENEMY_SPECS in EnemySpecs.kt), 10 maps (see MAP_SPECS in
  * MapSpecs.kt) -- all of episode 1's field areas' first layout variant -- 227 weapons/shields/
- * mags/units (see WEAPON_SPECS in WeaponSpecs.kt), and a handful of decorative map props (see
- * OBJECT_SPECS in ObjectSpecs.kt).
+ * mags/units (see WEAPON_SPECS in WeaponSpecs.kt), a handful of decorative map props (see
+ * OBJECT_SPECS in ObjectSpecs.kt), and static hub stages like Pioneer 2 (see STAGE_SPECS in
+ * StageSpecs.kt).
  */
 fun generatePsov2MobileAssets(sourceDir: File, outputDir: File) {
     logger.info("Generating psov2-derived mobile game assets.")
@@ -35,6 +36,9 @@ fun generatePsov2MobileAssets(sourceDir: File, outputDir: File) {
     }
     for (spec in MAP_SPECS) {
         generateMap(sourceDir, outputDir, spec)
+    }
+    for (spec in STAGE_SPECS) {
+        generateStage(sourceDir, outputDir, spec)
     }
     generatePlayerAnimations(sourceDir, outputDir)
     generateWeapons(sourceDir, outputDir)
@@ -182,6 +186,16 @@ private fun generateWeapons(sourceDir: File, outputDir: File) {
         }
         write(outputDir, "weapons/${spec.slug}.xvm", xvm)
     }
+}
+
+private fun generateStage(sourceDir: File, outputDir: File, spec: StageSpec) {
+    logger.info("Generating stages/map_${spec.slug}.*.")
+
+    write(outputDir, "stages/map_${spec.slug}n.rel", File(sourceDir, spec.nRelName).readBytes())
+    write(outputDir, "stages/map_${spec.slug}d.rel", File(sourceDir, spec.dRelName).readBytes())
+
+    val textures = decodeTextures(File(sourceDir, spec.pvmName).readBytes())
+    write(outputDir, "stages/map_${spec.slug}.xvm", buildXvm(textures))
 }
 
 /**

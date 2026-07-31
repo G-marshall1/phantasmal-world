@@ -48,7 +48,8 @@ private fun init() {
     }
 
     // ?map=<slug> lets a specific area be loaded for testing (see MAP_SPECS in
-    // :web:assets-generation's MapSpecs.kt for the full list of slugs); defaults to Forest 1.
+    // :web:assets-generation's MapSpecs.kt for the full list of slugs, plus STAGE_SPECS in
+    // StageSpecs.kt for static hub stages like "pioneer2"); defaults to Forest 1.
     val mapSlug = params.get("map") ?: "forest01"
     val renderer = GameRenderer(AssetLoader(), ::createThreeRenderer, mapSlug)
 

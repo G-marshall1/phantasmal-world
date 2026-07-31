@@ -21,16 +21,20 @@ class PlayerAnimator(
     root: Object3D,
 ) : TrackedDisposable() {
     private val mixer = AnimationMixer(root)
-    private var currentAction: AnimationAction? = null
-    private var currentClip: AnimationClip? = null
-    private var currentMotion: NjMotion? = null
 
-    // Every switch that had something to fade out gets its own independent timer here, since
-    // switches can happen closer together than FADE_DURATION apart (e.g. a short attack clip
-    // finishing right into another combo hit) -- assuming only one fade is ever in flight at a
-    // time and hard-stopping "the previous one" on the next switch was cutting still-blending
-    // actions off mid-fade, which is what caused the stutter/early-cutoff glitching.
-    private val fadingOut = mutableListOf<FadingAction>()
+    // Player only ever cycles a small, fixed set of motions (idle/walk/3 attacks), so caching one
+    // AnimationClip per NjMotion and reusing it keeps AnimationMixer.clipAction returning the same
+    // cached AnimationAction every time instead of registering a fresh one per switch. This used
+    // to build a brand-new AnimationClip on every single playClip call and clean the old one up
+    // via mixer.uncacheAction() after its fade-out finished -- under fast repeat switching (e.g.
+    // mashing the attack button through the combo) that tore down an action's bindings while the
+    // mixer's own active-bindings bookkeeping still expected it, throwing deep inside
+    // AnimationMixer.update ("Cannot read properties of undefined (reading 'apply')") and killing
+    // the whole render loop. Reusing cached actions and letting fadeIn/fadeOut do their normal
+    // crossfade -- the mixer's actual designed use case -- sidesteps that path entirely.
+    private val clipCache = mutableMapOf<NjMotion, AnimationClip>()
+    private var currentAction: AnimationAction? = null
+    private var currentMotion: NjMotion? = null
 
     /**
      * No-ops if [njMotion] is already playing, so callers can call this every frame cheaply.
@@ -39,52 +43,30 @@ class PlayerAnimator(
     fun playClip(njMotion: NjMotion) {
         if (njMotion === currentMotion) return
 
-        val newClip = createAnimationClip(njObject, stripTranslation(njMotion))
-        val newAction = mixer.clipAction(newClip)
+        val clip = clipCache.getOrPut(njMotion) {
+            createAnimationClip(njObject, stripTranslation(njMotion))
+        }
+        val newAction = mixer.clipAction(clip)
         newAction.reset()
         newAction.play()
 
-        val oldAction = currentAction
-        val oldClip = currentClip
-
-        if (oldAction != null && oldClip != null) {
+        currentAction?.let { oldAction ->
             newAction.fadeIn(FADE_DURATION)
             oldAction.fadeOut(FADE_DURATION)
-            fadingOut.add(FadingAction(oldAction, oldClip, FADE_DURATION))
         }
 
         currentAction = newAction
-        currentClip = newClip
         currentMotion = njMotion
     }
 
     fun update(deltaTime: Double) {
         mixer.update(deltaTime)
-
-        val iterator = fadingOut.iterator()
-
-        while (iterator.hasNext()) {
-            val fading = iterator.next()
-            fading.timeRemaining -= deltaTime
-
-            if (fading.timeRemaining <= 0) {
-                fading.action.stop()
-                mixer.uncacheAction(fading.clip)
-                iterator.remove()
-            }
-        }
     }
 
     override fun dispose() {
         mixer.stopAllAction()
         super.dispose()
     }
-
-    private class FadingAction(
-        val action: AnimationAction,
-        val clip: AnimationClip,
-        var timeRemaining: Double,
-    )
 
     companion object {
         private const val FADE_DURATION = 0.15
