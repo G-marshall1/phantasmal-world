@@ -1,0 +1,18 @@
+{
+  "name": "phantasmal-world-mobile",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Capacitor iOS shell for the Phantasmal World mobile game (personal use only).",
+  "scripts": {
+    "sync": "cap sync ios",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "typescript": "^5.5.4"
+  }
+}
