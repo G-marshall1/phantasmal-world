@@ -1,6 +1,9 @@
 plugins {
     id("world.phantasmal.js")
+    kotlin("plugin.serialization")
 }
+
+val serializationVersion: String by project.extra
 
 kotlin {
     js {
@@ -22,6 +25,7 @@ kotlin {
             dependencies {
                 implementation(project(":psolib"))
                 implementation(project(":web:rendering"))
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
             }
         }
 

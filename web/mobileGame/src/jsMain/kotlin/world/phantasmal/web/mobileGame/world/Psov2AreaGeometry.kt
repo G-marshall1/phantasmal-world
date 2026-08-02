@@ -3,6 +3,7 @@ package world.phantasmal.web.mobileGame.world
 import world.phantasmal.psolib.cursor.Cursor
 import world.phantasmal.psolib.fileFormats.Vec3
 import world.phantasmal.psolib.fileFormats.ninja.NinjaEvaluationFlags
+import world.phantasmal.psolib.fileFormats.ninja.NjChunk
 import world.phantasmal.psolib.fileFormats.ninja.NjModel
 import world.phantasmal.psolib.fileFormats.ninja.NjObject
 import world.phantasmal.psolib.fileFormats.ninja.angleToRad
@@ -101,10 +102,27 @@ fun parseNinjaRoomStaticModels(cursor: Cursor): List<NjObject> {
 
 /**
  * Mirrors psolib's own (private) NJCM sibling-object parser -- see Ninja.kt's parseSiblingObjects.
- * Not private: also used by Psov2StageGeometry.kt, since stage sections' static/animated models
- * are the exact same bone/chunk object graph format room sections' are.
+ * Not private: also used by Psov2StageGeometry.kt and Psov2NpcGeometry.kt, since stage sections'
+ * static/animated models and the standalone-.rel city NPCs are the exact same bone/chunk object
+ * graph format room sections' are.
+ *
+ * Creates one fresh polygon-list cache (see [parseNjModel]'s cachedChunks parameter) and threads
+ * it through the whole recursive traversal -- matching psolib's own parseNj, which creates exactly
+ * one such map per top-level call (Ninja.kt:14) and shares it across every object in the tree.
+ * NJCM's CachePolygonList/DrawPolygonList chunk pair lets one bone cache a strip list that a LATER
+ * bone elsewhere in the same tree replays without redefining it, so the cache has to survive across
+ * sibling/child boundaries, not reset per object -- multi-part skinned character models (city NPCs
+ * in particular) lean on this heavily for their arm/leg/torso pieces; a fresh map per object left
+ * every DrawPolygonList chunk pointing at a cache index that was never populated, silently dropping
+ * most of the body (psolib logs "pointed to nonexistent cache index" and skips, no crash).
  */
-fun parseNjObjectSiblings(cursor: Cursor): MutableList<NjObject> {
+fun parseNjObjectSiblings(cursor: Cursor): MutableList<NjObject> =
+    parseNjObjectSiblings(cursor, mutableMapOf())
+
+private fun parseNjObjectSiblings(
+    cursor: Cursor,
+    cachedChunks: MutableMap<Int, List<NjChunk>>,
+): MutableList<NjObject> {
     val offset = cursor.position
     val evalFlags = cursor.int()
     val modelOffset = cursor.int()
@@ -122,21 +140,21 @@ fun parseNjObjectSiblings(cursor: Cursor): MutableList<NjObject> {
         null
     } else {
         cursor.seekStart(modelOffset)
-        parseNjModel(cursor, mutableMapOf())
+        parseNjModel(cursor, cachedChunks)
     }
 
     val children = if (childOffset == 0) {
         mutableListOf()
     } else {
         cursor.seekStart(childOffset)
-        parseNjObjectSiblings(cursor)
+        parseNjObjectSiblings(cursor, cachedChunks)
     }
 
     val siblings = if (siblingOffset == 0) {
         mutableListOf()
     } else {
         cursor.seekStart(siblingOffset)
-        parseNjObjectSiblings(cursor)
+        parseNjObjectSiblings(cursor, cachedChunks)
     }
 
     val obj = NjObject(offset, NinjaEvaluationFlags(evalFlags), model, pos, rotation, scale, children)

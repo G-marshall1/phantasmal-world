@@ -13,6 +13,7 @@ import world.phantasmal.web.externals.three.WebGLRenderer
 import world.phantasmal.web.mobileGame.debug.runItemViewer
 import world.phantasmal.web.mobileGame.orientation.lockLandscapeOrientation
 import world.phantasmal.web.mobileGame.rendering.GameRenderer
+import world.phantasmal.web.mobileGame.shell.GameShell
 import world.phantasmal.web.mobileGame.world.ObjectAssetLoader
 import world.phantasmal.web.mobileGame.world.WeaponAssetLoader
 import world.phantasmal.webui.obj
@@ -39,6 +40,7 @@ private fun init() {
         }
         return
     }
+
     params.get("viewObject")?.let { slug ->
         val assetLoader = AssetLoader()
         MainScope().launch {
@@ -47,22 +49,30 @@ private fun init() {
         return
     }
 
-    // ?map=<slug> lets a specific area be loaded for testing (see MAP_SPECS in
+    // ?map=<slug> lets a specific area be loaded for testing, bypassing the title/login/character
+    // shell entirely with a single hardcoded-appearance scene (see MAP_SPECS in
     // :web:assets-generation's MapSpecs.kt for the full list of slugs, plus STAGE_SPECS in
-    // StageSpecs.kt for static hub stages like "pioneer2"); defaults to Forest 1.
-    val mapSlug = params.get("map") ?: "forest01"
-    val renderer = GameRenderer(AssetLoader(), ::createThreeRenderer, mapSlug)
+    // StageSpecs.kt for static hub stages like "pioneer2"). A real (param-less) page load goes
+    // through GameShell instead, ending in this exact same GameRenderer with a real chosen
+    // character and mapSlug = "pioneer2".
+    val mapSlugParam = params.get("map")
 
-    document.body!!.appendChild(renderer.canvas)
+    if (mapSlugParam != null) {
+        val renderer = GameRenderer(AssetLoader(), ::createThreeRenderer, mapSlugParam)
 
-    fun resize() {
-        renderer.setSize(window.innerWidth, window.innerHeight)
+        document.body!!.appendChild(renderer.canvas)
+
+        fun resize() {
+            renderer.setSize(window.innerWidth, window.innerHeight)
+        }
+
+        window.addEventListener("resize", { resize() })
+        resize()
+
+        renderer.startRendering()
+    } else {
+        GameShell(AssetLoader(), ::createThreeRenderer).start()
     }
-
-    window.addEventListener("resize", { resize() })
-    resize()
-
-    renderer.startRendering()
 }
 
 private fun createThreeRenderer(canvas: HTMLCanvasElement): DisposableThreeRenderer =

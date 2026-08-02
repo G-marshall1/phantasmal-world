@@ -10,8 +10,19 @@ import world.phantasmal.web.externals.three.Vector3
  * position out of them horizontally, so the character can't walk through walls. Brute-forces over
  * every wall triangle each call -- fine at forest01's triangle counts; revisit with a spatial grid
  * (e.g. a uniform grid keyed by triangle centroid) only if profiling shows it's actually slow.
+ *
+ * [minHeight] drops any near-vertical triangle whose own vertical extent is shorter than that --
+ * e.g. Pioneer 2's raised walkway borders (a curb/lip only a fraction of a unit tall) register as
+ * a "wall" exactly like a real building wall does; geometrically nothing distinguishes them except
+ * how tall the vertical face actually is. Without this, a character can walk right up to a curb
+ * like that and then simply can't cross it -- confirmed getting physically stuck at one, unable to
+ * reach a walkable floor beyond it despite that floor being perfectly solid once reached another
+ * way (noclip flight, see FlyToggleButton). Pass the same step-height scale used for ground
+ * snapping (see CharacterController.maxStepHeight) so "short enough to step onto" and "short
+ * enough to not count as a wall" stay the same threshold, rather than picking a second, unrelated
+ * number that could disagree with it.
  */
-class WallCollider(collisionGeometry: CollisionGeometry) {
+class WallCollider(collisionGeometry: CollisionGeometry, minHeight: Double = 0.0) {
     private val walls: List<Triangle> = buildList {
         for (mesh in collisionGeometry.meshes) {
             for (triangle in mesh.triangles) {
@@ -19,6 +30,10 @@ class WallCollider(collisionGeometry: CollisionGeometry) {
                     val a = mesh.vertices[triangle.index1]
                     val b = mesh.vertices[triangle.index2]
                     val c = mesh.vertices[triangle.index3]
+
+                    val height = maxOf(a.y, b.y, c.y) - minOf(a.y, b.y, c.y)
+                    if (height < minHeight) continue
+
                     add(
                         Triangle(
                             a.x.toDouble(), a.y.toDouble(), a.z.toDouble(),

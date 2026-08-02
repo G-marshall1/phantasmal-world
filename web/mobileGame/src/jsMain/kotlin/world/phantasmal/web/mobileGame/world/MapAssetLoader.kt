@@ -1,9 +1,11 @@
 package world.phantasmal.web.mobileGame.world
 
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.random.Random
 import world.phantasmal.core.isBitSet
 import world.phantasmal.psolib.Endianness
 import world.phantasmal.psolib.cursor.cursor
@@ -21,6 +23,32 @@ import world.phantasmal.web.core.rendering.conversion.setFromVec3
 import world.phantasmal.web.externals.three.Group
 import world.phantasmal.web.externals.three.Object3D
 import world.phantasmal.web.externals.three.Vector3
+
+/**
+ * Cave/Mine/Ruins each ship several complete, fixed room layouts in psov2 (Forest has just one --
+ * see MAP_SPECS's doc comment in :web:assets-generation's MapSpecs.kt for how these were counted
+ * and named: variant 0 keeps the bare area slug, e.g. "cave01", and variants 1+ are
+ * "cave01Layout2".."cave01Layout6"). Mirrors the real game picking a random layout each time an
+ * area is entered, rather than always showing the same one.
+ */
+private val AREA_LAYOUT_COUNTS: Map<String, Int> = mapOf(
+    "cave01" to 6, "cave02" to 5, "cave03" to 6,
+    "mines01" to 6, "mines02" to 6,
+    "ruins01" to 5, "ruins02" to 5, "ruins03" to 5,
+    "ultimateCave01" to 6, "ultimateCave02" to 5, "ultimateCave03" to 6,
+    "ultimateMines01" to 6, "ultimateMines02" to 6,
+)
+
+/**
+ * Resolves a base area slug (e.g. "cave01") to a random one of its layout variants (e.g.
+ * "cave01Layout4"). Slugs not in [AREA_LAYOUT_COUNTS] -- Forest, static stages, or an already-
+ * specific "...LayoutN" slug passed in for direct testing -- pass through unchanged.
+ */
+fun randomAreaLayoutSlug(baseSlug: String): String {
+    val count = AREA_LAYOUT_COUNTS[baseSlug] ?: return baseSlug
+    val i = Random.nextInt(count)
+    return if (i == 0) baseSlug else "${baseSlug}Layout${i + 1}"
+}
 
 class GameMap(
     val renderObject: Object3D,
@@ -117,7 +145,18 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
             collisionMeshes.add(buildCollisionMesh(builder, sectionTransform(section)))
         }
 
-        val collisionGeometry = CollisionGeometry(collisionMeshes)
+        var collisionGeometry = CollisionGeometry(collisionMeshes)
+
+        // Pioneer 2 has a pair of genuine, intentional 100+-unit-tall walls mirrored on its east
+        // and west sides (x ~90 and x ~-90 -- confirmed solid and unbroken end to end, not a data
+        // gap) separating the main plaza from rooms beyond them. There's presumably a real doorway
+        // into each room somewhere else along the building's perimeter, but neither was found by
+        // exploring, and both rooms are otherwise fully reachable (confirmed via noclip flight,
+        // same floor height, same wall styling) -- so by request, both wall planes are stripped
+        // out entirely rather than continuing to search for their real entrances.
+        if (slug == "pioneer2") {
+            collisionGeometry = collisionGeometry.withoutWallAtX(EAST_WALL_X).withoutWallAtX(WEST_WALL_X)
+        }
 
         return GameMap(
             renderObject = renderObject,
@@ -211,15 +250,60 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
             }
         }
 
-        /** Same ground-triangle heuristic used by the Quest Editor's AreaAssetLoader. */
+        /**
+         * Same ground-triangle heuristic used by the Quest Editor's AreaAssetLoader, plus one
+         * addition for Stage-format hubs: [abs] on the slope test, not a plain signed comparison.
+         * Verified via a direct comparison against Three.js's own raycast-computed face normal
+         * (which only depends on final vertex winding, independent of any per-triangle normal we
+         * store) that Pioneer 2's sections don't share one consistent winding -- most sections'
+         * triangles need [buildCollisionMesh]'s `ac x ab` order to come out pointing up, but at
+         * least one section (its ground floor near world origin) needs the opposite, `ab x ac`,
+         * to point up instead. No single fixed cross-product order can get every section right, so
+         * the slope test has to accept a near-flat triangle regardless of which way it happens to
+         * be wound. Safe to do broadly (not just for Stage maps): every ground-collision candidate
+         * this codebase generates is a thin single-sided surface, not a solid slab with a genuine
+         * separate ceiling-facing-down triangle, so there's no real ceiling this would wrongly
+         * start accepting -- see buildCollisionMesh's own normal-computation comment for the winding
+         * background this fixes.
+         */
         private fun isWalkable(triangle: CollisionTriangle): Boolean =
             if (triangle.flags.isBitSet(0) || triangle.flags.isBitSet(4) ||
                 triangle.flags.isBitSet(6)
             ) {
                 tmpVec.setFromVec3(triangle.normal)
-                tmpVec dot UP >= COS_75_DEG
+                abs(tmpVec dot UP) >= COS_75_DEG
             } else {
                 false
             }
+
+        /** See [loadStage]'s boundary-wall comment -- Pioneer 2's plaza-side walls, x ~90/~-90. */
+        private const val EAST_WALL_X = 90.0
+        private const val WEST_WALL_X = -90.0
+        private const val WALL_X_TOLERANCE = 1.0
+
+        /**
+         * Drops every collision triangle whose vertices all sit within [WALL_X_TOLERANCE] of [x]
+         * -- each of these walls is a flat vertical plane at a constant world X (confirmed via
+         * direct inspection: every vertex on one reads ~90.0, ~-90.0 on the other), so a tight
+         * per-vertex X tolerance removes exactly that one plane's triangles without touching any
+         * other wall or floor geometry elsewhere on the map, including other sections that merely
+         * pass near the same X in an unrelated part of the stage.
+         */
+        private fun CollisionGeometry.withoutWallAtX(x: Double): CollisionGeometry =
+            CollisionGeometry(
+                meshes.map { mesh ->
+                    CollisionMesh(
+                        mesh.vertices,
+                        mesh.triangles.filterNot { triangle ->
+                            val a = mesh.vertices[triangle.index1]
+                            val b = mesh.vertices[triangle.index2]
+                            val c = mesh.vertices[triangle.index3]
+                            abs(a.x - x) < WALL_X_TOLERANCE &&
+                                abs(b.x - x) < WALL_X_TOLERANCE &&
+                                abs(c.x - x) < WALL_X_TOLERANCE
+                        },
+                    )
+                }
+            )
     }
 }

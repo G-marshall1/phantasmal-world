@@ -19,11 +19,15 @@ private val logger = KotlinLogging.logger {}
  * XVR format phantasmal's renderer understands.
  *
  * Covers 9 of the 12 playable classes (see PLAYER_CLASS_SPECS in PlayerClassSpecs.kt for the
- * missing 3), 69 enemies (see ENEMY_SPECS in EnemySpecs.kt), 10 maps (see MAP_SPECS in
- * MapSpecs.kt) -- all of episode 1's field areas' first layout variant -- 227 weapons/shields/
- * mags/units (see WEAPON_SPECS in WeaponSpecs.kt), a handful of decorative map props (see
- * OBJECT_SPECS in ObjectSpecs.kt), and static hub stages like Pioneer 2 (see STAGE_SPECS in
- * StageSpecs.kt).
+ * missing 3), 95 enemies -- every boss except Boss1 (psov2 doesn't implement it), including all
+ * of Bulclaw/Dark Falz's per-form/per-piece entries and both of Vol Opt's phases, 6 of which are
+ * genuinely multi-part (De Rol Le, Dal Ral Lie, Garanz, Baranz, Vol Opt, Vol Opt V2) -- (see
+ * ENEMY_SPECS in EnemySpecs.kt), 77 maps (see MAP_SPECS in
+ * MapSpecs.kt) -- all of episode 1's field areas, every fixed layout variant psov2 ships (Forest
+ * has one; Cave/Mine/Ruins have 5-6 each), in both base and Ultimate-difficulty reskins -- 227
+ * weapons/shields/mags/units (see WEAPON_SPECS in WeaponSpecs.kt), a handful of decorative map
+ * props (see OBJECT_SPECS in ObjectSpecs.kt), static hub stages like Pioneer 2 (see STAGE_SPECS in
+ * StageSpecs.kt), and 45 town NPCs (see NPC_SPECS/NPC_REL_SPECS in NpcSpecs.kt).
  */
 fun generatePsov2MobileAssets(sourceDir: File, outputDir: File) {
     logger.info("Generating psov2-derived mobile game assets.")
@@ -39,6 +43,12 @@ fun generatePsov2MobileAssets(sourceDir: File, outputDir: File) {
     }
     for (spec in STAGE_SPECS) {
         generateStage(sourceDir, outputDir, spec)
+    }
+    for (spec in NPC_SPECS) {
+        generateNpc(sourceDir, outputDir, spec)
+    }
+    for (spec in NPC_REL_SPECS) {
+        generateNpcRel(sourceDir, outputDir, spec)
     }
     generatePlayerAnimations(sourceDir, outputDir)
     generateWeapons(sourceDir, outputDir)
@@ -71,18 +81,22 @@ private fun generatePlayerClass(sourceDir: File, outputDir: File, spec: PlayerCl
     val letterLower = spec.letter.lowercaseChar()
     val bml = readBml(File(sourceDir, "pl${letterLower}nj.bml").readBytes())
     write(outputDir, "player/${spec.slug}Body.nj", bml.getValue("pl${spec.letter}bdy00.nj"))
-    write(outputDir, "player/${spec.slug}Head0.nj", bml.getValue("pl${spec.letter}hed00.nj"))
 
-    if (spec.hasHair) {
-        write(outputDir, "player/${spec.slug}Hair0.nj", bml.getValue("pl${spec.letter}hai00.nj"))
+    // Every head/hair/accessory mesh variant psov2 actually ships for this class (not just index
+    // 0) -- see PlayerClassSpec's doc comment for how these counts/indices were derived.
+    for (i in 0 until spec.headCount) {
+        val name = "pl${spec.letter}hed${i.toString().padStart(2, '0')}.nj"
+        write(outputDir, "player/${spec.slug}Head$i.nj", bml.getValue(name))
     }
 
-    if (spec.hasAccessory) {
-        write(
-            outputDir,
-            "player/${spec.slug}Accessory0.nj",
-            bml.getValue("pl${spec.letter}cap00.nj"),
-        )
+    for (i in 0 until spec.hairCount) {
+        val name = "pl${spec.letter}hai${i.toString().padStart(2, '0')}.nj"
+        write(outputDir, "player/${spec.slug}Hair$i.nj", bml.getValue(name))
+    }
+
+    for (i in spec.accessoryHairIndices) {
+        val name = "pl${spec.letter}cap${i.toString().padStart(2, '0')}.nj"
+        write(outputDir, "player/${spec.slug}Accessory$i.nj", bml.getValue(name))
     }
 
     val afsBytes = File(sourceDir, "pl${letterLower}tex.afs").readBytes()
@@ -124,6 +138,20 @@ private fun generateEnemy(sourceDir: File, outputDir: File, spec: EnemySpec) {
     // "walk_bm1_s_wala_body.njm") since several enemy variants share the exact same animation set.
     for (animName in spec.animationNames) {
         write(outputDir, "npcs/${spec.slug}/$animName", bml.getValue(animName))
+    }
+
+    // Multi-part fragments (see EnemyFragment's doc comment) -- always empty for regular enemies.
+    // Written into the same per-enemy subdirectory as animation clips; no name collision since
+    // fragment models end in ".nj", not ".njm". Fragments with their own separate texture pack
+    // (Garanz/Baranz) get their own generated .xvm alongside their .nj, named after the source
+    // .pvm so it can't collide with the main body's own "${slug}.xvm".
+    for (fragment in spec.fragments) {
+        write(outputDir, "npcs/${spec.slug}/${fragment.njName}", bml.getValue(fragment.njName))
+
+        if (fragment.pvmName != null) {
+            val fragmentTextures = decodeTextures(bml.getValue(fragment.pvmName))
+            write(outputDir, "npcs/${spec.slug}/${fragment.pvmName}.xvm", buildXvm(fragmentTextures))
+        }
     }
 
     val pvmBytes = when (val pvmSource = spec.pvmSource) {
@@ -196,6 +224,46 @@ private fun generateStage(sourceDir: File, outputDir: File, spec: StageSpec) {
 
     val textures = decodeTextures(File(sourceDir, spec.pvmName).readBytes())
     write(outputDir, "stages/map_${spec.slug}.xvm", buildXvm(textures))
+}
+
+/**
+ * Each NPC's nested bml only has one .nj and one .pvm entry apiece, but under whatever internal
+ * filename the model happened to be authored with (psov2's own loader for these scans by
+ * extension for exactly this reason rather than hardcoding names) -- mirrored here the same way.
+ */
+private fun generateNpc(sourceDir: File, outputDir: File, spec: NpcSpec) {
+    logger.info("Generating npcCharacters/${spec.slug}.*.")
+
+    val archiveBytes = File(sourceDir, spec.archive).readBytes()
+    val gsl = readGsl(archiveBytes)
+    val bml = readBml(gsl.getValue(spec.bmlEntry))
+
+    val njEntry = bml.keys.first { it.endsWith(".nj") }
+    val pvmEntry = bml.keys.first { it.endsWith(".pvm") }
+
+    write(outputDir, "npcCharacters/${spec.slug}.nj", bml.getValue(njEntry))
+
+    val textures = decodeTextures(bml.getValue(pvmEntry))
+    write(outputDir, "npcCharacters/${spec.slug}.xvm", buildXvm(textures))
+}
+
+/**
+ * The 14 city NPCs sourced as standalone ".rel" entries (see NpcRelSpec's doc comment in
+ * NpcSpecs.kt for the footer-pointer object-graph format these require at load time). The raw
+ * .rel bytes are written out completely unmodified -- its internal childOffset/siblingOffset/
+ * modelOffset values are absolute positions within this exact file, so slicing or re-packing it
+ * would break every one of those offsets. Only the texture gets decoded/re-encoded, same as any
+ * other psov2 asset.
+ */
+private fun generateNpcRel(sourceDir: File, outputDir: File, spec: NpcRelSpec) {
+    logger.info("Generating npcCharacters/${spec.slug}.*.")
+
+    val gsl = readGsl(File(sourceDir, spec.archive).readBytes())
+
+    write(outputDir, "npcCharacters/${spec.slug}.rel", gsl.getValue(spec.relEntry))
+
+    val textures = decodeTextures(gsl.getValue(spec.pvmEntry))
+    write(outputDir, "npcCharacters/${spec.slug}.xvm", buildXvm(textures))
 }
 
 /**

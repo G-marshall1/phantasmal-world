@@ -9,16 +9,37 @@ package world.phantasmal.web.assetsGeneration.psov2
  * encryption -- that's specific to the player's shared plymotiondata.rlc, see Rlc.kt).
  *
  * Boss1 is left out (psov2 doesn't actually implement it -- points at a raw .bin with no
- * model-loading code). Multi-part bosses (De Rol Le, Vol Opt, Dark Falz, Bulclaw, Baranz,
- * Sil Dragon, Dal Ral Lie, Dubchic/Dubchich, Garanz, and their damaged forms) are also left out
- * for now: they assemble several separate .nj fragments into one enemy, which this single-mesh
- * pipeline doesn't handle yet.
+ * model-loading code). Vol Opt, Dark Falz, and Bulclaw are also still left out: each assembles
+ * several fully independent, independently-animated hitboxes (not just decorative fragments) into
+ * one encounter, which is closer to "several enemies that happen to move together" than one
+ * multi-part model -- a bigger, boss-specific undertaking this doesn't attempt yet.
+ *
+ * Everything else originally thought to need that same treatment turned out not to: "Dubchic"/
+ * "Dubchich" (and their "Damaged" forms) are each a single plain mesh once actually checked against
+ * AssetEnemies.js (`setModel(this, mdl, [], tex)` -- an empty fragment list); "Sil Dragon" is just
+ * the "Dragon" boss's Ultimate-difficulty archive with no fragments either. De Rol Le, Dal Ral Lie
+ * (De Rol Le's own Ultimate reskin, same archive-suffix convention as the other "_a" Ultimate
+ * variants elsewhere in this codebase), Garanz, and Baranz (Garanz's Ultimate reskin) round out
+ * the genuinely multi-part roster -- see [EnemyFragment]'s doc comment for the two sourcing
+ * patterns those four actually use.
  */
 sealed class PvmSource {
     class FromBml(val name: String) : PvmSource()
     class FromGsl(val name: String) : PvmSource()
     class Standalone(val fileName: String) : PvmSource()
 }
+
+/**
+ * One extra static .nj piece rendered alongside an enemy's main body (see
+ * EnemyAssetLoader.loadEnemy in :web:mobileGame), not bone-attached to it. Sourced from the same
+ * archive/bml entry as the main model. AssetEnemies.js uses this for two different things:
+ * - De Rol Le/Dal Ral Lie: purely decorative fins/sting/tentacle/breakable-shell pieces that share
+ *   the main body's own texture pack ([pvmName] left null).
+ * - Garanz/Baranz: wreckage/mine/missile pieces that each carry their OWN separate texture pack
+ *   ([pvmName] set) -- verified against AssetEnemies.js's own "Garanz"/"Baranz" loaders, which
+ *   parse a fresh `NinjaTexture.API.parse(bml[key.pvm])` per fragment instead of reusing `tex`.
+ */
+class EnemyFragment(val njName: String, val pvmName: String? = null)
 
 class EnemySpec(
     val slug: String,
@@ -28,6 +49,30 @@ class EnemySpec(
     val pvmSource: PvmSource,
     val njName: String,
     val animationNames: List<String>,
+    val fragments: List<EnemyFragment> = emptyList(),
+)
+
+private val VOL_OPT_FRAGMENTS: List<EnemyFragment> = listOf(
+    EnemyFragment("fe_obj_hira_kage.nj", "fe_obj_hira_kage.pvm"),
+    EnemyFragment("fe_obj_vo_mo_dai_aka.nj", "fe_obj_vo_mo_dai_aka.pvm"),
+    EnemyFragment("fe_obj_vo_mo_dai_ao.nj", "fe_obj_vo_mo_dai_ao.pvm"),
+    EnemyFragment("fe_obj_vo_mo_dai_hakai.nj", "fe_obj_vo_mo_dai_hakai.pvm"),
+    EnemyFragment("fe_obj_vo_mo_sho01_aka.nj", "fe_obj_vo_mo_sho01_aka.pvm"),
+    EnemyFragment("fe_obj_vo_mo_sho01_ao.nj", "fe_obj_vo_mo_sho01_ao.pvm"),
+    EnemyFragment("fe_obj_vo_mo_sho01_hakai.nj", "fe_obj_vo_mo_sho01_hakai.pvm"),
+    EnemyFragment("fe_obj_vo_mo_sho02_aka.nj", "fe_obj_vo_mo_sho02_aka.pvm"),
+    EnemyFragment("fe_obj_vo_mo_sho02_ao.nj", "fe_obj_vo_mo_sho02_ao.pvm"),
+    EnemyFragment("fe_obj_vo_mo_sho02_hakai.nj", "fe_obj_vo_mo_sho02_hakai.pvm"),
+    EnemyFragment("fe_obj_vo_mo_sho03_aka.nj", "fe_obj_vo_mo_sho03_aka.pvm"),
+    EnemyFragment("fe_obj_vo_mo_sho03_ao.nj", "fe_obj_vo_mo_sho03_ao.pvm"),
+    EnemyFragment("fe_obj_vo_mo_sho03_hakai.nj", "fe_obj_vo_mo_sho03_hakai.pvm"),
+    EnemyFragment("fe_obj_vo_futa_moto.nj", "fe_obj_vo_futa_moto.pvm"),
+    EnemyFragment("fe_obj_vo_tenjo_hahen01.nj", "fe_obj_vo_tenjo_hahen01.pvm"),
+    EnemyFragment("fe_obj_vo_tenjo_hahen02.nj", "fe_obj_vo_tenjo_hahen02.pvm"),
+    EnemyFragment("fs_obj_hiraishin_a.nj", "fs_obj_hiraishin_a.pvm"),
+    EnemyFragment("me5p02_y_cage.nj", "me5p02_y_cage.pvm"),
+    EnemyFragment("me5p02_y_missile.nj", "me5p02_y_missile.pvm"),
+    EnemyFragment("me5p02_y_pillar.nj", "me5p02_y_pillar.pvm"),
 )
 
 val ENEMY_SPECS: List<EnemySpec> = listOf(
@@ -100,4 +145,232 @@ val ENEMY_SPECS: List<EnemySpec> = listOf(
     EnemySpec("Gilchic", "gsl_machine01.gsl", true, "bm_ene_dubchik.bml", PvmSource.Standalone("me2_y_me2_z.pvm"), "me2_y_me2.nj", listOf("damage_b_me2_y_me2.njm", "damage_f_me2_y_me2.njm", "kamae01_me2_y_me2.njm", "kamae02_me2_y_me2.njm", "revival_b_me2_y_me2.njm", "revival_f_me2_y_me2.njm", "scratch01_me2_me2.njm", "scratch02_me2_y_me2.njm", "shoot01_me2_y_me2.njm", "shoot02_me2_me2.njm", "starting_me2_y_me2.njm", "wait01_me2_y_me2.njm", "wait02_me2_y_me2.njm", "walk01_me2_y_me2.njm", "walk02_me2_y_me2.njm")),
     EnemySpec("ElRappy", "bm_ene_lappy_ap.bml", false, null, PvmSource.FromBml("re3_b_lappy_base.pvm"), "re3_b_lappy_base.nj", listOf("attack_re3_b_base.njm", "damage_re3_b_base.njm", "die_re3_b_base.njm", "run_re3_b_base.njm", "tumble_re3_b_base.njm", "wait_re3_b_base.njm", "wait2_re3_b_base.njm", "wake_re3_b_base.njm", "wake2_re3_b_base.njm", "walk_re3_b_base.njm")),
     EnemySpec("PalRappy", "bm_ene_lappy_ap.bml", false, null, PvmSource.Standalone("re3_b_lappy_base_niji.pvm"), "re3_b_lappy_base.nj", listOf("attack_re3_b_base.njm", "damage_re3_b_base.njm", "die_re3_b_base.njm", "run_re3_b_base.njm", "tumble_re3_b_base.njm", "wait_re3_b_base.njm", "wait2_re3_b_base.njm", "wake_re3_b_base.njm", "wake2_re3_b_base.njm", "walk_re3_b_base.njm")),
+
+    // Episode 1's Forest boss -- see [EnemyFragment]'s doc comment above for the two multi-part
+    // sourcing patterns. De Rol Le/Dal Ral Lie's fragments share the main body's own texture pack
+    // (pvmName left null); Garanz/Baranz's each carry their own.
+    EnemySpec(
+        "DeRolLe", "bm_boss2_de_rol_le.bml", false, null,
+        PvmSource.FromBml("boss2_b_derorure_body.pvm"), "boss2_b_derorure_body.nj",
+        listOf(
+            "beam02_boss2_b_body.njm", "beamwait_boss2_b_body.njm", "beam_a_boss2_b_body.njm",
+            "beam_b_boss2_b_body.njm", "beam_c_boss2_b_body.njm", "bite_lloop_boss2_b_body.njm",
+            "bite_rloop_boss2_b_body.njm", "die_boss2_b_body.njm", "enter_boss2_b_body.njm",
+            "fd02_boss2_b_body.njm", "fjump_boss2_b_body.njm", "forward_boss2_b_body.njm",
+            "lrjump_boss2_b_body.njm", "l_bite_boss2_b_body.njm", "rljump_boss2_b_body.njm",
+            "r_bite_boss2_b_body.njm", "scatter_boss2_b_body.njm",
+        ),
+        fragments = listOf(
+            EnemyFragment("boss2_b_derorure_fin_b.nj"), EnemyFragment("boss2_b_derorure_fin_a.nj"),
+            EnemyFragment("boss2_b_derorure_sting.nj"), EnemyFragment("boss2_b_derorure_tentacle.nj"),
+            EnemyFragment("boss2_b_helm_break.nj"), EnemyFragment("boss2_b_shell_break.nj"),
+        ),
+    ),
+
+    // Ultimate difficulty's reskin of De Rol Le -- same archive-suffix convention ("_a") and
+    // exact same fragment set as every other Ultimate reskin in this codebase, just a different
+    // source archive (verified against AssetEnemies.js's own "Dal Ral Lie" loader).
+    EnemySpec(
+        "DalRalLie", "bm_boss2_de_rol_le_a.bml", false, null,
+        PvmSource.FromBml("boss2_b_derorure_body.pvm"), "boss2_b_derorure_body.nj",
+        listOf(
+            "beam02_boss2_b_body.njm", "beamwait_boss2_b_body.njm", "beam_a_boss2_b_body.njm",
+            "beam_b_boss2_b_body.njm", "beam_c_boss2_b_body.njm", "bite_lloop_boss2_b_body.njm",
+            "bite_rloop_boss2_b_body.njm", "die_boss2_b_body.njm", "enter_boss2_b_body.njm",
+            "fd02_boss2_b_body.njm", "fjump_boss2_b_body.njm", "forward_boss2_b_body.njm",
+            "lrjump_boss2_b_body.njm", "l_bite_boss2_b_body.njm", "rljump_boss2_b_body.njm",
+            "r_bite_boss2_b_body.njm", "scatter_boss2_b_body.njm",
+        ),
+        fragments = listOf(
+            EnemyFragment("boss2_b_derorure_fin_b.nj"), EnemyFragment("boss2_b_derorure_fin_a.nj"),
+            EnemyFragment("boss2_b_derorure_sting.nj"), EnemyFragment("boss2_b_derorure_tentacle.nj"),
+            EnemyFragment("boss2_b_helm_break.nj"), EnemyFragment("boss2_b_shell_break.nj"),
+        ),
+    ),
+
+    // Mine-laying flying robot -- main body plus 5 wreckage/ordnance fragments, each with its own
+    // separate texture pack (see [EnemyFragment]'s doc comment).
+    EnemySpec(
+        "Garanz", "gsl_machine01.gsl", true, "bm_ene_gyaranzo.bml",
+        PvmSource.FromBml("me4_y_me4.pvm"), "me4_y_me4.nj",
+        listOf(
+            "attack_me4_y_me4.njm", "damage01_me4_y_me4.njm", "damage02_me4_y_me4.njm",
+            "deth_me4_y_me4.njm", "wait_me4_y_me4.njm", "walk01_me4_y_me4.njm",
+            "walk02_me4_y_me4.njm", "walk03_me4_y_me4.njm",
+        ),
+        fragments = listOf(
+            EnemyFragment("me4_y_hahen01.nj", "me4_y_hahen01.pvm"),
+            EnemyFragment("me4_y_hahen02.nj", "me4_y_hahen02.pvm"),
+            EnemyFragment("me4_y_hahen03.nj", "me4_y_hahen03.pvm"),
+            EnemyFragment("me4_y_mine.nj", "me4_y_mine.pvm"),
+            EnemyFragment("me4_y_missile.nj", "me4_y_missile.pvm"),
+        ),
+    ),
+
+    // Ultimate difficulty's reskin of Garanz -- same fragment set, different (standalone, not
+    // GSL-nested) source archive, matching AssetEnemies.js's own "Baranz" loader.
+    EnemySpec(
+        "Baranz", "bm_ene_gyaranzo_a.bml", false, null,
+        PvmSource.FromBml("me4_y_me4.pvm"), "me4_y_me4.nj",
+        listOf(
+            "attack_me4_y_me4.njm", "damage01_me4_y_me4.njm", "damage02_me4_y_me4.njm",
+            "deth_me4_y_me4.njm", "wait_me4_y_me4.njm", "walk01_me4_y_me4.njm",
+            "walk02_me4_y_me4.njm", "walk03_me4_y_me4.njm",
+        ),
+        fragments = listOf(
+            EnemyFragment("me4_y_hahen01.nj", "me4_y_hahen01.pvm"),
+            EnemyFragment("me4_y_hahen02.nj", "me4_y_hahen02.pvm"),
+            EnemyFragment("me4_y_hahen03.nj", "me4_y_hahen03.pvm"),
+            EnemyFragment("me4_y_mine.nj", "me4_y_mine.pvm"),
+            EnemyFragment("me4_y_missile.nj", "me4_y_missile.pvm"),
+        ),
+    ),
+
+    // Ultimate difficulty's reskin of the Forest boss "Dragon" -- single mesh, no fragments,
+    // confirmed against AssetEnemies.js's own "Sil Dragon" loader (empty meshList).
+    EnemySpec(
+        "SilDragon", "bm_boss1_dragon_a.bml", false, null,
+        PvmSource.FromBml("boss1_s_nb_dragon.pvm"), "boss1_s_nb_dragon.nj",
+        listOf("daml_boss1_s_nb_dragon.njm", "dams_boss1_s_nb_dragon.njm", "dead_boss1_s_nb_dragon.njm", "down_boss1_s_nb_dragon.njm", "fire_boss1_s_nb_dragon.njm", "fly_boss1_s_nb_dragon.njm", "flyshot_boss1_s_nb_dragon.njm", "frin_boss1_s_nb_dragon.njm", "frloop_boss1_s_nb_dragon.njm", "frout_boss1_s_nb_dragon.njm", "kiri_boss1_s_nb_dragon.njm", "land_boss1_s_nb_dragon.njm", "lift_boss1_s_nb_dragon.njm", "nkdown_boss1_s_nb_dragon.njm", "nkup_boss1_s_nb_dragon.njm", "nobi_boss1_s_nb_dragon.njm", "stand_boss1_s_nb_dragon.njm", "tatk_boss1_s_nb_dragon.njm", "tobidasi_boss1_s_nb_dragon.njm", "tukomi_boss1_s_nb_dragon.njm", "walk_boss1_s_nb_dragon.njm", "wgwalk_boss1_s_nb_dragon.njm", "wing_boss1_s_nb_dragon.njm", "wngclose_boss1_s_nb_dragon.njm", "wngopn_boss1_s_nb_dragon.njm"),
+    ),
+
+    // "Dubchic" is the combined/healthy state, "Dubchic Damaged" the split-apart low-health state
+    // of the same machine enemy -- each a single plain mesh (confirmed against AssetEnemies.js:
+    // both call setModel with an empty fragment list), just a different .nj/.pvm pair within the
+    // same bml. "Dubchich"/"Dubchich Damaged" are their Ultimate-difficulty reskins.
+    EnemySpec(
+        "Dubchic", "gsl_machine01.gsl", true, "bm_ene_dubchik.bml",
+        PvmSource.FromBml("me2_y_me2.pvm"), "me2_y_me2.nj",
+        listOf("damage_b_me2_y_me2.njm", "damage_f_me2_y_me2.njm", "kamae01_me2_y_me2.njm", "kamae02_me2_y_me2.njm", "revival_b_me2_y_me2.njm", "revival_f_me2_y_me2.njm", "scratch01_me2_me2.njm", "scratch02_me2_y_me2.njm", "shoot01_me2_y_me2.njm", "shoot02_me2_me2.njm", "starting_me2_y_me2.njm", "wait01_me2_y_me2.njm", "wait02_me2_y_me2.njm", "walk01_me2_y_me2.njm", "walk02_me2_y_me2.njm"),
+    ),
+    EnemySpec(
+        "DubchicDamaged", "gsl_machine01.gsl", true, "bm_ene_dubchik.bml",
+        PvmSource.FromBml("me2_y_me2_2.pvm"), "me2_y_me2_2.nj",
+        listOf("damage_b_me2_y_me2.njm", "damage_f_me2_y_me2.njm", "kamae01_me2_y_me2.njm", "kamae02_me2_y_me2.njm", "revival_b_me2_y_me2.njm", "revival_f_me2_y_me2.njm", "scratch01_me2_me2.njm", "scratch02_me2_y_me2.njm", "shoot01_me2_y_me2.njm", "shoot02_me2_me2.njm", "starting_me2_y_me2.njm", "wait01_me2_y_me2.njm", "wait02_me2_y_me2.njm", "walk01_me2_y_me2.njm", "walk02_me2_y_me2.njm"),
+    ),
+    EnemySpec(
+        "Dubchich", "bm_ene_dubchik_a.bml", false, null,
+        PvmSource.FromBml("me2_y_me2.pvm"), "me2_y_me2.nj",
+        listOf("damage_b_me2_y_me2.njm", "damage_f_me2_y_me2.njm", "kamae01_me2_y_me2.njm", "kamae02_me2_y_me2.njm", "revival_b_me2_y_me2.njm", "revival_f_me2_y_me2.njm", "scratch01_me2_me2.njm", "scratch02_me2_y_me2.njm", "shoot01_me2_y_me2.njm", "shoot02_me2_me2.njm", "starting_me2_y_me2.njm", "wait01_me2_y_me2.njm", "wait02_me2_y_me2.njm", "walk01_me2_y_me2.njm", "walk02_me2_y_me2.njm"),
+    ),
+    EnemySpec(
+        "DubchichDamaged", "bm_ene_dubchik_a.bml", false, null,
+        PvmSource.FromBml("me2_y_me2_2.pvm"), "me2_y_me2_2.nj",
+        listOf("damage_b_me2_y_me2.njm", "damage_f_me2_y_me2.njm", "kamae01_me2_y_me2.njm", "kamae02_me2_y_me2.njm", "revival_b_me2_y_me2.njm", "revival_f_me2_y_me2.njm", "scratch01_me2_me2.njm", "scratch02_me2_y_me2.njm", "shoot01_me2_y_me2.njm", "shoot02_me2_me2.njm", "starting_me2_y_me2.njm", "wait01_me2_y_me2.njm", "wait02_me2_y_me2.njm", "walk01_me2_y_me2.njm", "walk02_me2_y_me2.njm"),
+    ),
+
+    // Bulclaw's crab-like body and its detachable claw are, in psov2's own data, three entirely
+    // separate single-mesh enemies rather than one composite -- "(Open)"/"(Closed)" are the
+    // body's two health-gated states, "Claw" the claw itself. None carry fragments.
+    EnemySpec(
+        "BulclawOpen", "gsl_ancient01.gsl", true, "bm_ene_balclaw.bml",
+        PvmSource.FromBml("re6_b_bal_body.pvm"), "re6_b_bal_body.nj",
+        listOf("balattack_re6_b_bal_body.njm", "balcomb_re6_b_bal_body.njm", "baldamage_re6_b_bal_body.njm", "baldie_re6_b_bal_body.njm", "balshout_re6_b_bal_body.njm", "balwait_re6_b_bal_body.njm"),
+    ),
+    EnemySpec(
+        "BulclawClosed", "gsl_ancient01.gsl", true, "bm_ene_balclaw.bml",
+        PvmSource.FromBml("re6_b_bcbody.pvm"), "re6_b_bcbody.nj",
+        listOf("bcattack_re6_b_bcbody.njm", "bcdamage_re6_b_bcbody.njm", "bcdie_re6_b_bcbody.njm", "bcwait_re6_b_bcbody.njm"),
+    ),
+    EnemySpec(
+        "Claw", "gsl_ancient01.gsl", true, "bm_ene_balclaw.bml",
+        PvmSource.FromBml("re6_b_claw_body.pvm"), "re6_b_claw_body.nj",
+        listOf("clattack_re6_b_claw_body.njm", "cldamage_re6_b_claw_body.njm", "cldie_re6_b_claw_body.njm", "cllturn_re6_b_claw_body.njm", "clrturn_re6_b_claw_body.njm", "clwait_re6_b_claw_body.njm"),
+    ),
+
+    // Dark Falz's three in-fight forms are likewise each a set of independent single-mesh pieces
+    // in psov2's own data (body/head-variant/base/blades/waist per form), not one composite --
+    // every one of AssetEnemies.js's 13 "DarkFalz ..." loaders calls setModel with an empty
+    // fragment list. Form 1's three head variants (A/B/C) reuse the exact same "_da_heada" clip
+    // names for all three despite B/C using their own "_db_heada"/"_dc_heada" model -- preserved
+    // as-is rather than "corrected", since that's genuinely what AssetEnemies.js does. Form 3's
+    // Body skips "damage"/"df3dead" (commented out in the source, i.e. dead code, not used) and
+    // BodyS/WingS ("S" = the form's stationary/inactive intro state) have no animations at all.
+    EnemySpec(
+        "DarkFalzForm1Body", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df1_s_body.pvm"), "df1_s_body.nj",
+        listOf("beaml_df1_s_body.njm", "beamr_df1_s_body.njm", "damage_df1_s_body.njm", "dead1_df1_s_body.njm", "df1op_df1_s_body.njm", "df2op_df1_s_body.njm", "hoe_df1_s_body.njm", "lhassya_df1_s_body.njm", "ltame_df1_s_body.njm", "wait_df1_s_body.njm"),
+    ),
+    EnemySpec(
+        "DarkFalzForm1HeadA", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df1_s_da_heada.pvm"), "df1_s_da_heada.nj",
+        listOf("damage_df1_s_da_heada.njm", "dead1_df1_s_da_heada.njm", "df1op_df1_s_da_heada.njm", "df2op_df1_s_da_heada.njm", "haki_df1_s_da_heada.njm", "hakiin_df1_s_da_heada.njm", "hakiout_df1_s_da_heada.njm", "hoe_df1_s_da_heada.njm", "wait_df1_s_da_heada.njm"),
+    ),
+    EnemySpec(
+        "DarkFalzForm1HeadB", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df1_s_db_heada.pvm"), "df1_s_db_heada.nj",
+        listOf("damage_df1_s_da_heada.njm", "dead1_df1_s_da_heada.njm", "df1op_df1_s_da_heada.njm", "df2op_df1_s_da_heada.njm", "haki_df1_s_da_heada.njm", "hakiin_df1_s_da_heada.njm", "hakiout_df1_s_da_heada.njm", "hoe_df1_s_da_heada.njm", "wait_df1_s_da_heada.njm"),
+    ),
+    EnemySpec(
+        "DarkFalzForm1HeadC", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df1_s_dc_heada.pvm"), "df1_s_dc_heada.nj",
+        listOf("damage_df1_s_da_heada.njm", "dead1_df1_s_da_heada.njm", "df1op_df1_s_da_heada.njm", "df2op_df1_s_da_heada.njm", "haki_df1_s_da_heada.njm", "hakiin_df1_s_da_heada.njm", "hakiout_df1_s_da_heada.njm", "hoe_df1_s_da_heada.njm", "wait_df1_s_da_heada.njm"),
+    ),
+    EnemySpec(
+        "DarkFalzForm1Base", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df1_s_dodai.pvm"), "df1_s_dodai.nj",
+        listOf("damage_df1_s_dodai.njm", "wait_df1_s_dodai.njm"),
+    ),
+    EnemySpec(
+        "DarkFalzForm1Blades", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df1_s_simobe.pvm"), "df1_s_simobe.nj",
+        emptyList(),
+    ),
+    EnemySpec(
+        "DarkFalzForm1Waist", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df1_s_waist.pvm"), "df1_s_waist.nj",
+        emptyList(),
+    ),
+    EnemySpec(
+        "DarkFalzForm2Body", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df2_s_body.pvm"), "df2_s_body.nj",
+        listOf("beaml_df2_s_body.njm", "beamr_df2_s_body.njm", "damage_df2_s_body.njm", "dead_df2_s_body.njm", "df2op_df2_s_body.njm", "df3_op_df2_s_body.njm", "hoe_df2_s_body.njm", "jisin_df2_s_body.njm", "lhassya_df2_s_body.njm", "ltame_df2_s_body.njm", "wait_df2_s_body.njm", "wing_df2_s_body.njm"),
+    ),
+    EnemySpec(
+        "DarkFalzForm2Base", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df2_s_dodai1.pvm"), "df2_s_dodai1.nj",
+        listOf("beaml_df2_s_dodai1.njm", "beamr_df2_s_dodai1.njm", "damage_df2_s_dodai1.njm", "dead_df2_s_dodai1.njm", "df2op_df2_s_dodai1.njm", "df3_op_df2_s_dodai1.njm", "hoe_df2_s_dodai1.njm", "jisin_df2_s_dodai1.njm", "lhassya_df2_s_dodai1.njm", "wait_df2_s_dodai1.njm", "wing_df2_s_dodai1.njm"),
+    ),
+    EnemySpec(
+        "DarkFalzForm3Body", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df3_s_body.pvm"), "df3_s_body.nj",
+        listOf("dead_df3_s_body.njm", "df3_op_df3_s_body.njm", "dwntec_df3_s_body.njm", "jyousyou_df3_s_body.njm", "kakou_df3_s_body.njm", "laser_df3_s_body.njm", "lkiri_df3_s_body.njm", "rkiri_df3_s_body.njm", "wait_df3_s_body.njm", "yubi_df3_s_body.njm"),
+    ),
+    EnemySpec(
+        "DarkFalzForm3Wing", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df3_s_wing.pvm"), "df3_s_wing.nj",
+        listOf("damage_df3_s_wing.njm", "df3_op_df3_s_wing.njm", "jyousyou_df3_s_wing.njm", "kakou_df3_s_wing.njm", "laser_df3_s_wing.njm", "lkiri_df3_s_wing.njm", "rkiri_df3_s_wing.njm", "wait_df3_s_wing.njm"),
+    ),
+    EnemySpec(
+        "DarkFalzForm3BodyS", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df3_sl_body.pvm"), "df3_sl_body.nj",
+        emptyList(),
+    ),
+    EnemySpec(
+        "DarkFalzForm3WingS", "darkfalz_dat.bml", false, null,
+        PvmSource.FromBml("df3_sl_wing.pvm"), "df3_sl_wing.nj",
+        emptyList(),
+    ),
+
+    // Episode 4's boss -- another main-body-plus-fragments case, but unlike De Rol Le/Garanz its
+    // 20 fragments are all purely static arena scenery (shadow decal, pedestals, energy shields,
+    // wreckage, a cage, missile, support pillar) rather than parts of Vol Opt's own body, each
+    // with its own texture (same per-fragment-.pvm pattern as Garanz). AssetEnemies.js's own
+    // "Vol Opt" loader also lists 3 more fragments with their own per-fragment animation clips,
+    // but that whole block is commented out (dead code, never actually runs) -- omitted here to
+    // match what the reference implementation actually does, not what it has commented out.
+    // "Vol Opt Version 2" (the post-transformation second phase) is the exact same body and
+    // fragment set, just sourced from the "_ap" ("after phase"?) archive.
+    EnemySpec(
+        "VolOpt", "bm_boss3_volopt.bml", false, null,
+        PvmSource.FromBml("me5p02_y_all.pvm"), "me5p02_y_all.nj",
+        listOf("b_attack_me5p02_y_all.njm", "damage_me5p02_y_all.njm", "death_me5p02_y_all.njm", "f_attack_me5p02_y_all.njm", "l_attack_me5p02_y_all.njm", "r_attack_me5p02_y_all.njm", "start_me5p02_y_all.njm", "wait_me5p02_y_all.njm"),
+        fragments = VOL_OPT_FRAGMENTS,
+    ),
+    EnemySpec(
+        "VolOptV2", "bm_boss3_volopt_ap.bml", false, null,
+        PvmSource.FromBml("me5p02_y_all.pvm"), "me5p02_y_all.nj",
+        listOf("b_attack_me5p02_y_all.njm", "damage_me5p02_y_all.njm", "death_me5p02_y_all.njm", "f_attack_me5p02_y_all.njm", "l_attack_me5p02_y_all.njm", "r_attack_me5p02_y_all.njm", "start_me5p02_y_all.njm", "wait_me5p02_y_all.njm"),
+        fragments = VOL_OPT_FRAGMENTS,
+    ),
 )

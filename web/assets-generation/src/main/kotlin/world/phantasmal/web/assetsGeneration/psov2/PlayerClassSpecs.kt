@@ -2,8 +2,17 @@ package world.phantasmal.web.assetsGeneration.psov2
 
 /**
  * One playable class's psov2 source data, needed to reproduce a `{slug}Body.nj` /
- * `{slug}Head0.nj` / `{slug}Hair0.nj` / `{slug}Accessory0.nj` / `{slug}Tex.afs` set matching
+ * `{slug}Head{n}.nj` / `{slug}Hair{n}.nj` / `{slug}Accessory{n}.nj` / `{slug}Tex.afs` set matching
  * exactly what CharacterClassAssetLoader (in :web:rendering, shared with the main viewer) expects.
+ *
+ * [headCount]/[hairCount]/[accessoryHairIndices] were derived by directly parsing each class's
+ * `pl{letter}nj.bml` entry table -- these archives ship far more mesh variants (5-10 each) than
+ * the mobile game originally converted (index 0 only). [accessoryHairIndices] is the set of hair
+ * indices that have a matching accessory mesh available (`pl{letter}cap{n}.nj`) -- for most
+ * accessory-bearing classes this is every hair index (accessories are a full parallel set), but
+ * for HUmar it's just `{6}`, matching the real game's own CharacterClass.HUmar.hairStylesWithAccessory
+ * exactly (psov2 happens to ship exactly the one accessory mesh the real game pairs with hair 6,
+ * nothing else -- not a random leftover file).
  *
  * [slotMap] maps a target `{slug}Tex.afs` slot (the hardcoded real-client texture indices from
  * CharacterClassAssetLoader.textureIds()) to the psov2 `pl{letter}tex.afs` slot that fills the
@@ -11,7 +20,8 @@ package world.phantasmal.web.assetsGeneration.psov2
  * (bdyTex/hedTex/haiTex/capTex arrays) and matching array lengths/positions 1:1 against
  * CharacterClassAssetLoader's per-class TextureIds -- the ordering (section, then body, then
  * head, then hair, then accessories) matches exactly between the two, since both ultimately
- * encode the same underlying Ninja mesh texture-slot convention.
+ * encode the same underlying Ninja mesh texture-slot convention. Textures don't vary per mesh
+ * variant, so this slotMap is unaffected by the head/hair/accessory counts above.
  *
  * Confidence is high for classes without an accessory mesh (their psov2 arrays line up exactly
  * with the target counts, no guesswork). For the four accessory classes below, psov2's own arrays
@@ -22,8 +32,9 @@ package world.phantasmal.web.assetsGeneration.psov2
 class PlayerClassSpec(
     val slug: String,
     val letter: Char,
-    val hasHair: Boolean,
-    val hasAccessory: Boolean,
+    val headCount: Int = 1,
+    val hairCount: Int = 0,
+    val accessoryHairIndices: Set<Int> = emptySet(),
     val slotMap: Map<Int, Int>,
 )
 
@@ -38,8 +49,8 @@ val PLAYER_CLASS_SPECS: List<PlayerClassSpec> = listOf(
     PlayerClassSpec(
         slug = "HUmar",
         letter = 'A',
-        hasHair = true,
-        hasAccessory = false,
+        hairCount = 7,
+        accessoryHairIndices = setOf(6),
         slotMap = mapOf(
             126 to 86, // Section id variant (Viridia).
             0 to 0,
@@ -55,8 +66,7 @@ val PLAYER_CLASS_SPECS: List<PlayerClassSpec> = listOf(
     PlayerClassSpec(
         slug = "HUnewearl",
         letter = 'B',
-        hasHair = true,
-        hasAccessory = false,
+        hairCount = 10,
         slotMap = mapOf(
             299 to 176,
             13 to 76,
@@ -74,8 +84,7 @@ val PLAYER_CLASS_SPECS: List<PlayerClassSpec> = listOf(
     PlayerClassSpec(
         slug = "HUcast",
         letter = 'C',
-        hasHair = false,
-        hasAccessory = false,
+        headCount = 5,
         slotMap = mapOf(
             275 to 101,
             0 to 0,
@@ -89,8 +98,8 @@ val PLAYER_CLASS_SPECS: List<PlayerClassSpec> = listOf(
     PlayerClassSpec(
         slug = "RAmar",
         letter = 'D',
-        hasHair = true,
-        hasAccessory = true,
+        hairCount = 7,
+        accessoryHairIndices = (0..6).toSet(),
         slotMap = mapOf(
             197 to 123,
             4 to 4,
@@ -107,8 +116,7 @@ val PLAYER_CLASS_SPECS: List<PlayerClassSpec> = listOf(
     PlayerClassSpec(
         slug = "RAcast",
         letter = 'E',
-        hasHair = false,
-        hasAccessory = false,
+        headCount = 5,
         slotMap = mapOf(
             300 to 113,
             0 to 1,
@@ -122,8 +130,7 @@ val PLAYER_CLASS_SPECS: List<PlayerClassSpec> = listOf(
     PlayerClassSpec(
         slug = "RAcaseal",
         letter = 'F',
-        hasHair = false,
-        hasAccessory = false,
+        headCount = 5,
         slotMap = mapOf(
             375 to 141,
             350 to 0,
@@ -139,8 +146,8 @@ val PLAYER_CLASS_SPECS: List<PlayerClassSpec> = listOf(
     PlayerClassSpec(
         slug = "FOmarl",
         letter = 'G',
-        hasHair = true,
-        hasAccessory = true,
+        hairCount = 10,
+        accessoryHairIndices = (0..9).toSet(),
         slotMap = mapOf(
             326 to 185,
             0 to 185,
@@ -159,8 +166,8 @@ val PLAYER_CLASS_SPECS: List<PlayerClassSpec> = listOf(
     PlayerClassSpec(
         slug = "FOnewm",
         letter = 'H',
-        hasHair = true,
-        hasAccessory = true,
+        hairCount = 7,
+        accessoryHairIndices = (0..6).toSet(),
         slotMap = mapOf(
             344 to 178,
             4 to 4,
@@ -177,8 +184,8 @@ val PLAYER_CLASS_SPECS: List<PlayerClassSpec> = listOf(
     PlayerClassSpec(
         slug = "FOnewearl",
         letter = 'I',
-        hasHair = true,
-        hasAccessory = true,
+        hairCount = 10,
+        accessoryHairIndices = (0..9).toSet(),
         slotMap = mapOf(
             505 to 279,
             1 to 1,

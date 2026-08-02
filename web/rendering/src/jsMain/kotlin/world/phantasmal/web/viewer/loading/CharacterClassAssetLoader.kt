@@ -13,14 +13,25 @@ import world.phantasmal.web.viewer.models.CharacterClass.*
 import world.phantasmal.webui.DisposableContainer
 
 class CharacterClassAssetLoader(private val assetLoader: AssetLoader) : DisposableContainer() {
-    private val ninjaObjectCache: LoadingCache<CharacterClass, NjObject> =
+    private val ninjaObjectCache: LoadingCache<BodyPartsKey, NjObject> =
         addDisposable(LoadingCache(::loadBodyParts) { /* Nothing to dispose. */ })
 
     private val xvrTextureCache: LoadingCache<CharacterClass, List<XvrTexture?>> =
         addDisposable(LoadingCache(::loadTextures) { /* Nothing to dispose. */ })
 
-    suspend fun loadNinjaObject(char: CharacterClass): NjObject =
-        ninjaObjectCache.get(char)
+    /**
+     * [headNo]/[hairNo]/[accessoryNo] select which mesh variant to load, defaulting to exactly
+     * what every existing caller (the desktop Viewer) already relied on: head/hair 0, and an
+     * accessory only when [char]'s TRUE-game data says hair style 0 has one
+     * ([CharacterClass.hairStylesWithAccessory]) -- unrelated to mobileGame's own, psov2-
+     * availability-scoped PlayerAppearanceOptions table.
+     */
+    suspend fun loadNinjaObject(
+        char: CharacterClass,
+        headNo: Int = 0,
+        hairNo: Int = 0,
+        accessoryNo: Int? = if (hairNo in char.hairStylesWithAccessory) 0 else null,
+    ): NjObject = ninjaObjectCache.get(BodyPartsKey(char, headNo, hairNo, accessoryNo))
 
     suspend fun loadXvrTextures(
         char: CharacterClass,
@@ -42,11 +53,12 @@ class CharacterClassAssetLoader(private val assetLoader: AssetLoader) : Disposab
     /**
      * Loads the separate body parts and joins them together at the right bones.
      */
-    private suspend fun loadBodyParts(char: CharacterClass): NjObject {
+    private suspend fun loadBodyParts(key: BodyPartsKey): NjObject {
+        val (char, headNo, hairNo, accessoryNo) = key
         val texIds = textureIds(char, SectionId.Viridia, 0)
 
         val body = loadBodyPart(char, "Body")
-        val head = loadBodyPart(char, "Head", no = 0)
+        val head = loadBodyPart(char, "Head", no = headNo)
         // Shift by 1 for the section ID and once for every body texture ID.
         var shift = 1 + texIds.body.size
         shiftTextureIds(head, shift)
@@ -56,16 +68,16 @@ class CharacterClassAssetLoader(private val assetLoader: AssetLoader) : Disposab
             return body
         }
 
-        val hair = loadBodyPart(char, "Hair", no = 0)
+        val hair = loadBodyPart(char, "Hair", no = hairNo)
         shift += texIds.head.size
         shiftTextureIds(hair, shift)
         addToBone(head, hair, parentBoneId = 0)
 
-        if (0 !in char.hairStylesWithAccessory) {
+        if (accessoryNo == null) {
             return body
         }
 
-        val accessory = loadBodyPart(char, "Accessory", no = 0)
+        val accessory = loadBodyPart(char, "Accessory", no = accessoryNo)
         shift += texIds.hair.size
         shiftTextureIds(accessory, shift)
         addToBone(hair, accessory, parentBoneId = 0)
@@ -262,5 +274,12 @@ class CharacterClassAssetLoader(private val assetLoader: AssetLoader) : Disposab
         val head: Array<Int>,
         val hair: Array<Int?>,
         val accessories: Array<Int?>,
+    )
+
+    private data class BodyPartsKey(
+        val char: CharacterClass,
+        val headNo: Int,
+        val hairNo: Int,
+        val accessoryNo: Int?,
     )
 }
