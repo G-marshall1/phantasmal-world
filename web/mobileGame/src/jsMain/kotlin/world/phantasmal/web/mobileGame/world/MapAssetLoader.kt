@@ -17,6 +17,7 @@ import world.phantasmal.psolib.fileFormats.ninja.parseXvm
 import world.phantasmal.web.core.dot
 import world.phantasmal.web.core.loading.AssetLoader
 import world.phantasmal.web.core.rendering.conversion.MeshBuilder
+import world.phantasmal.web.externals.three.LinearMipmapLinearFilter
 import world.phantasmal.web.core.rendering.conversion.collisionGeometryToGroup
 import world.phantasmal.web.core.rendering.conversion.ninjaObjectToMeshBuilder
 import world.phantasmal.web.core.rendering.conversion.setFromVec3
@@ -56,6 +57,14 @@ class GameMap(
     val collisionGeometry: CollisionGeometry,
     /** Ground-only subset of the collision geometry, for spawn/ground-height raycasts. */
     val walkableCollisionObject: Object3D,
+    /**
+     * True when [collisionGeometry] is the game's own authored collision file (per-triangle
+     * surface flags are real -- see Psov2Collision.kt), false when it was synthesized from render
+     * meshes and only slope heuristics apply. WallCollider keys off this: authored walls block
+     * regardless of their height or steepness; synthesized ones need the slope/step-height
+     * workarounds.
+     */
+    val hasAuthoredCollision: Boolean = false,
 )
 
 /**
@@ -72,29 +81,60 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
      * "cave01", "mines01", "ruins01".
      */
     suspend fun loadArea(slug: String): GameMap {
-        val roots = parseNinjaRoomStaticModels(
+        // "n" is the decorative props -- bushes, ferns, rocks, torches -- and "d" is the terrain
+        // itself. Both are drawn, but only the terrain becomes collision: props are scenery you
+        // walk past, and treating them as solid let the player stand on top of a fern.
+        val propRoots = parseNinjaRoomStaticModels(
             assetLoader.loadArrayBuffer("/areas/map_${slug}n.rel").cursor(Endianness.Little)
-        ) + parseNinjaRoomStaticModels(
+        )
+        val terrainRoots = parseNinjaRoomStaticModels(
             assetLoader.loadArrayBuffer("/areas/map_${slug}d.rel").cursor(Endianness.Little)
         )
         val xvm = parseXvm(
             assetLoader.loadArrayBuffer("/areas/map_$slug.xvm").cursor(Endianness.Little)
         ).unwrap()
 
-        val builder = MeshBuilder(xvm.textures)
-        for (root in roots) {
+        // One builder for everything that's drawn.
+        val builder = MeshBuilder(xvm.textures, anisotropy = GROUND_ANISOTROPY, minFilter = LinearMipmapLinearFilter)
+        for (root in propRoots + terrainRoots) {
             ninjaObjectToMeshBuilder(root, builder)
         }
         val renderObject = builder.buildMesh()
 
-        // psov2's collision .rel doesn't match phantasmal's collision format (unlike render
-        // geometry, psov2's own NinjaRoom.js never parses collision at all, so there's no
-        // reference implementation to port from here). Sidesteps the whole problem instead:
-        // build synthetic collision data directly from the render mesh's own already-computed,
-        // world-space triangle soup (real per-triangle surface-type flags don't exist here
-        // either way, so every triangle is collision-eligible and isWalkable/isWall fall back
-        // entirely on the geometric slope test).
-        val collisionGeometry = buildCollisionGeometry(builder)
+        // The real, authored collision the original game plays against -- see Psov2Collision.kt
+        // for the format. Its per-triangle surface flags settle everything the old synthesized-
+        // from-render-mesh collision guessed at by slope: scenery (shrubs, ferns) isn't in the
+        // file at all, so the player walks through it instead of standing on it; walls are walls
+        // no matter how tessellated; and the map's boundary planes actually exist.
+        val authoredCollision = try {
+            parsePsov2Collision(
+                assetLoader.loadArrayBuffer("/areas/map_${slug}c.rel").cursor(Endianness.Little)
+            ).takeIf { geometry -> geometry.meshes.any { it.triangles.isNotEmpty() } }
+        } catch (e: Throwable) {
+            console.warn("Failed to load authored collision for $slug, falling back to synthesized:", e)
+            null
+        }
+
+        if (authoredCollision != null) {
+            return GameMap(
+                renderObject = renderObject,
+                collisionGeometry = authoredCollision,
+                walkableCollisionObject =
+                    collisionRaycastObject(authoredCollision, ::isPsov2Walkable),
+                hasAuthoredCollision = true,
+            )
+        }
+
+        // Fallback: collision synthesized from the terrain render mesh's own world-space
+        // triangles ("d" only -- props are scenery you walk past, and treating them as solid let
+        // the player stand on top of a fern). No real surface flags, so walkable-versus-wall is
+        // decided purely by slope, which gets edge cases wrong that the real flags would settle.
+        val terrainBuilder = MeshBuilder(xvm.textures, anisotropy = GROUND_ANISOTROPY, minFilter = LinearMipmapLinearFilter)
+        for (root in terrainRoots) {
+            ninjaObjectToMeshBuilder(root, terrainBuilder)
+        }
+
+        val collisionGeometry = buildCollisionGeometry(terrainBuilder)
 
         return GameMap(
             renderObject = renderObject,
@@ -128,7 +168,7 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
         for (section in sections) {
             if (section.roots.isEmpty()) continue
 
-            val builder = MeshBuilder(xvm.textures)
+            val builder = MeshBuilder(xvm.textures, anisotropy = GROUND_ANISOTROPY, minFilter = LinearMipmapLinearFilter)
             for (root in section.roots) {
                 ninjaObjectToMeshBuilder(root, builder)
             }
@@ -155,7 +195,14 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
         // same floor height, same wall styling) -- so by request, both wall planes are stripped
         // out entirely rather than continuing to search for their real entrances.
         if (slug == "pioneer2") {
-            collisionGeometry = collisionGeometry.withoutWallAtX(EAST_WALL_X).withoutWallAtX(WEST_WALL_X)
+            collisionGeometry = collisionGeometry
+                .withoutWallAtX(EAST_WALL_X)
+                .withoutWallAtX(WEST_WALL_X)
+                .withoutWallsNear(
+                    RAGOL_TELEPORTER_X,
+                    RAGOL_TELEPORTER_Z,
+                    RAGOL_TELEPORTER_RADIUS,
+                )
         }
 
         return GameMap(
@@ -167,7 +214,37 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
 
     companion object {
         private val UP = Vector3(.0, 1.0, .0)
-        private val COS_75_DEG = cos(PI / 180 * 75)
+
+        /**
+         * Anisotropic filtering for map surfaces.
+         *
+         * Ground is nearly always seen at a grazing angle, which is exactly the case plain
+         * trilinear filtering handles worst: it picks one mip level for the whole fragment, so a
+         * receding floor collapses into long smeared streaks with only a sliver of real detail
+         * near the camera. Anisotropic sampling takes several taps along the axis the texture is
+         * compressed in and holds the detail all the way out.
+         *
+         * 16 is the usual maximum; three.js clamps it to whatever the device actually supports,
+         * so it's safe to state flatly rather than querying the renderer.
+         *
+         * Only meaningful alongside a mipmapping minification filter -- with the default
+         * LinearFilter no mipmaps are generated at all and anisotropic sampling has nothing to
+         * sample between, so setting this alone changes nothing on screen.
+         */
+        private const val GROUND_ANISOTROPY = 16
+        /**
+         * Steepest slope that counts as floor rather than wall, as the cosine of the angle from
+         * horizontal. This used to be 75 degrees, which made a near-vertical cliff walkable: with
+         * WallCollider treating anything steeper than 74.9 degrees as a wall, the two thresholds
+         * met almost at vertical and left every real slope climbable, so the player could simply
+         * walk up the map's boundary cliffs and out of the level.
+         *
+         * 45 degrees is the usual choice, and it's deliberately the *same* cut WallCollider uses
+         * (see its isWall) so the two are exact complements: every triangle is either floor or
+         * wall, with no band that is neither. One constant, easy to tune if a real ramp turns out
+         * to be steeper than this.
+         */
+        val COS_MAX_WALKABLE_SLOPE = cos(PI / 180 * 45)
         private val tmpVec = Vector3()
 
         private fun buildCollisionGeometry(builder: MeshBuilder): CollisionGeometry =
@@ -271,7 +348,7 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
                 triangle.flags.isBitSet(6)
             ) {
                 tmpVec.setFromVec3(triangle.normal)
-                abs(tmpVec dot UP) >= COS_75_DEG
+                abs(tmpVec dot UP) >= COS_MAX_WALKABLE_SLOPE
             } else {
                 false
             }
@@ -280,6 +357,51 @@ class MapAssetLoader(private val assetLoader: AssetLoader) {
         private const val EAST_WALL_X = 90.0
         private const val WEST_WALL_X = -90.0
         private const val WALL_X_TOLERANCE = 1.0
+
+        /**
+         * Main Ragol Teleporter's dais (see PIONEER2_TELEPORTERS). Its raised rim is solid
+         * collision, so you can stand on the platform but can't reach the middle where the warp
+         * beam is -- same situation as the plaza boundary walls, and handled the same way by
+         * request: drop the blocking geometry rather than hunt for a way in.
+         */
+        private const val RAGOL_TELEPORTER_X = 360.003
+        private const val RAGOL_TELEPORTER_Z = 25.998
+        private const val RAGOL_TELEPORTER_RADIUS = 46.0
+
+        /**
+         * Drops the *wall* triangles standing within [radius] of ([x], [z]) in the XZ plane, while
+         * leaving walkable surfaces alone -- unlike [withoutWallAtX], which strips everything in a
+         * plane. Keeping the floor matters here: this is used on a raised platform, and removing
+         * its whole footprint would drop the player straight through it.
+         *
+         * A triangle only goes if *all three* of its vertices are inside the radius, so geometry
+         * that merely clips the edge of the circle (a wall running past the platform) is kept.
+         */
+        private fun CollisionGeometry.withoutWallsNear(
+            x: Double,
+            z: Double,
+            radius: Double,
+        ): CollisionGeometry {
+            val radiusSquared = radius * radius
+
+            return CollisionGeometry(
+                meshes.map { mesh ->
+                    CollisionMesh(
+                        mesh.vertices,
+                        mesh.triangles.filterNot { triangle ->
+                            if (isWalkable(triangle)) return@filterNot false
+
+                            listOf(triangle.index1, triangle.index2, triangle.index3).all { index ->
+                                val v = mesh.vertices[index]
+                                val dx = v.x - x
+                                val dz = v.z - z
+                                dx * dx + dz * dz < radiusSquared
+                            }
+                        },
+                    )
+                }
+            )
+        }
 
         /**
          * Drops every collision triangle whose vertices all sit within [WALL_X_TOLERANCE] of [x]

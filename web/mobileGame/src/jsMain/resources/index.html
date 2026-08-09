@@ -6,6 +6,24 @@
     <title>Phantasmal World Mobile</title>
     <script src="mobileGame.js" async></script>
     <style>
+        /*
+         * The display cutout -- iPhone's Dynamic Island or notch, an Android hole-punch camera --
+         * sits *inside* the viewport, because the viewport meta above says viewport-fit=cover so
+         * the game can use the full screen. In landscape the cutout eats a strip off one side,
+         * which is enough to swallow a whole column of UI.
+         *
+         * Every fixed-position element offsets itself by these instead of hard-coding a margin
+         * from the screen edge. They resolve to 0px on hardware with no cutout (and in a desktop
+         * browser), so the same numbers work everywhere. Defined once here rather than repeating
+         * the env() calls in a dozen component stylesheets.
+         */
+        :root {
+            --pw-safe-top: env(safe-area-inset-top, 0px);
+            --pw-safe-right: env(safe-area-inset-right, 0px);
+            --pw-safe-bottom: env(safe-area-inset-bottom, 0px);
+            --pw-safe-left: env(safe-area-inset-left, 0px);
+        }
+
         html, body {
             overflow: hidden;
             margin: 0;

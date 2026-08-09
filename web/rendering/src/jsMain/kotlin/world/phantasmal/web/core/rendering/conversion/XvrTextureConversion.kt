@@ -9,6 +9,7 @@ import world.phantasmal.psolib.cursor.cursor
 import world.phantasmal.psolib.fileFormats.ninja.XvrTexture
 import world.phantasmal.web.externals.three.DataTexture
 import world.phantasmal.web.externals.three.LinearFilter
+import world.phantasmal.web.externals.three.NearestFilter
 import world.phantasmal.web.externals.three.MirroredRepeatWrapping
 import world.phantasmal.web.externals.three.PixelFormat
 import world.phantasmal.web.externals.three.RGBAFormat
@@ -19,6 +20,7 @@ import world.phantasmal.web.externals.three.TextureFilter
 import world.phantasmal.web.externals.three.UnsignedByteType
 import world.phantasmal.web.externals.three.UnsignedShort5551Type
 import world.phantasmal.web.externals.three.UnsignedShort565Type
+import world.phantasmal.web.externals.three.Wrapping
 import kotlin.math.roundToInt
 
 fun xvrTextureToThree(
@@ -27,6 +29,10 @@ fun xvrTextureToThree(
     // TODO: Use LinearMipmapLinearFilter once we figure out mipmapping.
     minFilter: TextureFilter = LinearFilter,
     anisotropy: Int = 1,
+    // Mirrored repeat was the historical hardcoded behavior; callers that know the material's
+    // real UV addressing (see MeshBuilder) pass the accurate mode instead.
+    wrapS: Wrapping = MirroredRepeatWrapping,
+    wrapT: Wrapping = MirroredRepeatWrapping,
 ): Texture =
     when (xvr.format.second) {
         // D3DFMT_R5G6B5
@@ -39,6 +45,8 @@ fun xvrTextureToThree(
             magFilter,
             minFilter,
             anisotropy,
+            wrapS,
+            wrapT,
         )
         // D3DFMT_A1R5G5B5
         3 -> {
@@ -60,6 +68,8 @@ fun xvrTextureToThree(
                 magFilter,
                 minFilter,
                 anisotropy,
+                wrapS,
+                wrapT,
             )
         }
         // D3DFMT_DXT1 -- decoded to plain RGBA on the CPU rather than uploaded as a
@@ -74,6 +84,8 @@ fun xvrTextureToThree(
             magFilter,
             minFilter,
             anisotropy,
+            wrapS,
+            wrapT,
         )
         // D3DFMT_DXT2 (DXT3 with premultiplied alpha, treated the same as DXT3 here since we
         // decode straight to RGBA and don't distinguish premultiplied vs. straight alpha).
@@ -86,6 +98,8 @@ fun xvrTextureToThree(
             magFilter,
             minFilter,
             anisotropy,
+            wrapS,
+            wrapT,
         )
         // 1 -> D3DFMT_A8R8G8B8
         // 4 -> D3DFMT_A4R4G4B4
@@ -115,6 +129,8 @@ private fun createDataTexture(
     magFilter: TextureFilter,
     minFilter: TextureFilter,
     anisotropy: Int,
+    wrapS: Wrapping,
+    wrapT: Wrapping,
 ): DataTexture =
     DataTexture(
         data,
@@ -122,12 +138,16 @@ private fun createDataTexture(
         height,
         format,
         type,
-        wrapS = MirroredRepeatWrapping,
-        wrapT = MirroredRepeatWrapping,
+        wrapS = wrapS,
+        wrapT = wrapT,
         magFilter = magFilter,
         minFilter = minFilter,
         anisotropy = anisotropy,
-    )
+    ).also {
+        // DataTexture leaves mipmap generation off, so a mipmapping minFilter would find no
+        // levels and draw the surface black. Turn it on exactly when such a filter is in use.
+        it.generateMipmaps = minFilter != LinearFilter && minFilter != NearestFilter
+    }
 
 /**
  * Decodes a DXT1-compressed (BC1) image to a plain RGBA byte array. Each 4x4 pixel block is

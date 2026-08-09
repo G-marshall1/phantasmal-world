@@ -47,7 +47,7 @@ class CharacterClassAssetLoader(private val assetLoader: AssetLoader) : Disposab
             *texIds.head,
             *texIds.hair,
             *texIds.accessories,
-        ).map { it?.let(xvrTextures::get) }
+        ).map { it?.let(xvrTextures::getOrNull) }
     }
 
     /**

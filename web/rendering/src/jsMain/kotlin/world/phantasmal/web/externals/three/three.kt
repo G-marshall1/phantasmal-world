@@ -53,6 +53,12 @@ external class Vector3(
     fun clone(): Vector3
 
     /**
+     * Projects this world-space point through [camera] into normalized device coordinates, where
+     * x and y run -1..1 across the viewport. Mutates this vector in place.
+     */
+    fun project(camera: Camera): Vector3
+
+    /**
      * Copies value of v to this vector.
      */
     fun copy(v: Vector3): Vector3
@@ -140,6 +146,8 @@ external class Quaternion(
      * Multiplies this quaternion by [q].
      */
     fun multiply(q: Quaternion): Quaternion
+
+    fun setFromRotationMatrix(m: Matrix4): Quaternion
 }
 
 external class Euler(
@@ -165,6 +173,12 @@ external class Matrix4 {
     fun compose(translation: Vector3, rotation: Quaternion, scale: Vector3): Matrix4
 
     fun premultiply(m: Matrix4): Matrix4
+
+    fun copy(m: Matrix4): Matrix4
+
+    fun invert(): Matrix4
+
+    fun decompose(translation: Vector3, rotation: Quaternion, scale: Vector3): Matrix4
 }
 
 external class Ray(origin: Vector3 = definedExternally, direction: Vector3 = definedExternally) {
@@ -314,6 +328,7 @@ open external class Object3D {
     var userData: Any
 
     fun add(vararg `object`: Object3D): Object3D
+    fun traverse(callback: (Object3D) -> Unit)
     fun remove(vararg `object`: Object3D): Object3D
     fun clear(): Object3D
 
@@ -395,6 +410,9 @@ external class Bone : Object3D {
 
 external class Skeleton(bones: Array<Bone>, boneInverses: Array<Matrix4> = definedExternally) {
     val bones: Array<Bone>
+
+    /** One inverse bind matrix per bone -- the static rest pose each skeleton was rigged in. */
+    val boneInverses: Array<Matrix4>
 
     fun dispose()
 }
@@ -703,8 +721,39 @@ external class LineBasicMaterial(
     var linewidth: Double
 }
 
+external class TextureLoader {
+    fun load(url: String): Texture
+}
+
+external interface SpriteMaterialParameters : MaterialParameters {
+    var map: Texture?
+    var color: Color
+    var rotation: Double
+    var depthWrite: Boolean
+    var depthTest: Boolean
+}
+
+external class SpriteMaterial(
+    parameters: SpriteMaterialParameters = definedExternally,
+) : Material {
+    var map: Texture?
+    var rotation: Double
+    var opacity: Double
+}
+
+/** A camera-facing billboard quad -- what particle effects are made of. */
+external class Sprite(material: SpriteMaterial = definedExternally) : Object3D {
+    var material: SpriteMaterial
+}
+
 open external class Texture : EventDispatcher {
     var needsUpdate: Boolean
+
+    /**
+     * three.js leaves this false on DataTexture, so a mipmapping minFilter has no levels to read
+     * and the surface renders black. Set it explicitly when using such a filter.
+     */
+    var generateMipmaps: Boolean
 
     fun dispose()
 }
@@ -890,6 +939,11 @@ external interface AnimationBlendMode
 external object NormalAnimationBlendMode : AnimationBlendMode
 external object AdditiveAnimationBlendMode : AnimationBlendMode
 
+external interface AnimationActionLoopStyles
+external object LoopOnce : AnimationActionLoopStyles
+external object LoopRepeat : AnimationActionLoopStyles
+external object LoopPingPong : AnimationActionLoopStyles
+
 open external class KeyframeTrack
 
 external class VectorKeyframeTrack(
@@ -936,10 +990,12 @@ external class AnimationAction(
     var time: Double
     var timeScale: Double
     var paused: Boolean
+    var clampWhenFinished: Boolean
 
     fun play(): AnimationAction
     fun stop(): AnimationAction
     fun reset(): AnimationAction
+    fun setLoop(mode: AnimationActionLoopStyles, repetitions: Int): AnimationAction
     fun fadeIn(duration: Double): AnimationAction
     fun fadeOut(duration: Double): AnimationAction
 }

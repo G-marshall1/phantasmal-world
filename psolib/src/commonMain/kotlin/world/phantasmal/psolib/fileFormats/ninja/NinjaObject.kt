@@ -188,7 +188,18 @@ class NjTriangleStrip(
     var srcAlpha: Int?,
     var dstAlpha: Int?,
     val vertices: List<NjMeshVertex>,
-)
+) {
+    /**
+     * UV addressing flags from the texture-id (Tiny) chunk in effect when this strip was
+     * processed -- null when no Tiny chunk preceded the strip, i.e. genuinely unknown. Sega's
+     * Ninja semantics: no flag means plain repeat tiling, flip means mirrored repeat, clamp wins
+     * over both.
+     */
+    var flipU: Boolean? = null
+    var flipV: Boolean? = null
+    var clampU: Boolean? = null
+    var clampV: Boolean? = null
+}
 
 class NjMeshVertex(
     val index: Int,

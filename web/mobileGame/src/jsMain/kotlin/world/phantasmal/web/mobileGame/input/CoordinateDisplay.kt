@@ -13,7 +13,7 @@ import world.phantasmal.core.disposable.TrackedDisposable
 class CoordinateDisplay(container: HTMLElement) : TrackedDisposable() {
     private val label = (document.createElement("div") as HTMLElement).also { el ->
         el.style.cssText =
-            "position:fixed;top:20px;left:50%;transform:translateX(-50%);" +
+            "position:fixed;top:calc(20px + var(--pw-safe-top));left:50%;transform:translateX(-50%);" +
                 "font:bold 14px monospace;color:white;text-shadow:0 1px 3px black;" +
                 "z-index:15;pointer-events:none;user-select:none;white-space:nowrap;" +
                 "background:rgba(0,0,0,0.35);padding:4px 10px;border-radius:6px;"

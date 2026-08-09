@@ -5,6 +5,7 @@ import kotlin.random.Random
 import kotlinx.browser.document
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.pointerevents.PointerEvent
+import world.phantasmal.core.disposable.Disposable
 import world.phantasmal.core.disposable.TrackedDisposable
 import world.phantasmal.webui.dom.disposableListener
 
@@ -39,9 +40,16 @@ import world.phantasmal.webui.dom.disposableListener
  *   forces SVG layout recalculation every frame. Ported as `transform: scale()` instead (see
  *   [hexPingLayer]), same visual growth curve, GPU-composited.
  *
- * Same public contract as before: tapping anywhere calls [onStart].
+ * Tapping anywhere goes straight to character select ([onContinue]), the way the original
+ * client's title flows into its character screen -- the old in-place New Game/Continue/Settings/
+ * Exit menu was cut by request; its layer code remains but nothing shows it, and [onNewGame]
+ * (the nickname/login path) is kept wired for the day a session concept needs it.
  */
-class TitleScreen(container: HTMLElement, onStart: () -> Unit) : TrackedDisposable() {
+class TitleScreen(
+    container: HTMLElement,
+    private val onNewGame: () -> Unit,
+    private val onContinue: () -> Unit,
+) : TrackedDisposable() {
     private val root = (document.createElement("div") as HTMLElement).also { el ->
         el.style.cssText = ROOT_STYLE
         container.appendChild(el)
@@ -52,6 +60,12 @@ class TitleScreen(container: HTMLElement, onStart: () -> Unit) : TrackedDisposab
         document.head!!.appendChild(el)
     }
 
+    private val listeners = mutableListOf<Disposable>()
+
+    private val actionText = actionTextLayer()
+    private val menu = menuLayer()
+    private val settingsNotice = settingsNoticeLayer()
+
     init {
         root.appendChild(hexBlurredLayer())
         root.appendChild(bgTextLayer())
@@ -61,14 +75,34 @@ class TitleScreen(container: HTMLElement, onStart: () -> Unit) : TrackedDisposab
         root.appendChild(titleLayer())
         root.appendChild(twinkleLayer())
         root.appendChild(starStreamLayer())
-        root.appendChild(actionTextLayer())
+        root.appendChild(actionText)
+        root.appendChild(menu)
+        root.appendChild(settingsNotice)
         root.appendChild(scanLinesLayer())
+        root.appendChild(buildStampLayer())
+
+        // Tap anywhere on screen to continue straight to character select -- the original
+        // client's own flow off its title.
+        listeners.add(root.disposableListener<PointerEvent>("pointerdown", { onContinue() }))
     }
 
-    private val listener = root.disposableListener<PointerEvent>("pointerdown", { onStart() })
+    private var menuOpen = false
+
+    private fun showMenu() {
+        menuOpen = true
+        actionText.style.display = "none"
+        menu.style.display = "flex"
+    }
+
+    private fun hideMenu() {
+        menuOpen = false
+        settingsNotice.style.display = "none"
+        menu.style.display = "none"
+        actionText.style.display = "block"
+    }
 
     override fun dispose() {
-        listener.dispose()
+        for (listener in listeners) listener.dispose()
         root.remove()
         styleTag.remove()
         super.dispose()
@@ -156,6 +190,51 @@ class TitleScreen(container: HTMLElement, onStart: () -> Unit) : TrackedDisposab
         return el
     }
 
+    /**
+     * The deployed bundle's stamp, bottom corner of the title. The tester's phone gives no
+     * other way to tell whether an Xcode run actually picked up a fresh `cap copy` -- a stale
+     * app looks exactly like "the fix did nothing". Bump [BUILD_STAMP] on every deploy.
+     */
+    private fun buildStampLayer(): HTMLElement {
+        val el = div("pw-title-build")
+        el.textContent = BUILD_STAMP
+        return el
+    }
+
+    private fun menuLayer(): HTMLElement {
+        val el = div("pw-title-menu")
+        el.appendChild(menuButton("New Game") { onNewGame() })
+        el.appendChild(menuButton("Continue") { onContinue() })
+        el.appendChild(menuButton("Settings") { showSettingsNotice() })
+        el.appendChild(menuButton("Exit") { hideMenu() })
+        return el
+    }
+
+    private fun menuButton(label: String, onClick: () -> Unit): HTMLElement {
+        val el = document.createElement("div") as HTMLElement
+        el.className = "pw-title-menu-button"
+        el.textContent = label
+        listeners.add(el.disposableListener<PointerEvent>("pointerdown", { e ->
+            e.stopPropagation()
+            onClick()
+        }))
+        return el
+    }
+
+    private fun settingsNoticeLayer(): HTMLElement {
+        val el = div("pw-title-settings-notice")
+        el.textContent = "Settings -- coming soon"
+        listeners.add(el.disposableListener<PointerEvent>("pointerdown", { e ->
+            e.stopPropagation()
+            el.style.display = "none"
+        }))
+        return el
+    }
+
+    private fun showSettingsNotice() {
+        settingsNotice.style.display = "flex"
+    }
+
     private fun scanLinesLayer(): HTMLElement {
         val img = document.createElement("img") as HTMLElement
         img.className = "pw-title-scanlines"
@@ -226,6 +305,9 @@ class TitleScreen(container: HTMLElement, onStart: () -> Unit) : TrackedDisposab
         """<svg viewBox="0 0 8465 8477" width="140vw" class="pw-hex-svg">$HEX_GRID_SVG_INNER</svg>"""
 
     companion object {
+        /** Deploy fingerprint shown on the title screen; bump on every `cap copy ios`. */
+        private const val BUILD_STAMP = "BUILD 0808-U"
+
         private const val BG_TEXT_CHARSET = " abcdefghijklmnopqrstuvwxyz0123456789 "
         private const val BG_TEXT_WORDS_PER_COLUMN = 50
         private const val TWINKLE_RAY_COUNT = 36
@@ -235,6 +317,8 @@ class TitleScreen(container: HTMLElement, onStart: () -> Unit) : TrackedDisposab
 
         private const val ROOT_STYLE =
             "position:fixed;inset:0;overflow:hidden;z-index:30;touch-action:none;user-select:none;" +
+            "padding:var(--pw-safe-top) var(--pw-safe-right) var(--pw-safe-bottom) var(--pw-safe-left);" +
+            "box-sizing:border-box;" +
                 "display:flex;align-items:center;justify-content:center;" +
                 "background-image:linear-gradient(148deg,#000c38 0%,#000 83%,#000 100%);" +
                 "box-shadow:0 0 12vw #000 inset,0 0 12vw rgba(0,5,87,.8) inset;"
@@ -424,6 +508,15 @@ class TitleScreen(container: HTMLElement, onStart: () -> Unit) : TrackedDisposab
               100% { transform: translate(-55vw,0) scale(.1); opacity: .15; }
             }
 
+            .pw-title-build {
+              position: absolute;
+              z-index: 9;
+              right: calc(8px + var(--pw-safe-right));
+              bottom: calc(6px + var(--pw-safe-bottom));
+              color: rgba(200, 230, 255, 0.55);
+              font-size: 10px;
+              letter-spacing: 2px;
+            }
             .pw-title-action {
               position: absolute;
               z-index: 9;
@@ -441,6 +534,48 @@ class TitleScreen(container: HTMLElement, onStart: () -> Unit) : TrackedDisposab
             @keyframes pw-title-action-pulse {
               0%, 100% { opacity: .15; }
               50% { opacity: .85; }
+            }
+
+            .pw-title-menu {
+              display: none;
+              position: absolute;
+              z-index: 9;
+              transform: translateY(14vw);
+              flex-direction: column;
+              align-items: center;
+              gap: 10px;
+            }
+            .pw-title-menu-button {
+              width: 46vw;
+              max-width: 260px;
+              padding: 10px 0;
+              border-radius: 20px;
+              text-align: center;
+              background: rgba(0,10,30,.55);
+              border: 1px solid rgba(255,255,255,.4);
+              color: white;
+              font: bold 15px sans-serif;
+              letter-spacing: 1px;
+              text-shadow: 0 0 .3vw rgba(140,200,255,.9);
+              touch-action: none;
+              user-select: none;
+            }
+
+            .pw-title-settings-notice {
+              display: none;
+              position: absolute;
+              z-index: 11;
+              align-items: center;
+              justify-content: center;
+              padding: 14px 26px;
+              border-radius: 12px;
+              background: rgba(0,10,30,.85);
+              border: 1px solid rgba(255,255,255,.5);
+              color: white;
+              font: bold 14px sans-serif;
+              text-shadow: 0 1px 3px black;
+              touch-action: none;
+              user-select: none;
             }
 
             .pw-title-scanlines {

@@ -24,10 +24,11 @@ class PlayerAssetLoader(private val characterClassAssetLoader: CharacterClassAss
         val textures = characterClassAssetLoader.loadXvrTextures(
             appearance.characterClass,
             appearance.sectionId,
-            body = 0,
+            body = appearance.bodyIndex.coerceIn(0, appearance.characterClass.bodyStyleCount - 1),
         )
 
         val mesh = ninjaObjectToSkinnedMesh(njObject, textures, boundingVolumes = true)
         return PlayerMeshData(mesh, njObject)
     }
+
 }

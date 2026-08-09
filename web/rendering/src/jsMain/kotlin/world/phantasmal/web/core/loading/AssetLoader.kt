@@ -14,7 +14,7 @@ import world.phantasmal.core.unsafe.unsafeCast
 import world.phantasmal.web.shared.JSON_FORMAT
 
 @OptIn(ExperimentalSerializationApi::class)
-class AssetLoader(
+open class AssetLoader(
     private val origin: String = window.location.origin,
     private val basePath: String = defaultBasePath(),
 ) {
@@ -27,7 +27,7 @@ class AssetLoader(
             get(path).json().await(),
         )
 
-    suspend fun loadArrayBuffer(path: String): ArrayBuffer =
+    open suspend fun loadArrayBuffer(path: String): ArrayBuffer =
         get(path).arrayBuffer().await()
 
     private suspend fun get(path: String): Response =

@@ -67,6 +67,10 @@ private class PolygonChunkProcessor(
     private var textureId: Int? = null
     private var srcAlpha: Int? = null
     private var dstAlpha: Int? = null
+    private var flipU: Boolean? = null
+    private var flipV: Boolean? = null
+    private var clampU: Boolean? = null
+    private var clampV: Boolean? = null
 
     /**
      * When [cacheList] is non-null we are caching chunks.
@@ -101,6 +105,10 @@ private class PolygonChunkProcessor(
 
                     is NjChunk.Tiny -> {
                         textureId = chunk.textureId
+                        flipU = chunk.flipU
+                        flipV = chunk.flipV
+                        clampU = chunk.clampU
+                        clampV = chunk.clampV
                     }
 
                     is NjChunk.Material -> {
@@ -113,6 +121,10 @@ private class PolygonChunkProcessor(
                             strip.textureId = textureId
                             strip.srcAlpha = srcAlpha
                             strip.dstAlpha = dstAlpha
+                            strip.flipU = flipU
+                            strip.flipV = flipV
+                            strip.clampU = clampU
+                            strip.clampV = clampV
                         }
 
                         meshes.addAll(chunk.triangleStrips)
@@ -419,25 +431,45 @@ private fun parseTriangleStripChunk(
     var hasNormal = false
     var hasDoubleTexCoords = false
 
+    // UV fixed-point scale. Ninja has two textured-strip encodings per layout: UVN types store
+    // UVs in 0-255, UVH types (66/69/72) in 0-1023. Decoding UVH as if it were UVN -- as this
+    // parser always did -- multiplies every UV by ~4, so a texture tiles four times too densely
+    // and large surfaces (area terrain especially) smear into fine parallel stripes.
+    var uvDivisor = 255f
+
     when (chunkTypeId) {
         64 -> {
         }
-        65, 66 -> {
+        65 -> {
             hasTexCoords = true
+        }
+        66 -> {
+            hasTexCoords = true
+            uvDivisor = 1023f
         }
         67 -> {
             hasNormal = true
         }
-        68, 69 -> {
+        68 -> {
             hasTexCoords = true
             hasNormal = true
+        }
+        69 -> {
+            hasTexCoords = true
+            hasNormal = true
+            uvDivisor = 1023f
         }
         70 -> {
             hasColor = true
         }
-        71, 72 -> {
+        71 -> {
             hasTexCoords = true
             hasColor = true
+        }
+        72 -> {
+            hasTexCoords = true
+            hasColor = true
+            uvDivisor = 1023f
         }
         73 -> {
         }
@@ -459,8 +491,15 @@ private fun parseTriangleStripChunk(
         for (j in 0 until indexCount) {
             val index = cursor.uShort().toInt()
 
+            // UVs are *signed* 16-bit fixed point: a strip whose mapping crosses the texture
+            // origin stores small negative values (perfectly normal -- wrapping handles them).
+            // Reading them unsigned turned e.g. -422 into 65114, i.e. ~64 texture repeats across
+            // one triangle, which smeared any such surface into dense parallel stripes.
             val texCoords = if (hasTexCoords) {
-                Vec2(cursor.uShort().toFloat() / 255f, cursor.uShort().toFloat() / 255f)
+                Vec2(
+                    cursor.short().toFloat() / uvDivisor,
+                    cursor.short().toFloat() / uvDivisor,
+                )
             } else null
 
             // Ignore ARGB8888 color.

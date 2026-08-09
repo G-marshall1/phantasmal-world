@@ -12,9 +12,23 @@ class AnimationAssetLoader(private val assetLoader: AssetLoader) : DisposableCon
     private val ninjaMotionCache: LoadingCache<String, NjMotion> =
         addDisposable(LoadingCache(::loadNinjaMotion) { /* Nothing to dispose. */ })
 
-    suspend fun loadAnimation(filePath: String): NjMotion =
-        ninjaMotionCache.get(filePath)
+    /**
+     * [boneCount] is the animated skeleton's real bone count. The v2 NJM format doesn't record
+     * it, and without it parseNjm has to guess where the per-bone offset table ends -- a guess
+     * that can stop short and freeze every bone past it (arms that never rise, props that never
+     * reach their full height). Pass it whenever the model is known; it's part of the cache key
+     * so the same file parsed for different skeletons can't collide.
+     */
+    suspend fun loadAnimation(filePath: String, boneCount: Int? = null): NjMotion =
+        ninjaMotionCache.get("$filePath#${boneCount ?: 0}")
 
-    private suspend fun loadNinjaMotion(filePath: String): NjMotion =
-        parseNjm(assetLoader.loadArrayBuffer(filePath).cursor(Endianness.Little))
+    private suspend fun loadNinjaMotion(key: String): NjMotion {
+        val separator = key.lastIndexOf('#')
+        val filePath = key.substring(0, separator)
+        val boneCount = key.substring(separator + 1).toInt().takeIf { it > 0 }
+        return parseNjm(
+            assetLoader.loadArrayBuffer(filePath).cursor(Endianness.Little),
+            boneCount,
+        )
+    }
 }

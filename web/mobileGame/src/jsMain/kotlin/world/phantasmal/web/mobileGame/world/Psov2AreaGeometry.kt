@@ -16,9 +16,12 @@ import world.phantasmal.psolib.fileFormats.vec3Float
  * garbage). Ported from psov2's NinjaRoom.js `prepare`/`readBone`: it turns out each section's
  * static models are plain Ninja bone/chunk object graphs -- the exact same format used by
  * player/enemy .nj models -- just referenced through a different, simpler outer table with no
- * per-format version tag. Section position/rotation is intentionally not applied here, matching
- * NinjaRoom.js's own `execute()`, which never uses it either: each static model's own bone tree
- * root is already in final, section-relative-baked coordinates.
+ * per-format version tag.
+ *
+ * Each section's models are wrapped in a node carrying that section's position/rotation. Skipping
+ * that step (as this once did) leaves every section stacked on the origin, which for Forest 1
+ * collapsed a 960-unit-wide map into a single small island -- the models' own coordinates are
+ * section-relative, not world-relative.
  */
 fun parseNinjaRoomStaticModels(cursor: Cursor): List<NjObject> {
     cursor.seekEnd(16)
@@ -39,9 +42,14 @@ fun parseNinjaRoomStaticModels(cursor: Cursor): List<NjObject> {
     cursor.seekStart(sectionsOffset)
 
     for (i in 0 until sectionCount) {
+        val sectionRoots = mutableListOf<NjObject>()
         cursor.seek(4) // Section id.
-        cursor.seek(12) // Position.
-        cursor.seek(12) // Rotation.
+        val sectionPosition = cursor.vec3Float()
+        val sectionRotation = Vec3(
+            angleToRad(cursor.int()).toFloat(),
+            angleToRad(cursor.int()).toFloat(),
+            angleToRad(cursor.int()).toFloat(),
+        )
         cursor.seek(4) // Radius.
         val staticModelOffset = cursor.int()
         cursor.seek(4) // Attribute table offset.
@@ -65,7 +73,7 @@ fun parseNinjaRoomStaticModels(cursor: Cursor): List<NjObject> {
             // the individual mesh) -- skip just that one mesh rather than losing the whole area.
             try {
                 cursor.seekStart(meshOffset)
-                roots.addAll(parseNjObjectSiblings(cursor))
+                sectionRoots.addAll(parseNjObjectSiblings(cursor))
             } catch (e: Throwable) {
                 console.warn("Skipping unparseable static model at offset $meshOffset (section $i, entry $k)", e)
             }
@@ -86,12 +94,29 @@ fun parseNinjaRoomStaticModels(cursor: Cursor): List<NjObject> {
 
             try {
                 cursor.seekStart(meshOffset)
-                roots.addAll(parseNjObjectSiblings(cursor))
+                sectionRoots.addAll(parseNjObjectSiblings(cursor))
             } catch (e: Throwable) {
                 console.warn("Skipping unparseable animated model at offset $meshOffset (section $i, entry $k)", e)
             }
 
             cursor.seekStart(nextEntryPos)
+        }
+
+        // Wrap rather than mutate: NjObject.position is a val and Vec3 immutable, and a parent
+        // node composes the section's rotation with each model's own transform correctly, which
+        // adding offsets component-wise would not.
+        if (sectionRoots.isNotEmpty()) {
+            roots.add(
+                NjObject(
+                    offset = 0,
+                    evaluationFlags = NinjaEvaluationFlags(0),
+                    model = null,
+                    position = sectionPosition,
+                    rotation = sectionRotation,
+                    scale = Vec3(1f, 1f, 1f),
+                    children = sectionRoots,
+                )
+            )
         }
 
         cursor.seekStart(nextSectionPos)

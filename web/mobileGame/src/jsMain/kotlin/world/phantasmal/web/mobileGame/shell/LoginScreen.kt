@@ -20,6 +20,8 @@ class LoginScreen(
     private val root = (document.createElement("div") as HTMLElement).also { el ->
         el.style.cssText =
             "position:fixed;inset:0;background:#181818;display:flex;flex-direction:column;" +
+            "padding:var(--pw-safe-top) var(--pw-safe-right) var(--pw-safe-bottom) var(--pw-safe-left);" +
+            "box-sizing:border-box;" +
                 "align-items:center;justify-content:center;z-index:30;padding:0 24px;"
         container.appendChild(el)
     }

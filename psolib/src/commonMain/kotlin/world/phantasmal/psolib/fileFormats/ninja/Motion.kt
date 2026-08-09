@@ -66,9 +66,16 @@ sealed class NjKeyframe {
     ) : NjKeyframe()
 }
 
-fun parseNjm(cursor: Cursor): NjMotion =
+/**
+ * [boneCount] is the number of bones in the model this motion belongs to. The NJM format doesn't
+ * record it -- the real client always knows it from the object being animated -- so when it isn't
+ * supplied the v2 parser has to guess where the per-bone offset table ends (see [parseMotion]).
+ * That guess can stop short and leave later bones with no animation at all, so pass the model's
+ * actual bone count whenever it's known.
+ */
+fun parseNjm(cursor: Cursor, boneCount: Int? = null): NjMotion =
     if (cursor.int() == NMDM) {
-        parseNjmV2(cursor)
+        parseNjmV2(cursor, boneCount)
     } else {
         cursor.seekStart(0)
         parseNjmBb(cursor)
@@ -77,9 +84,9 @@ fun parseNjm(cursor: Cursor): NjMotion =
 /**
  * Format used by PSO v2 and for the enemies in PSO:BB.
  */
-private fun parseNjmV2(cursor: Cursor): NjMotion {
+private fun parseNjmV2(cursor: Cursor, boneCount: Int?): NjMotion {
     val chunkSize = cursor.int()
-    return parseMotion(cursor.take(chunkSize), v2Format = true)
+    return parseMotion(cursor.take(chunkSize), v2Format = true, boneCount = boneCount)
 }
 
 /**
@@ -101,10 +108,14 @@ private fun parseAction(cursor: Cursor): NjMotion {
     return parseMotion(cursor, v2Format = false)
 }
 
-fun parseMotion(cursor: Cursor, v2Format: Boolean): NjMotion {
+fun parseMotion(cursor: Cursor, v2Format: Boolean, boneCount: Int? = null): NjMotion {
     // For v2, try to determine the end of the mData offset table by finding the lowest mDataOffset
     // value. This is usually the value that the first mDataOffset points to. This value is assumed
     // to be the end of the mDataOffset table.
+    //
+    // That heuristic under-reads on some models: psov2's city teleporter beams have 6 and 7 bones
+    // but yield only 3 and 2 entries this way, leaving the upper rings frozen. When the caller
+    // knows the model's real bone count, read exactly that many entries instead of guessing.
     var mDataTableEnd = if (v2Format) cursor.size else cursor.position
 
     // Points to an array with an element per bone.
@@ -124,7 +135,7 @@ fun parseMotion(cursor: Cursor, v2Format: Boolean): NjMotion {
     val motionDataList = mutableListOf<NjMotionData>()
     var mDataOffset = mDataTableOffset
 
-    while (mDataOffset < mDataTableEnd) {
+    while (if (boneCount != null) motionDataList.size < boneCount else mDataOffset < mDataTableEnd) {
         cursor.seekStart(mDataOffset)
         mDataOffset += 8 * elementCount
 
@@ -162,7 +173,17 @@ fun parseMotion(cursor: Cursor, v2Format: Boolean): NjMotion {
             val count = keyframeCounts.removeFirst()
 
             tracks.add(NjKeyframeTrack.EulerAngles(
-                keyframes = parseEulerAngleKeyframes(cursor, count, frameCount),
+                // v2 (NMDM) rotation keyframes are always the wide form: u32 frame + 3 x i32
+                // angles. Verified by byte-tiling the Dragon's clips -- the per-bone offset
+                // table tiles its data region exactly at 16 bytes per key, and psov2's own
+                // reader parses every NMDM rotation this way unconditionally. The narrow-first
+                // guess below mis-read wide data whenever the misinterpreted frame numbers
+                // happened to stay monotonic (quiet bones with small angle values), which is
+                // what dismembered the Dragon: most of its body fell back to wide correctly,
+                // while its jaw and leg bones "passed" as narrow and froze at garbage angles.
+                keyframes =
+                    if (v2Format) parseEulerAngleKeyframesWide(cursor, count)
+                    else parseEulerAngleKeyframes(cursor, count, frameCount),
             ))
         }
 

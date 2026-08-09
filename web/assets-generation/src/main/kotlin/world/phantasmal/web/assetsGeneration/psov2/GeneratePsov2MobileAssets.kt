@@ -53,6 +53,9 @@ fun generatePsov2MobileAssets(sourceDir: File, outputDir: File) {
     generatePlayerAnimations(sourceDir, outputDir)
     generateWeapons(sourceDir, outputDir)
     generateObjects(sourceDir, outputDir)
+    generateGslObjects(sourceDir, outputDir)
+    generateLooseObjects(sourceDir, outputDir)
+    generateAreaSpawns(sourceDir, outputDir)
 
     logger.info("Done generating psov2-derived mobile game assets.")
 }
@@ -286,6 +289,307 @@ private fun generateObjects(sourceDir: File, outputDir: File) {
         write(outputDir, "objects/${spec.slug}.xvm", buildXvm(textures))
     }
 }
+
+/**
+ * GSL-sourced props (see [GSL_OBJECT_SPECS]) -- same output layout as [generateObjects], plus an
+ * optional ".njm" animation clip written alongside as "objects/{slug}.njm".
+ */
+private fun generateLooseObjects(sourceDir: File, outputDir: File) {
+    logger.info("Generating loose-file objects/*.")
+
+    for (spec in LOOSE_OBJECT_SPECS) {
+        logger.info("Generating objects/${spec.slug}.*.")
+
+        val njBytes = when {
+            spec.njFile != null -> File(sourceDir, spec.njFile).readBytes()
+            else -> readBml(File(sourceDir, spec.bmlFile!!).readBytes()).getValue(spec.njEntry!!)
+        }
+        write(outputDir, "objects/${spec.slug}.nj", njBytes)
+
+        val textures = decodeTextures(File(sourceDir, spec.pvmFile).readBytes())
+        write(outputDir, "objects/${spec.slug}.xvm", buildXvm(textures))
+    }
+}
+
+private fun generateGslObjects(sourceDir: File, outputDir: File) {
+    logger.info("Generating GSL-sourced objects/*.")
+
+    for (spec in GSL_OBJECT_SPECS) {
+        logger.info("Generating objects/${spec.slug}.*.")
+
+        val gsl = readGsl(File(sourceDir, spec.archive).readBytes())
+        val bml = readBml(gsl.getValue(spec.bmlEntry))
+
+        write(outputDir, "objects/${spec.slug}.nj", bml.getValue(spec.njEntry))
+
+        val pvmBytes =
+            if (spec.pvmFromGsl) gsl.getValue(spec.pvmEntry) else bml.getValue(spec.pvmEntry)
+        val textures = decodeTextures(pvmBytes)
+        write(outputDir, "objects/${spec.slug}.xvm", buildXvm(textures))
+
+        spec.njmEntry?.let { write(outputDir, "objects/${spec.slug}.njm", bml.getValue(it)) }
+    }
+}
+
+/**
+ * Emits each area's room/wave encounter tables as JSON -- see [AREA_SPAWN_SPECS] for what the
+ * source files are. Nothing here is authored: the rooms, the waves, the exact spawn coordinates
+ * and the "what unlocks when this wave dies" script are all read out of psov2's own map data.
+ *
+ * Two files per layout. The ".dat" is a bare array of PSO NPC records giving each enemy its
+ * section, wave and section-local position. The ".evt" is the wave script: one entry per
+ * (section, wave) saying what to do once that wave is wiped -- spawn the next wave, or open the
+ * doors out of the room.
+ *
+ * Coordinates are baked to world space here using the map's own section table, which for the
+ * Forest is an unrotated grid of terrain tiles (asserted below, since baking would silently
+ * misplace every enemy on a map whose sections *are* rotated). That keeps the runtime free of
+ * both a section table and a transform step.
+ *
+ * JSON rather than passing the raw files through, because the runtime would otherwise need a PSO
+ * entity parser, an event-bytecode interpreter and the type/skin mapping on the JS side -- all of
+ * which already exist here, and none of which have to exist twice.
+ */
+private fun generateAreaSpawns(sourceDir: File, outputDir: File) {
+    logger.info("Generating spawns/*.")
+
+    for (spec in AREA_SPAWN_SPECS) {
+        val sections = readSectionTable(File(sourceDir, spec.sectionRel))
+        val layouts = mutableListOf<String>()
+
+        for (layout in spec.layouts) {
+            val enemyFile = File(sourceDir, "${layout.base}e.dat")
+            val eventFile = File(sourceDir, "${layout.base}.evt")
+
+            if (!enemyFile.exists() || !eventFile.exists()) {
+                logger.warn("Incomplete layout ${layout.base}, skipping.")
+                continue
+            }
+
+            val enemies = readEnemyPlacements(enemyFile.readBytes(), sections)
+            val events = readWaveScript(eventFile.readBytes())
+
+            // The interactive objects placed alongside the enemies: doors, laser fences and the
+            // switches that drop them, from the "<base>o.dat" that mirrors the enemy "<base>e.dat".
+            // Not every layout ships one (the offline variants reuse their online sibling's file
+            // in the real game); absent just means no objects, not a broken layout.
+            val objectFile = File(sourceDir, "${layout.base}o.dat")
+                .takeIf { it.exists() }
+                ?: File(sourceDir, "${layout.base.removeSuffix("_off")}o.dat")
+            val objects =
+                if (objectFile.exists()) readObjectPlacements(objectFile.readBytes(), sections)
+                else emptyList()
+
+            layouts.add(
+                """{"name":"${layout.base}","solo":${layout.solo},""" +
+                    """"enemies":[${enemies.joinToString(",")}],""" +
+                    """"events":[${events.joinToString(",")}],""" +
+                    """"objects":[${objects.joinToString(",")}]}"""
+            )
+            logger.info(
+                "  ${spec.slug} ${layout.base}: ${enemies.size} enemies, ${events.size} events, " +
+                    "${objects.size} objects"
+            )
+        }
+
+        // The section table goes out alongside the (already world-baked) placements because the
+        // runtime still needs to know where each room *is* -- that's what tells it which room the
+        // player just walked into, and so which wave to start.
+        val sectionJson = sections.entries.sortedBy { it.key }.map { (id, origin) ->
+            """{"id":$id,"x":${origin.first},"y":${origin.second},"z":${origin.third}}"""
+        }
+
+        write(
+            outputDir,
+            "spawns/${spec.slug}.json",
+            ("""{"sections":[${sectionJson.joinToString(",")}],""" +
+                """"layouts":[${layouts.joinToString(",")}]}""").toByteArray(),
+        )
+    }
+}
+
+/**
+ * Section id -> world origin, from a map's terrain .rel. Same outer table the room geometry itself
+ * is read through (see :web:mobileGame's Psov2AreaGeometry, which walks these same 60-byte records
+ * to place each section's meshes), read here only for the transform.
+ */
+private fun readSectionTable(file: File): Map<Int, Triple<Float, Float, Float>> {
+    val b = littleEndian(file.readBytes())
+    val tableOffset = b.getInt(b.capacity() - 16)
+    val count = b.getInt(tableOffset)
+    val sectionsOffset = b.getInt(tableOffset + 8)
+
+    return buildMap {
+        for (i in 0 until count) {
+            val base = sectionsOffset + i * SECTION_RECORD_SIZE
+            val rotX = b.getInt(base + 16)
+            val rotY = b.getInt(base + 20)
+            val rotZ = b.getInt(base + 24)
+
+            require(rotX == 0 && rotY == 0 && rotZ == 0) {
+                "Section ${b.getInt(base)} of ${file.name} is rotated; positions can't be baked."
+            }
+
+            put(b.getInt(base), Triple(b.getFloat(base + 4), b.getFloat(base + 8), b.getFloat(base + 12)))
+        }
+    }
+}
+
+private fun readEnemyPlacements(
+    bytes: ByteArray,
+    sections: Map<Int, Triple<Float, Float, Float>>,
+): List<String> {
+    val b = littleEndian(bytes)
+
+    require(bytes.size % NPC_RECORD_SIZE == 0) { "Not a whole number of NPC records." }
+
+    return buildList {
+        for (i in 0 until bytes.size / NPC_RECORD_SIZE) {
+            val base = i * NPC_RECORD_SIZE
+            val typeId = b.getShort(base).toInt()
+            val section = b.getShort(base + 12).toInt()
+            val wave = b.getShort(base + 14).toInt()
+            val special = b.getFloat(base + 48).toInt() == 1
+            val skin = b.getInt(base + 64)
+
+            val slug = forestEnemySlug(typeId, skin, special) ?: continue
+            val origin = sections[section] ?: continue
+
+            val x = origin.first + b.getFloat(base + 20)
+            val y = origin.second + b.getFloat(base + 24)
+            val z = origin.third + b.getFloat(base + 28)
+            // Only the Y rotation matters -- these all stand upright. Ninja's 16-bit-per-turn
+            // angle, converted here so the runtime doesn't have to know the encoding.
+            val yaw = b.getInt(base + 36) * 2.0 * Math.PI / 65536.0
+
+            add("""{"slug":"$slug","section":$section,"wave":$wave,"x":$x,"y":$y,"z":$z,"yaw":$yaw}""")
+        }
+    }
+}
+
+/**
+ * The interactive objects out of a layout's "<base>o.dat": 68-byte PSO object records (the same
+ * layout psolib's QuestObject reads -- typeId@0, id@8, groupId@10, sectionId@12, position@16,
+ * rotation@28, type params@40+). Coordinates are section-baked to world space exactly like the
+ * enemy records above.
+ *
+ * "doorId" is the low byte of the int at offset 52: for a door it's the number the wave script's
+ * door-unlock events name (verified across Forest 1 layout 0 -- the door in section 2 carries 2,
+ * section 4's carries 9, matching that section's unlock event exactly); for a switch it's the
+ * number the switch opens; for an Energy Barrier or Rising Bridge it's the door number that
+ * drops/raises it.
+ *
+ * "paramsF"/"paramsI" are the record's typed parameter block (three floats at 40/44/48, three
+ * ints at 52/56/60), emitted raw; each type's meanings are documented in psolib's ObjectType --
+ * a Teleporter's floats carry its destination Area ID, a Warp's its destination point, an Event
+ * Collision's its trigger radius (ints: Floor/Event/Door/Switch IDs at 52).
+ */
+private val EMITTED_OBJECT_TYPES = setOf(
+    // Spawn points, the field warps, wave-trigger volumes, room metadata and the boss warp.
+    0, 2, 3, 8, 14, 25,
+    // Doors, switches and laser fences.
+    128, 129, 130, 131, 132,
+    // The breakable boxes: Random/Fixed/Empty are item crates; the two "enemy box" types hide
+    // a monster instead of a drop.
+    136, 145, 146, 147, 149,
+    // The rest of the Forest's furniture: probe, weather station, Rico's message pods, energy
+    // barriers, the rising bridge, no-door switches and the monuments.
+    135, 137, 141, 142, 143, 144, 342,
+)
+private const val OBJECT_RECORD_SIZE = 68
+
+private fun readObjectPlacements(
+    bytes: ByteArray,
+    sections: Map<Int, Triple<Float, Float, Float>>,
+): List<String> {
+    val b = littleEndian(bytes)
+
+    require(bytes.size % OBJECT_RECORD_SIZE == 0) { "Not a whole number of object records." }
+
+    return buildList {
+        for (i in 0 until bytes.size / OBJECT_RECORD_SIZE) {
+            val base = i * OBJECT_RECORD_SIZE
+            val typeId = b.getShort(base).toInt()
+
+            if (typeId !in EMITTED_OBJECT_TYPES) continue
+
+            val id = b.getShort(base + 8).toInt()
+            val section = b.getShort(base + 12).toInt()
+            val origin = sections[section] ?: continue
+
+            val x = origin.first + b.getFloat(base + 16)
+            val y = origin.second + b.getFloat(base + 20)
+            val z = origin.third + b.getFloat(base + 24)
+            val yaw = b.getInt(base + 32) * 2.0 * Math.PI / 65536.0
+            val doorId = b.getInt(base + 52) and 0xFF
+            val paramsF = (0 until 3).map { b.getFloat(base + 40 + it * 4) }
+            val paramsI = (0 until 3).map { b.getInt(base + 52 + it * 4) }
+
+            add(
+                """{"typeId":$typeId,"id":$id,"doorId":$doorId,"section":$section,""" +
+                    """"x":$x,"y":$y,"z":$z,"yaw":$yaw,""" +
+                    """"paramsF":[${paramsF.joinToString(",")}],""" +
+                    """"paramsI":[${paramsI.joinToString(",")}]}"""
+            )
+        }
+    }
+}
+
+/**
+ * The wave script. Each entry fires when its (section, wave) has been wiped out, waits [delay]
+ * frames, then runs a little bytecode stream of actions.
+ *
+ * The whole opcode set across every map file psov2 ships is four instructions, of which this uses
+ * three: 0x0c triggers another event by id (that event's wave spawns), 0x0a unlocks a door, 0x01
+ * ends the stream. 0x08 appears four times in total across every map and is left unhandled --
+ * skipped with a warning rather than guessed at, since mis-sizing its operand would desynchronise
+ * the rest of the stream.
+ */
+private fun readWaveScript(bytes: ByteArray): List<String> {
+    val b = littleEndian(bytes)
+    val actionStreamOffset = b.getInt(0)
+    val entriesOffset = b.getInt(4)
+    val entryCount = b.getInt(8)
+
+    return buildList {
+        for (i in 0 until entryCount) {
+            val base = entriesOffset + i * EVENT_RECORD_SIZE
+            val id = b.getInt(base)
+            val section = b.getShort(base + 8).toInt()
+            val wave = b.getShort(base + 10).toInt()
+            val delay = b.getShort(base + 12).toInt()
+
+            val triggers = mutableListOf<Int>()
+            val doors = mutableListOf<Int>()
+            var p = actionStreamOffset + b.getInt(base + 16)
+
+            loop@ while (p < bytes.size) {
+                when (val opcode = b.get(p).toInt() and 0xff) {
+                    0x01 -> break@loop
+                    0x0a -> { doors.add(b.getShort(p + 1).toInt()); p += 3 }
+                    0x0c -> { triggers.add(b.getInt(p + 1)); p += 5 }
+                    else -> {
+                        logger.warn("Unhandled event opcode ${opcode.toString(16)}, truncating stream.")
+                        break@loop
+                    }
+                }
+            }
+
+            add(
+                """{"id":$id,"section":$section,"wave":$wave,"delay":$delay,""" +
+                    """"triggers":[${triggers.joinToString(",")}],"doors":[${doors.joinToString(",")}]}"""
+            )
+        }
+    }
+}
+
+private fun littleEndian(bytes: ByteArray): java.nio.ByteBuffer =
+    java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+
+/** psolib's NPC_BYTE_SIZE -- the ".dat" files are bare arrays of that record. */
+private const val NPC_RECORD_SIZE = 72
+private const val EVENT_RECORD_SIZE = 0x14
+private const val SECTION_RECORD_SIZE = 60
 
 private fun write(outputDir: File, relativePath: String, bytes: ByteArray) {
     val file = File(outputDir, relativePath)

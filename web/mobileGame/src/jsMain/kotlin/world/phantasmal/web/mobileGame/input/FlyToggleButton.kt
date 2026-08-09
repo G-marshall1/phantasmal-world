@@ -34,7 +34,8 @@ class FlyToggleButton(container: HTMLElement, onToggle: () -> Unit) : TrackedDis
 
     companion object {
         private const val BASE_STYLE =
-            "position:fixed;top:20px;right:20px;width:70px;height:44px;" +
+            // Below the radar, which owns the top-right corner.
+            "position:fixed;top:calc(144px + var(--pw-safe-top));right:calc(20px + var(--pw-safe-right));width:70px;height:44px;" +
                 "border-radius:10px;display:flex;align-items:center;justify-content:center;" +
                 "font:bold 15px sans-serif;z-index:15;touch-action:none;color:white;" +
                 "user-select:none;"

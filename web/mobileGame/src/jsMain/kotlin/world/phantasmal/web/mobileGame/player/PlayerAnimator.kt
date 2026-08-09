@@ -9,6 +9,8 @@ import world.phantasmal.web.core.rendering.conversion.createAnimationClip
 import world.phantasmal.web.externals.three.AnimationAction
 import world.phantasmal.web.externals.three.AnimationClip
 import world.phantasmal.web.externals.three.AnimationMixer
+import world.phantasmal.web.externals.three.LoopOnce
+import world.phantasmal.web.externals.three.LoopRepeat
 import world.phantasmal.web.externals.three.Object3D
 
 /**
@@ -37,22 +39,63 @@ class PlayerAnimator(
     private var currentMotion: NjMotion? = null
 
     /**
-     * No-ops if [njMotion] is already playing, so callers can call this every frame cheaply.
-     * Crossfades into the new clip over [FADE_DURATION] seconds rather than cutting instantly.
+     * Playback rate for the clip currently playing, 1.0 being the clip's own speed.
+     *
+     * Attacks set this so the swing animation lasts exactly as long as PSO's frame data says the
+     * attack does (see AttackFrames): the clips are whatever length they were authored at, and
+     * without rescaling they drift out of step with the timing that actually governs input.
      */
-    fun playClip(njMotion: NjMotion) {
-        if (njMotion === currentMotion) return
+    var timeScale: Double = 1.0
+        set(value) {
+            field = value
+            currentAction?.timeScale = value
+        }
+
+    /**
+     * No-ops if [njMotion] is already playing, so callers can call this every frame cheaply.
+     * Crossfades into the new clip over [fadeDuration] seconds rather than cutting instantly --
+     * the default suits locomotion; an attack passes something much shorter, since PSO cuts into
+     * a swing nearly instantly and a soft blend reads as sluggish frames.
+     *
+     * [restart] forces the clip back to frame 0 even when it's already the current one, and
+     * [oneShot] plays it once and holds the final pose instead of looping. Both exist for attack
+     * swings: a weapon whose combo reuses one clip for every step (the guns) must visibly fire
+     * again on each tap, and a swing that runs slightly past its timer must hold its follow-
+     * through rather than snapping back to frame 0 for a stray frame.
+     */
+    fun playClip(
+        njMotion: NjMotion,
+        fadeDuration: Double = FADE_DURATION,
+        restart: Boolean = false,
+        oneShot: Boolean = false,
+    ) {
+        if (njMotion === currentMotion) {
+            // The scale may have changed while this same clip stayed up -- a combo replays one
+            // attack clip at different speeds as it advances through its steps.
+            currentAction?.timeScale = timeScale
+            if (restart) currentAction?.reset()?.play()
+            return
+        }
 
         val clip = clipCache.getOrPut(njMotion) {
             createAnimationClip(njObject, stripTranslation(njMotion))
         }
         val newAction = mixer.clipAction(clip)
         newAction.reset()
+
+        if (oneShot) {
+            newAction.setLoop(LoopOnce, 1)
+            newAction.clampWhenFinished = true
+        } else {
+            newAction.setLoop(LoopRepeat, Int.MAX_VALUE)
+        }
+
+        newAction.timeScale = timeScale
         newAction.play()
 
         currentAction?.let { oldAction ->
-            newAction.fadeIn(FADE_DURATION)
-            oldAction.fadeOut(FADE_DURATION)
+            newAction.fadeIn(fadeDuration)
+            oldAction.fadeOut(fadeDuration)
         }
 
         currentAction = newAction

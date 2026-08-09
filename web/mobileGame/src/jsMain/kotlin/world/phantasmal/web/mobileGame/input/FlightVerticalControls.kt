@@ -53,7 +53,7 @@ class FlightVerticalControls(container: HTMLElement) : TrackedDisposable() {
         (document.createElement("div") as HTMLElement).also { el ->
             el.textContent = label
             el.style.cssText =
-                "position:fixed;top:${top}px;right:20px;width:70px;height:56px;" +
+                "position:fixed;top:calc(${top}px + var(--pw-safe-top));right:calc(20px + var(--pw-safe-right));width:70px;height:56px;" +
                     "border-radius:10px;background:rgba(255,255,255,0.25);" +
                     "border:2px solid rgba(255,255,255,0.4);display:none;align-items:center;" +
                     "justify-content:center;font-size:22px;z-index:15;touch-action:none;" +

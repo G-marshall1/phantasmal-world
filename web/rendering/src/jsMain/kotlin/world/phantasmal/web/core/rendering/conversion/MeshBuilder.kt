@@ -15,6 +15,13 @@ class MeshBuilder(
     private val textures: List<XvrTexture?> = emptyList(),
     private val textureCache: UnsafeMap<Int, Texture?> = UnsafeMap(),
     private val anisotropy: Int = 1,
+    /**
+     * Minification filter. The default is unfiltered-between-mips because most assets here are
+     * characters and props seen roughly head-on; a mipmapping filter is what large surfaces seen
+     * at a grazing angle need, and is also what makes [anisotropy] do anything at all -- without
+     * mipmaps there are no levels for anisotropic sampling to choose between.
+     */
+    private val minFilter: TextureFilter = LinearFilter,
 ) {
     private val positions = mutableListOf<Vector3>()
     private val normals = mutableListOf<Vector3>()
@@ -31,21 +38,38 @@ class MeshBuilder(
 
     private var defaultMaterial: Material? = null
 
+    /**
+     * [flipU]/[flipV]/[clampU]/[clampV] are the material's UV addressing flags where the source
+     * format records them (NJCM's texture-id chunk does): clamp beats flip beats the plain-repeat
+     * default. Null means the caller's format doesn't say, which keeps the mirrored-repeat
+     * behavior this builder always had -- the flags were previously ignored entirely, which
+     * mirrored every second tile of any texture authored for plain repeat (obvious on large
+     * tiled surfaces like area terrain).
+     */
     fun getGroupIndex(
         textureIndex: Int?,
         alpha: Boolean,
         additiveBlending: Boolean,
+        flipU: Boolean? = null,
+        flipV: Boolean? = null,
+        clampU: Boolean? = null,
+        clampV: Boolean? = null,
     ): Int {
+        val wrapS = wrapMode(clampU, flipU)
+        val wrapT = wrapMode(clampV, flipV)
+
         val groupIndex = groups.indexOfFirst {
             it.textureIndex == textureIndex &&
                     it.alpha == alpha &&
-                    it.additiveBlending == additiveBlending
+                    it.additiveBlending == additiveBlending &&
+                    it.wrapS == wrapS &&
+                    it.wrapT == wrapT
         }
 
         return if (groupIndex != -1) {
             groupIndex
         } else {
-            groups.add(Group(textureIndex, alpha, additiveBlending))
+            groups.add(Group(textureIndex, alpha, additiveBlending, wrapS, wrapT))
             groups.lastIndex
         }
     }
@@ -226,13 +250,24 @@ class MeshBuilder(
             var tex: Texture? = null
 
             if (group.textureIndex != null) {
-                textureCache.get(group.textureIndex)
+                // One cache entry per texture *and* wrap combination -- the same image can be
+                // clamped on one material and tiled on another, and a three.js Texture carries
+                // its wrap modes with it.
+                val cacheKey = group.textureIndex * 9 + wrapCacheBits(group.wrapS) * 3 +
+                        wrapCacheBits(group.wrapT)
+                tex = textureCache.get(cacheKey)
 
                 if (tex == null) {
                     tex = textures.getOrNull(group.textureIndex)?.let { xvm ->
-                        xvrTextureToThree(xvm, anisotropy = anisotropy)
+                        xvrTextureToThree(
+                            xvm,
+                            minFilter = minFilter,
+                            anisotropy = anisotropy,
+                            wrapS = group.wrapS,
+                            wrapT = group.wrapT,
+                        )
                     }
-                    textureCache.set(group.textureIndex, tex)
+                    textureCache.set(cacheKey, tex)
                 }
             }
 
@@ -278,7 +313,29 @@ class MeshBuilder(
         val textureIndex: Int?,
         val alpha: Boolean,
         val additiveBlending: Boolean,
+        val wrapS: Wrapping,
+        val wrapT: Wrapping,
     ) {
         val indices = jsArrayOf<Int>()
+    }
+
+    companion object {
+        /**
+         * Sega Ninja UV addressing to three.js wrapping. Clamp wins over flip; both null (a
+         * format that doesn't record the flags) keeps the historical mirrored-repeat default.
+         */
+        private fun wrapMode(clamp: Boolean?, flip: Boolean?): Wrapping = when {
+            clamp == true -> ClampToEdgeWrapping
+            flip == null -> MirroredRepeatWrapping
+            flip -> MirroredRepeatWrapping
+            else -> RepeatWrapping
+        }
+
+        /** Stable small int per wrap mode, for the texture cache key. */
+        private fun wrapCacheBits(wrapping: Wrapping): Int = when (wrapping) {
+            RepeatWrapping -> 0
+            ClampToEdgeWrapping -> 1
+            else -> 2
+        }
     }
 }

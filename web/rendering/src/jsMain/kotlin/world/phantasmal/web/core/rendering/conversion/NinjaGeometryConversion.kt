@@ -469,6 +469,10 @@ private class NinjaToMeshConverter(private val builder: MeshBuilder) {
                 mesh.textureId,
                 alpha = mesh.useAlpha,
                 additiveBlending = mesh.srcAlpha != 4 || mesh.dstAlpha != 5,
+                flipU = mesh.flipU,
+                flipV = mesh.flipV,
+                clampU = mesh.clampU,
+                clampV = mesh.clampV,
             )
             var i = 0
 
