@@ -327,7 +327,9 @@ class CombatController(
                 val extra = bonusHitsFor(enemy).coerceIn(0, spareBudget)
                 spareBudget -= extra
 
-                for (strike in 0..extra) {
+                // Each region the swing reaches takes the weapon's full complement of
+                // hits -- a dagger's pair of blades both land on it.
+                for (strike in 0 until (extra + 1) * weapon.hitsPerAttack) {
                     if (enemy.isDead) break
                     // Accuracy is rolled per strike, from the attacker's ATA against this
                     // enemy's evasion, scaled by the attack type and how far into the combo

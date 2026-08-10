@@ -29,12 +29,21 @@ enum class WeaponType(
     val angleDegrees: Double,
     /** How many enemies one swing can connect with. */
     val maxTargets: Int,
+    /**
+     * How many times one attack animation lands on each enemy it reaches. The item
+     * descriptions are the source: a Dagger is "a short Photon sword. Attacks enemies twice"
+     * -- one strike per blade of the pair, each rolling its own accuracy and damage.
+     */
+    val hitsPerAttack: Int = 1,
 ) {
     // Reach is the wiki's horizontal distance divided by ten -- the scale check is that a
     // mechgun's published 85 lands exactly on the 8.5 PSO units this table already used.
     SABER(PlayerAnimations.SABER, SABER_ATP, reach = 1.4, angleDegrees = 26.0, maxTargets = 1),
     SWORD(PlayerAnimations.SWORD, 28, reach = 2.5, angleDegrees = 45.0, maxTargets = 10),
-    DAGGER(PlayerAnimations.DAGGER, 12, reach = 1.4, angleDegrees = 30.0, maxTargets = 1),
+    DAGGER(
+        PlayerAnimations.DAGGER, 12, reach = 1.4, angleDegrees = 30.0, maxTargets = 1,
+        hitsPerAttack = 2,
+    ),
     PARTISAN(PlayerAnimations.PARTISAN, 22, reach = 3.0, angleDegrees = 40.0, maxTargets = 10),
     SLICER(PlayerAnimations.SLICER, 18, reach = 9.5, angleDegrees = 26.0, maxTargets = 4),
     DOUBLE_SABER(PlayerAnimations.DOUBLE_SABER, 20, reach = 1.7, angleDegrees = 75.0, maxTargets = 1),

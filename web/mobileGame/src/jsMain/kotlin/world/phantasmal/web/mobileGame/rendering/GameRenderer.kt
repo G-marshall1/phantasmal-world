@@ -387,7 +387,8 @@ class GameRenderer(
     private var poseLocked = false
 
     /** The model group on the hand bone, kept so a weapon-class switch can replace it. */
-    private var weaponAttachment: Object3D? = null
+    /** The equipped weapon's models -- two of them for a dual-wielded pair. */
+    private var weaponAttachment: List<Object3D> = emptyList()
 
     /** Runs this area's rooms and waves, once its encounter table has loaded. Null in hubs. */
     private var roomWaveDirector: RoomWaveDirector? = null
@@ -5910,7 +5911,7 @@ class GameRenderer(
 
             // Guard against a stale switch finishing after a newer one started.
             if (equippedItem !== item) {
-                attachment.parent?.remove(attachment)
+                attachment.forEach { it.parent?.remove(it) }
                 return@launch
             }
 
@@ -5926,7 +5927,7 @@ class GameRenderer(
             p.currentAttackMotion = null
             equippedWeaponAtp = item.tier.type.atp
 
-            weaponAttachment?.let { it.parent?.remove(it) }
+            weaponAttachment.forEach { it.parent?.remove(it) }
             weaponAttachment = attachment
         }
     }
@@ -6298,6 +6299,9 @@ class GameRenderer(
      * so this is purely the visual that was missing: without it a Ranger's gun animated but
      * nothing ever came out of it.
      */
+    /** Alternates the twin mechguns' muzzles -- see fireBullet. */
+    private var mechgunShotsFired = 0
+
     private fun fireBullet(p: Player) {
         MainScope().launch {
             val mesh = ObjectAssetLoader(assetLoader).loadObject("GunBullet")
@@ -6317,12 +6321,17 @@ class GameRenderer(
             // of the left-shoulder offset the Mag rides on.
             val rightX = -dirZ
             val rightZ = dirX
+            // Twin mechguns fire from alternating fists, so the rounds leave the gun that's
+            // actually swinging forward rather than always the right hand.
+            val muzzleSide =
+                if (p.weaponType == WeaponType.MECHGUN && mechgunShotsFired++ % 2 == 1) -1.0
+                else 1.0
             mesh.position.set(
                 p.mesh.position.x + dirX * BULLET_MUZZLE_FORWARD_UNITS * worldUnit +
-                    rightX * BULLET_MUZZLE_RIGHT_UNITS * worldUnit,
+                    rightX * BULLET_MUZZLE_RIGHT_UNITS * worldUnit * muzzleSide,
                 muzzleY - visualOffsetY,
                 p.mesh.position.z + dirZ * BULLET_MUZZLE_FORWARD_UNITS * worldUnit +
-                    rightZ * BULLET_MUZZLE_RIGHT_UNITS * worldUnit,
+                    rightZ * BULLET_MUZZLE_RIGHT_UNITS * worldUnit * muzzleSide,
             )
             // Level flight unless there's something to aim at: a round that drifts toward the
             // floor on its own looks like it was dropped, not fired.
@@ -8679,10 +8688,15 @@ class GameRenderer(
                     critical,
                 )
             } else {
+                // A multi-hit weapon lands twice on the same body; without a nudge the second
+                // number sits exactly on the first and reads as a single hit.
+                val spread =
+                    if (p.weaponType.hitsPerAttack > 1) (Random.nextDouble() - 0.5) * 2.4 * worldUnit
+                    else 0.0
                 damageNumbers.showDamage(
-                    enemy.mesh.position.x,
+                    enemy.mesh.position.x + spread,
                     labelHeight(enemy),
-                    enemy.mesh.position.z,
+                    enemy.mesh.position.z + spread,
                     damage,
                     critical,
                 )

@@ -350,6 +350,9 @@ open external class Object3D {
 
     fun getWorldPosition(target: Vector3): Vector3
 
+    /** Converts a world-space point into this object's local space, in place. */
+    fun worldToLocal(vector: Vector3): Vector3
+
     fun clone(recursive: Boolean = definedExternally): Object3D
 }
 
