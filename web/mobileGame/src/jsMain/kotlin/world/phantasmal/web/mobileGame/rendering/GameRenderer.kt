@@ -118,6 +118,8 @@ import world.phantasmal.web.mobileGame.world.QuestSession
 import world.phantasmal.web.mobileGame.world.QuestVm
 import world.phantasmal.web.mobileGame.world.loadQuestDef
 import world.phantasmal.web.mobileGame.world.loadQuestIndex
+import world.phantasmal.web.mobileGame.world.questFieldLayout
+import world.phantasmal.web.mobileGame.world.questGeometrySlug
 import world.phantasmal.web.mobileGame.world.RICO_MESSAGES
 import world.phantasmal.web.mobileGame.world.RoomWaveDirector
 import world.phantasmal.web.mobileGame.world.TriggerVolume
@@ -2488,14 +2490,7 @@ class GameRenderer(
      */
     private suspend fun setupQuestMode() {
         if (!QuestSession.active) return
-        val slug = QuestSession.slug ?: return
-        val def = try {
-            loadQuestDef(assetLoader, slug)
-        } catch (e: Throwable) {
-            console.warn("Quest $slug failed to load: ${e.message}")
-            return
-        }
-        questDef = def
+        val def = questDef ?: return
         val vm = QuestVm(def, RendererQuestHost())
         questVm = vm
 
@@ -3641,6 +3636,18 @@ class GameRenderer(
             // :web:assets-generation's StageSpecs.kt) use a structurally different section format
             // than field areas, needing MapAssetLoader's separate loadStage entry point; see
             // Psov2StageGeometry.kt for why.
+            // The quest layer wakes before the world loads: the active quest's definition
+            // decides the terrain variant and replaces the floor's encounter table below.
+            QuestSession.restore()
+            if (QuestSession.active) {
+                questDef = try {
+                    loadQuestDef(assetLoader, QuestSession.slug!!)
+                } catch (e: Throwable) {
+                    console.warn("Quest ${QuestSession.slug} failed to load: ${e.message}")
+                    null
+                }
+            }
+
             val mapAssetLoader = MapAssetLoader(assetLoader)
             val map = if (mapSlug in STAGE_SLUGS) {
                 mapAssetLoader.loadStage(mapSlug)
@@ -3650,7 +3657,13 @@ class GameRenderer(
                 // resolved slug is kept: the caves' encounter tables are per-terrain, so the
                 // spawn layout pick below must match the geometry that actually loaded.
                 mapAssetLoader.loadArea(
-                    (geometryOverride ?: randomAreaLayoutSlug(mapSlug))
+                    (geometryOverride
+                        ?: questDef?.let { def ->
+                            QUEST_FLOOR_FOR_MAP[mapSlug]?.let { floor ->
+                                questGeometrySlug(def, floor, mapSlug)
+                            }
+                        }
+                        ?: randomAreaLayoutSlug(mapSlug))
                         .also { resolvedGeometrySlug = it }
                 )
             }
@@ -3890,7 +3903,15 @@ class GameRenderer(
                 // the arc of one-of-every-species that used to be dropped around the spawn point
                 // -- that was a load-test sweep over the converted models, never an encounter.
                 val spawnTable = loadAreaSpawnTable(assetLoader, mapSlug)
-                val layout = spawnTable?.pickSoloLayout(layoutOverride, resolvedGeometrySlug)
+                // During a quest the floor runs the quest's own encounter table -- its
+                // authored enemies, objects and wave events -- on the designated terrain.
+                val questLayout = questDef?.let { def ->
+                    QUEST_FLOOR_FOR_MAP[mapSlug]
+                        ?.takeIf { it in 1..10 }
+                        ?.let { floor -> questFieldLayout(def, floor) }
+                }
+                val layout = questLayout
+                    ?: spawnTable?.pickSoloLayout(layoutOverride, resolvedGeometrySlug)
 
                 if (spawnTable != null && layout != null) {
                     val clipSets = mutableMapOf<String, EnemyClipSet>()
@@ -5059,8 +5080,8 @@ class GameRenderer(
             }
 
             // The quest layer: the counter's job list, and -- with a job accepted -- the
-            // quest's own cast and running script.
-            QuestSession.restore()
+            // quest's own cast and running script. (The session itself was restored before
+            // the world loaded; see setup's opening.)
             questIndex = try {
                 loadQuestIndex(assetLoader)
             } catch (e: Throwable) {

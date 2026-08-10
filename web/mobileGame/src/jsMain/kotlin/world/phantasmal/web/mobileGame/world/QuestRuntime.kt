@@ -148,12 +148,23 @@ class QuestObjDef(
     val paramsI: List<Int>,
 )
 
+class QuestEventDef(
+    val id: Int,
+    val section: Int,
+    val area: Int,
+    val wave: Int,
+    val delay: Int,
+    val triggers: List<Int>,
+    val doors: List<Int>,
+)
+
 class QuestDef(
     val name: String,
     val short: String,
     val long: String,
     val npcs: List<QuestNpcDef>,
     val objects: List<QuestObjDef>,
+    val events: List<QuestEventDef>,
     val script: Map<Int, List<QuestInstr>>,
 )
 
@@ -192,6 +203,23 @@ suspend fun loadQuestDef(assetLoader: AssetLoader, slug: String): QuestDef {
             (it.paramsI as Array<dynamic>).map { v -> (v as Number).toInt() },
         )
     }
+    val events = (parsed.events as Array<dynamic>).map { e ->
+        val triggers = mutableListOf<Int>()
+        val doors = mutableListOf<Int>()
+        for (action in e.actions as Array<dynamic>) {
+            when (action.kind as String) {
+                "trigger" -> triggers.add((action.event as Number).toInt())
+                "unlock" -> doors.add((action.door as Number).toInt())
+                // "spawn" and "lock" have no free-roam counterpart; the wave system spawns
+                // an event's own (section, wave) enemies when it fires, which covers the
+                // gov quests' usage.
+            }
+        }
+        QuestEventDef(
+            (e.id as Number).toInt(), (e.section as Number).toInt(), (e.area as Number).toInt(),
+            (e.wave as Number).toInt(), (e.delay as Number).toInt(), triggers, doors,
+        )
+    }
     val script = mutableMapOf<Int, List<QuestInstr>>()
     val keys = js("Object.keys")(parsed.script) as Array<String>
     for (key in keys) {
@@ -202,8 +230,97 @@ suspend fun loadQuestDef(assetLoader: AssetLoader, slug: String): QuestDef {
     }
     return QuestDef(
         parsed.name as String, parsed.short as String, parsed.long as String,
-        npcs, objects, script,
+        npcs, objects, events, script,
     )
+}
+
+/**
+ * psolib NpcType names (what the quest .dat speaks) to this project's model slugs. Types
+ * outside the map -- bosses on their own floors, Ep2 species -- are skipped with a warning.
+ */
+val QUEST_ENEMY_SLUGS: Map<String, String> = mapOf(
+    "Booma" to "Booma", "Gobooma" to "GoBooma", "Gigobooma" to "GigaBooma",
+    "RagRappy" to "Rappy", "AlRappy" to "AlRappy",
+    "SavageWolf" to "SavageWolf", "BarbarousWolf" to "BarbarousWolf",
+    "Monest" to "Monest", "Mothmant" to "Mothmant",
+    "Hildebear" to "Hildebear", "Hildeblue" to "Hildeblue",
+    "EvilShark" to "EvilShark", "PalShark" to "PalShark", "GuilShark" to "GuilShark",
+    "PoisonLily" to "PoisonLily", "NarLily" to "NarLily",
+    "NanoDragon" to "NanoDragoon",
+    "PofuillySlime" to "PofuillySlimeBlue", "PouillySlime" to "PouillySlimeRed",
+    "GrassAssassin" to "GrassAssasin", "PanArms" to "PanArms",
+    "Dubchic" to "Dubchic", "Gilchic" to "Gilchic", "Garanz" to "Garanz",
+    "SinowBeat" to "SinowBeat", "SinowGold" to "SinowGold",
+    "Canadine" to "Canadine", "Canane" to "Canane", "Dubswitch" to "Dubwitch",
+    "Delsaber" to "Delsaber", "ChaosSorcerer" to "ChaosSorcerer",
+    "DarkGunner" to "DarkGunner", "DeathGunner" to "DarkGunner",
+    "ChaosBringer" to "ChaosBringer", "DarkBelra" to "DarkBelra",
+    "Dimenian" to "Dimenian", "LaDimenian" to "LaDimenian", "SoDimenian" to "SoDimenian",
+    "Bulclaw" to "BulclawOpen", "Bulk" to "BulclawOpen", "Claw" to "Claw",
+)
+
+/**
+ * The quest's own encounter table for one floor, in the exact shape the free-roam pipeline
+ * eats -- so quest mode reuses every existing system (wave director, doors, boxes, fences,
+ * pods) unchanged. Sections stay empty: the area's own table supplies the room origins, since
+ * the quest runs on the same terrain.
+ */
+fun questFieldLayout(def: QuestDef, floor: Int): SpawnLayout? {
+    val enemies = def.npcs.filter { it.area == floor }.mapNotNull { npc ->
+        val slug = QUEST_ENEMY_SLUGS[npc.type]
+        if (slug == null) {
+            console.warn("Quest enemy type ${npc.type} has no field mapping; skipped.")
+            null
+        } else {
+            SpawnEnemy(slug, npc.section, npc.wave, npc.x, npc.y, npc.z, npc.yaw)
+        }
+    }
+    val objects = def.objects.filter { it.area == floor }.map { obj ->
+        SpawnObject(
+            typeId = obj.typeId,
+            id = 0,
+            doorId = (obj.paramsI.getOrNull(0) ?: 0) and 0xFF,
+            section = obj.section,
+            x = obj.x, y = obj.y, z = obj.z, yaw = obj.yaw,
+            paramsF = obj.paramsF,
+            paramsI = obj.paramsI,
+        )
+    }
+    val events = def.events.filter { it.area == floor }.map { event ->
+        SpawnEvent(
+            id = event.id,
+            section = event.section,
+            wave = event.wave,
+            delay = event.delay,
+            triggers = event.triggers,
+            doors = event.doors,
+        )
+    }
+    if (enemies.isEmpty() && objects.isEmpty()) return null
+    return SpawnLayout(
+        name = "quest",
+        solo = true,
+        geometry = null,
+        sections = emptyList(),
+        enemies = enemies,
+        events = events,
+        objects = objects,
+    )
+}
+
+/**
+ * The geometry variant the quest's bb_map_designate ops pin for [floor], as this project's
+ * slug ("cave01Layout2"), or null when the quest doesn't designate it.
+ */
+fun questGeometrySlug(def: QuestDef, floor: Int, baseSlug: String): String? {
+    val label0 = def.script[0] ?: return null
+    for (instr in label0) {
+        if (instr.op == "bb_map_designate" && instr.int(0) == floor) {
+            val variant = instr.int(2)
+            return if (variant == 0) baseSlug else "${baseSlug}Layout${variant + 1}"
+        }
+    }
+    return null
 }
 
 /** What the VM asks of the world. The host renders; the VM only decides. */
