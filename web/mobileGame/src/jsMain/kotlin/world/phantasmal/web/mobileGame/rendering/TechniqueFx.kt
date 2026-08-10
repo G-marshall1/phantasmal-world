@@ -44,8 +44,11 @@ class TechniqueFx(
     val mobileScale: Double =
         if (min(window.innerWidth, window.innerHeight) < 768) 1.5 else 1.0
 
-    /** One blueprint "unit" in world space: tuned so a 0.35 fireball core reads right. */
-    private val bu = 2.2 * unit * mobileScale
+    /**
+     * One blueprint "unit" in world space. First pass used 2.2 and every spell came out about
+     * twice the player's size; halved on device feedback.
+     */
+    private val bu = 1.1 * unit * mobileScale
 
     // ---------------------------------------------------------------- particle clouds
 
