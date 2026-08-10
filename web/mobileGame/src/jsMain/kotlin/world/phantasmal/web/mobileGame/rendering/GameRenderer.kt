@@ -2582,17 +2582,23 @@ class GameRenderer(
                 val sellable = p.tools.entries.mapNotNull { (tool, count) ->
                     toolSellPrice(tool)?.let { Triple(tool, count, it) }
                 }
-                if (sellable.isNotEmpty()) {
+                if (sellable.isNotEmpty() || p.treasures.isNotEmpty()) {
                     rows.add(DialogRow("", "-- SELL --"))
                     for ((tool, count, price) in sellable) {
                         rows.add(DialogRow("SELL", "${tool.uiName}  x$count", "$price Meseta each", icon = tool.itemIcon) {
                             if (sellTool(tool, price)) openNpcDialog(active)
                         })
                     }
+                    for (treasureItem in p.treasures.toList()) {
+                        rows.add(DialogRow("SELL", treasureItem.uiName, "$TREASURE_SELL_PRICE Meseta", icon = treasureItem.itemIcon) {
+                            if (sellTreasure(treasureItem)) openNpcDialog(active)
+                        })
+                    }
                 }
             }
 
-            NpcRole.ARMS_SHOP -> {
+            // The orange counter: weapons only (the orange item box's contents), buy and sell.
+            NpcRole.WEAPON_SHOP -> {
                 rows.add(DialogRow("", "-- WEAPONS --"))
                 for (tier in armsShopStock(p.level)) {
                     val price = weaponBuyPrice(tier)
@@ -2600,31 +2606,42 @@ class GameRenderer(
                         if (buyWeapon(tier, price)) openNpcDialog(active)
                     })
                 }
-                rows.add(DialogRow("", "-- ARMOR --"))
+                // A ???? can't be sold until it's appraised -- the shop won't touch a mystery.
+                val sellableWeapons = inventory.filter { !it.unidentified }
+                if (sellableWeapons.isNotEmpty()) {
+                    rows.add(DialogRow("", "-- SELL --"))
+                    for (item in sellableWeapons.toList()) {
+                        rows.add(DialogRow("SELL", item.displayName, "${weaponSellPrice(item)} Meseta", icon = item.itemIcon) {
+                            if (sellWeapon(item)) openNpcDialog(active)
+                        })
+                    }
+                }
+            }
+
+            // The blue counter: frames, barriers and units (the blue item box), buy and sell.
+            NpcRole.ARMOR_SHOP -> {
+                rows.add(DialogRow("", "-- FRAMES --"))
                 for (spec in armorShopFrames(p.level)) {
                     rows.add(DialogRow("BUY", spec.name, "frame · DFP ${spec.dfpMin}-${spec.dfpMax} · ${shopPrice(spec.price)} Meseta", icon = ItemIcon.ARMOR) {
                         if (buyFrame(spec)) openNpcDialog(active)
                     })
                 }
+                rows.add(DialogRow("", "-- BARRIERS --"))
                 for (spec in armorShopBarriers(p.level)) {
                     rows.add(DialogRow("BUY", spec.name, "barrier · EVP ${spec.evpMin}-${spec.evpMax} · ${shopPrice(spec.price)} Meseta", icon = ItemIcon.UNIT) {
                         if (buyBarrier(spec)) openNpcDialog(active)
                     })
                 }
+                rows.add(DialogRow("", "-- UNITS --"))
                 for (unit in UNIT_SHOP) {
                     rows.add(DialogRow("BUY", unit.uiName, "${unit.detail} · ${shopPrice(unit.price)} Meseta", icon = unit.itemIcon) {
                         if (buyUnit(unit)) openNpcDialog(active)
                     })
                 }
-                val hasSellables = inventory.isNotEmpty() || p.treasures.isNotEmpty() ||
-                    p.ownedFrames.isNotEmpty() || p.ownedBarriers.isNotEmpty() || p.ownedUnits.isNotEmpty()
-                if (hasSellables) {
+                val hasArmor = p.ownedFrames.isNotEmpty() || p.ownedBarriers.isNotEmpty() ||
+                    p.ownedUnits.isNotEmpty()
+                if (hasArmor) {
                     rows.add(DialogRow("", "-- SELL --"))
-                    for (item in inventory.toList()) {
-                        rows.add(DialogRow("SELL", item.displayName, "${weaponSellPrice(item)} Meseta", icon = item.itemIcon) {
-                            if (sellWeapon(item)) openNpcDialog(active)
-                        })
-                    }
                     for (item in p.ownedFrames.toList()) {
                         rows.add(DialogRow("SELL", item.displayName, "${frameSellPrice(item)} Meseta", icon = item.itemIcon) {
                             if (sellFrame(item)) openNpcDialog(active)
@@ -2638,11 +2655,6 @@ class GameRenderer(
                     for (unit in p.ownedUnits.toList()) {
                         rows.add(DialogRow("SELL", unit.uiName, "${unitSellPrice(unit)} Meseta", icon = unit.itemIcon) {
                             if (sellUnit(unit)) openNpcDialog(active)
-                        })
-                    }
-                    for (treasureItem in p.treasures.toList()) {
-                        rows.add(DialogRow("SELL", treasureItem.uiName, "$TREASURE_SELL_PRICE Meseta", icon = treasureItem.itemIcon) {
-                            if (sellTreasure(treasureItem)) openNpcDialog(active)
                         })
                     }
                 }

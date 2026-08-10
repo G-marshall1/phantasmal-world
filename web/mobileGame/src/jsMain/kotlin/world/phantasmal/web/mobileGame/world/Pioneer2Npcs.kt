@@ -13,8 +13,12 @@ import world.phantasmal.web.mobileGame.player.PlayerAnimations
 /** What talking to an NPC opens -- see GameRenderer.openNpcDialog. */
 enum class NpcRole {
     CHAT,
+    /** Green counter: consumable tools (the green item box's contents). */
     TOOL_SHOP,
-    ARMS_SHOP,
+    /** Orange counter: weapons (the orange item box's contents). */
+    WEAPON_SHOP,
+    /** Blue counter: frames, barriers and units (the blue item box's contents). */
+    ARMOR_SHOP,
     BANK,
     /** Appraises ???? rares for a fee -- the hooded figure by the shops. */
     TEKKER,
@@ -95,6 +99,17 @@ val PIONEER2_NPCS: List<Pioneer2Npc> = listOf(
         PlayerAnimations.Idles.BREATHING,
         displayName = "Tool Shop", role = NpcRole.TOOL_SHOP,
         dialog = "Mates, fluids, Telepipes -- stocked and priced fair. What'll it be?"),
+    // The three shop counters, split by item-box colour like the real mall: the orange stand
+    // handles weapons, the blue stand handles frames/barriers/units, the green stand (above)
+    // handles tools. They line the shop district beside one another.
+    Pioneer2Npc("Weapon Shop Clerk", "GovStaff4", -140.0, 2.6, 232.0, 300.0,
+        PlayerAnimations.Idles.BREATHING,
+        displayName = "Weapon Shop", role = NpcRole.WEAPON_SHOP,
+        dialog = "Sabers, guns, canes -- anything that comes in an orange box. Browse away."),
+    Pioneer2Npc("Armor Shop Clerk", "GovStaff5", -185.0, 2.6, 232.0, 300.0,
+        PlayerAnimations.Idles.BREATHING,
+        displayName = "Armor Shop", role = NpcRole.ARMOR_SHOP,
+        dialog = "Frames, barriers, units -- the blue-box gear. Keep yourself in one piece."),
     Pioneer2Npc("Female Tall", "CitizenWoman7", -181.004, 0.0, 196.004, 112.495,
         PlayerAnimations.Idles.HAND_ON_HIP,
         displayName = "Citizen", role = NpcRole.CHAT,
