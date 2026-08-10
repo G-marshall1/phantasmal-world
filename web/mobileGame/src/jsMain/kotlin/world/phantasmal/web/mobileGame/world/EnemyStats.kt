@@ -140,6 +140,47 @@ val FOREST_ENEMY_STATS: Map<String, EnemyStats> = mapOf(
     // The Dragon: combat numbers ride in from the generated battle params (1300 HP / 160 ATP
     // on Normal Solo); this entry carries only what the params don't -- the body. The radius
     // makes it the wall it should be; reach approximates its claw sweep.
+    // Dark Falz: the mounted first form, the humanoid second, and the Darvant swarm. HP from
+    // the battle params (Normal One-Person rows).
+    "DarkFalzForm1Body" to EnemyStats(
+        hp = 2500, atp = 600, dfp = 120, ata = 170, evp = 0, lck = 20,
+        hitboxRadius = 9.0, attackRange = 10.0, isStationary = true,
+        experience = 0, dropRate = 0, modelScale = 1.8,
+    ),
+    "DarkFalzForm2Body" to EnemyStats(
+        hp = 3500, atp = 650, dfp = 120, ata = 170, evp = 0, lck = 20,
+        hitboxRadius = 7.0, attackRange = 9.0, isStationary = true,
+        experience = 2400, dropRate = 100, modelScale = 1.8,
+    ),
+    "Darvant" to EnemyStats(
+        hp = 50, atp = 65, dfp = 0, ata = 50, evp = 0, lck = 0,
+        hitboxRadius = 0.9, attackRange = 1.0, experience = 5, dropRate = 0,
+    ),
+    // Vol Opt: the control-room core (form 1), the risen machine (form 2), and the lightning
+    // pillars the core raises. HP rides in from the battle params (2100 / 4000 / 180 on
+    // Normal One-Person).
+    "VolOptForm1" to EnemyStats(
+        hp = 2100, atp = 0, dfp = 70, ata = 0, evp = 0, lck = 0,
+        hitboxRadius = 3.5, attackRange = 0.0, isStationary = true,
+        experience = 0, dropRate = 0, modelScale = 1.6,
+    ),
+    "VolOpt" to EnemyStats(
+        hp = 4000, atp = 320, dfp = 120, ata = 160, evp = 0, lck = 5,
+        hitboxRadius = 9.0, attackRange = 12.0, isStationary = true,
+        experience = 1100, dropRate = 100, modelScale = 1.8,
+    ),
+    "VolOptPillar" to EnemyStats(
+        hp = 180, atp = 0, dfp = 0, ata = 0, evp = 0, lck = 0,
+        hitboxRadius = 1.5, attackRange = 0.0, isStationary = true,
+        experience = 10, dropRate = 0,
+    ),
+    // De Rol Le: combat numbers ride in from the battle params (3900 HP on Normal Solo); this
+    // entry carries the body. It fights from the water, so its reach is its tentacles'.
+    "DeRolLe" to EnemyStats(
+        hp = 3900, atp = 280, dfp = 80, ata = 150, evp = 0, lck = 5,
+        hitboxRadius = 8.0, attackRange = 10.0, experience = 700, dropRate = 100,
+        modelScale = 2.0,
+    ),
     "Dragon" to EnemyStats(
         hp = 1300, atp = 160, dfp = 0, ata = 200, evp = 0, lck = 8,
         // Ranges at the scaled size: the body is a tower the player fights at ankle level.
@@ -335,7 +376,11 @@ private val NEWSERV_NAME_FOR_SLUG: Map<String, String> = mapOf(
     "ChaosBringer" to "CHAOS_BRINGER", "Delsaber" to "DELSABER",
     "BulclawClosed" to "BULCLAW", "BulclawOpen" to "BULCLAW", "Claw" to "CLAW",
     // Bosses
-    "Dragon" to "DRAGON", "DeRolLe" to "DE_ROL_LE", "VolOpt" to "VOL_OPT_2",
+"Dragon" to "DRAGON",
+    "DeRolLe" to "DE_ROL_LE",
+    "VolOptForm1" to "VOL_OPT_1", "VolOpt" to "VOL_OPT_2", "VolOptPillar" to "VOL_OPT_AMP",
+    "DarkFalzForm1Body" to "DARK_FALZ_1", "DarkFalzForm2Body" to "DARK_FALZ_2",
+    "Darvant" to "DARVANT", "DeRolLe" to "DE_ROL_LE", "VolOpt" to "VOL_OPT_2",
     "DarkFalzForm1Body" to "DARK_FALZ_1", "DarkFalzForm2Body" to "DARK_FALZ_2",
     "DarkFalzForm3Body" to "DARK_FALZ_3",
 )

@@ -122,6 +122,22 @@ val AREA_ENEMIES: Map<String, List<AreaEnemy>> = mapOf(
     "bossArea1" to listOf(
         AreaEnemy("Dragon", "walk_boss1_s_nb_dragon.njm", "kiri_boss1_s_nb_dragon.njm"),
     ),
+    // De Rol Le's raft: one species, the worm. Its full moveset drives through DeRolLeFight.
+    "bossArea2" to listOf(
+        AreaEnemy("DeRolLe", "forward_boss2_b_body.njm", "l_bite_boss2_b_body.njm"),
+    ),
+    // Vol Opt's control room: the core, the machine beneath the hatch, and the pillars.
+    "bossArea3" to listOf(
+        AreaEnemy("VolOptForm1", "wait_me5p01_y_all.njm", "attack_me5p01_y_all.njm"),
+        AreaEnemy("VolOpt", "wait_me5p02_y_all.njm", "f_attack_me5p02_y_all.njm"),
+        AreaEnemy("VolOptPillar", "fs_obj_hiraishin_a.njm", "fs_obj_hiraishin_a.njm"),
+    ),
+    // Dark Falz: the mounted form, the humanoid beneath it, and the swarm both call up.
+    "bossArea4" to listOf(
+        AreaEnemy("DarkFalzForm1Body", "wait_df1_s_body.njm", "hoe_df1_s_body.njm"),
+        AreaEnemy("DarkFalzForm2Body", "wait_df2_s_body.njm", "hoe_df2_s_body.njm"),
+        AreaEnemy("Darvant", "wait_df1_s_root.njm", "wait_df1_s_root.njm"),
+    ),
 )
 
 /**
@@ -141,5 +157,8 @@ fun areaDisplayName(mapSlug: String): String = when (mapSlug) {
     "ruins02" -> "Ruins 2"
     "ruins03" -> "Ruins 3"
     "bossArea1" -> "Dragon's Lair"
+    "bossArea2" -> "Underground Waterway"
+    "bossArea3" -> "Monitor Room"
+    "bossArea4" -> "The Dark Altar"
     else -> mapSlug
 }

@@ -38,6 +38,45 @@ class BossEncounter(
  * placement below stands the Dragon across the arena from the player's arrival point.
  */
 val AREA_BOSSES: Map<String, BossEncounter> = mapOf(
+    "bossArea2" to BossEncounter(
+        sectionId = 0,
+        enemies = listOf(
+            // The worm rises off the raft's +x flank; the fight controller owns it from the
+            // first frame, so the spawn spot only decides where it surfaces.
+            BossSpawn("DeRolLe", 75.0, 0.0, 0.0),
+        ),
+        destinationMap = "mines01",
+        arrivalMessage = "Something enormous moves beneath the water...",
+        clearedMessage = "De Rol Le sinks. The way to the Mines is open.",
+        bossKey = "deRolLe",
+    ),
+    "bossArea4" to BossEncounter(
+        sectionId = 0,
+        enemies = listOf(
+            // Both forms stand from the first frame; the humanoid waits out of sight until
+            // the mount falls, and the exit stays shut until the second form dies.
+            BossSpawn("DarkFalzForm1Body", 0.0, 0.0, 40.0),
+            BossSpawn("DarkFalzForm2Body", 0.0, 0.0, 0.0),
+        ),
+        destinationMap = "pioneer2",
+        arrivalMessage = "An ancient darkness stirs...",
+        clearedMessage = "Dark Falz is destroyed. Ragol is free.",
+        bossKey = "darkFalz",
+    ),
+    "bossArea3" to BossEncounter(
+        sectionId = 0,
+        enemies = listOf(
+            // Both forms stand from the first frame: the core in the room, the machine parked
+            // out of sight beneath the centre hatch until the core falls. Listing both keeps
+            // the exit warp shut until the *second* form dies.
+            BossSpawn("VolOptForm1", 0.0, 0.0, -80.0),
+            BossSpawn("VolOpt", 0.0, 0.0, 0.0),
+        ),
+        destinationMap = "ruins01",
+        arrivalMessage = "The monitors flicker to life...",
+        clearedMessage = "Vol Opt shuts down. The way to the Ruins is open.",
+        bossKey = "volOpt",
+    ),
     "bossArea1" to BossEncounter(
         sectionId = 0,
         enemies = listOf(
@@ -59,6 +98,7 @@ val BOSS_ARENA_FOR_MAP: Map<String, String> = mapOf(
     // De Rol Le's and Vol Opt's arenas aren't built yet, so the underground boss warps skip
     // straight to the next zone -- the loop stays walkable end to end, and these rows move to
     // the real arenas when the fights exist. Ruins 3's warp stays unmapped (Dark Falz pending).
-    "cave03" to "mines01",
-    "mines02" to "ruins01",
+    "cave03" to "bossArea2",
+    "mines02" to "bossArea3",
+    "ruins03" to "bossArea4",
 )

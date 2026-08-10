@@ -98,6 +98,12 @@ import world.phantasmal.web.mobileGame.world.AREA_ENEMIES
 import world.phantasmal.web.mobileGame.world.areaDisplayName
 import world.phantasmal.web.mobileGame.world.DragonClips
 import world.phantasmal.web.mobileGame.world.DragonFight
+import world.phantasmal.web.mobileGame.world.DeRolLeClips
+import world.phantasmal.web.mobileGame.world.DeRolLeFight
+import world.phantasmal.web.mobileGame.world.VolOptClips
+import world.phantasmal.web.mobileGame.world.VolOptFight
+import world.phantasmal.web.mobileGame.world.DarkFalzClips
+import world.phantasmal.web.mobileGame.world.DarkFalzFight
 import world.phantasmal.web.mobileGame.world.EnemyAssetLoader
 import world.phantasmal.web.mobileGame.world.EnemyClipSet
 import world.phantasmal.web.mobileGame.world.enemyStats
@@ -714,6 +720,9 @@ class GameRenderer(
      * arena engages -- see DragonFight for the phase script it runs.
      */
     private var dragonFight: DragonFight? = null
+    private var deRolLeFight: DeRolLeFight? = null
+    private var volOptFight: VolOptFight? = null
+    private var darkFalzFight: DarkFalzFight? = null
 
     /** The area's enemy loader, kept past setup so the boss's extra clips can be fetched. */
     private var fieldEnemyLoader: EnemyAssetLoader? = null
@@ -728,14 +737,18 @@ class GameRenderer(
      */
     private class EnemyShot(
         val mesh: Object3D,
-        val dirX: Double,
+        var dirX: Double,
         val dirY: Double,
-        val dirZ: Double,
+        var dirZ: Double,
         val speed: Double,
         var remaining: Double,
         val damage: Int,
         /** Venom: poisons on contact. */
         val poisons: Boolean,
+        /** 0 flies straight; above it, the shot steers toward the player each second. */
+        val homing: Double = 0.0,
+        /** Dark Falz's ice lines: each hit has a one-in-five chance to freeze. */
+        val freezeChance: Double = 0.0,
     )
 
     private val enemyShots = mutableListOf<EnemyShot>()
@@ -764,6 +777,31 @@ class GameRenderer(
         val length = sqrt(dx * dx + dy * dy + dz * dz)
         if (length < 1e-3) return
 
+        spawnEnemyShotRaw(
+            fromX, fromY, fromZ,
+            dx / length, dy / length, dz / length,
+            speedUnits, damage, colorHex, sizeUnits,
+            poisons = poisons, stretch = !poisons,
+        )
+    }
+
+    /** The low-level shot: direction given outright rather than aimed at the player. */
+    private fun spawnEnemyShotRaw(
+        fromX: Double,
+        fromY: Double,
+        fromZ: Double,
+        dirX: Double,
+        dirY: Double,
+        dirZ: Double,
+        speedUnits: Double,
+        damage: Int,
+        colorHex: Int,
+        sizeUnits: Double,
+        poisons: Boolean = false,
+        stretch: Boolean = false,
+        homing: Double = 0.0,
+        freezeChance: Double = 0.0,
+    ) {
         val mesh = Mesh(
             SphereGeometry(sizeUnits * worldUnit, 10, 8),
             MeshBasicMaterial(obj {
@@ -773,19 +811,21 @@ class GameRenderer(
             }).also { it.depthWrite = false },
         )
         // The laser reads as a bolt rather than a ball: stretched along its flight.
-        if (!poisons) mesh.scale.set(1.0, 1.0, ENEMY_LASER_STRETCH)
+        if (stretch) mesh.scale.set(1.0, 1.0, ENEMY_LASER_STRETCH)
         mesh.position.set(fromX, fromY, fromZ)
-        mesh.rotation.y = atan2(dx, dz)
+        mesh.rotation.y = atan2(dirX, dirZ)
         context.scene.add(mesh)
 
         enemyShots.add(
             EnemyShot(
                 mesh,
-                dx / length, dy / length, dz / length,
+                dirX, dirY, dirZ,
                 speedUnits * worldUnit,
                 ENEMY_SHOT_LIFETIME,
                 damage,
                 poisons,
+                homing = homing,
+                freezeChance = freezeChance,
             )
         )
     }
@@ -798,6 +838,24 @@ class GameRenderer(
         while (iterator.hasNext()) {
             val shot = iterator.next()
             shot.remaining -= deltaTime
+
+            // A homing shot leans toward the player as it flies -- Vol Opt's missiles.
+            if (shot.homing > 0 && p != null) {
+                val tx = p.mesh.position.x - shot.mesh.position.x
+                val tz = p.mesh.position.z - shot.mesh.position.z
+                val length = sqrt(tx * tx + tz * tz)
+                if (length > 1e-3) {
+                    val blend = (shot.homing * deltaTime).coerceAtMost(1.0)
+                    val newX = shot.dirX + (tx / length - shot.dirX) * blend
+                    val newZ = shot.dirZ + (tz / length - shot.dirZ) * blend
+                    val norm = sqrt(newX * newX + newZ * newZ)
+                    if (norm > 1e-6) {
+                        shot.dirX = newX / norm
+                        shot.dirZ = newZ / norm
+                    }
+                }
+            }
+
             val step = shot.speed * deltaTime
             shot.mesh.position.x += shot.dirX * step
             shot.mesh.position.y += shot.dirY * step
@@ -814,6 +872,10 @@ class GameRenderer(
                     hit = true
                     hurtPlayerFlat(p, shot.damage)
                     if (shot.poisons) applyPoison(p)
+                    if (shot.freezeChance > 0 && Random.nextDouble() < shot.freezeChance) {
+                        if (p.paralysisRemaining <= 0) showToast("Frozen!")
+                        p.paralysisRemaining = TRAP_FREEZE_SECONDS
+                    }
                 }
             }
 
@@ -1268,6 +1330,26 @@ class GameRenderer(
             }
         }
 
+        if (encounter.bossKey == "deRolLe" && !debugBindPose) {
+            bossEnemies.firstOrNull { it.slug == "DeRolLe" }?.let { installDeRolLeFight(it) }
+        }
+
+        if (encounter.bossKey == "volOpt" && !debugBindPose) {
+            val coreEnemy = bossEnemies.firstOrNull { it.slug == "VolOptForm1" }
+            val robotEnemy = bossEnemies.firstOrNull { it.slug == "VolOpt" }
+            if (coreEnemy != null && robotEnemy != null) {
+                installVolOptFight(coreEnemy, robotEnemy)
+            }
+        }
+
+        if (encounter.bossKey == "darkFalz" && !debugBindPose) {
+            val mountEnemy = bossEnemies.firstOrNull { it.slug == "DarkFalzForm1Body" }
+            val soulEnemy = bossEnemies.firstOrNull { it.slug == "DarkFalzForm2Body" }
+            if (mountEnemy != null && soulEnemy != null) {
+                installDarkFalzFight(mountEnemy, soulEnemy)
+            }
+        }
+
         showToast(encounter.arrivalMessage)
     }
 
@@ -1439,7 +1521,7 @@ class GameRenderer(
      * i-frame window, so standing in the flame burns per window, not per frame.
      */
     private fun dragonStrikesPlayer(atpMultiplier: Double, forceKnockdown: Boolean) {
-        val boss = dragonFight?.enemy ?: return
+        val boss = dragonFight?.enemy ?: deRolLeFight?.enemy ?: return
         val p = player ?: return
         if (p.hp <= 0 || gameMenu.isOpen || p.invulnerableRemaining > 0) return
 
@@ -1500,6 +1582,503 @@ class GameRenderer(
     }
 
     /** A carried Scape Doll fires by itself; with none left the respawn clock starts. */
+    /**
+     * De Rol Le's raft fight: clips loaded, the generic AI stripped, and the worm handed to
+     * its controller. The deck hazards (mines, orbs, rocks, the beam) are all host-drawn
+     * through the callbacks -- see the small systems below.
+     */
+    private fun installDeRolLeFight(boss: Enemy) {
+        val loader = fieldEnemyLoader ?: return
+        val prototype = loader.prototype(boss.slug) ?: return
+        val mixer = boss.animationMixer ?: return
+        boss.ai = null
+
+        MainScope().launch {
+            suspend fun clip(name: String): NjMotion? = try {
+                loader.loadAnimation(boss.slug, "${name}_boss2_b_body.njm", prototype.njObject)
+            } catch (e: Throwable) {
+                console.warn("De Rol Le clip $name failed to load: ${e.message}")
+                null
+            }
+
+            val forward = clip("forward") ?: return@launch
+            deRolLeFight = DeRolLeFight(
+                enemy = boss,
+                njObject = prototype.njObject,
+                mixer = mixer,
+                clips = DeRolLeClips(
+                    enter = clip("enter"),
+                    forward = forward,
+                    biteLeft = clip("l_bite"),
+                    biteRight = clip("r_bite"),
+                    jumpLeftToRight = clip("lrjump"),
+                    jumpRightToLeft = clip("rljump"),
+                    scatter = clip("scatter"),
+                    beamCharge = clip("beamwait"),
+                    beam = clip("beam_a"),
+                    death = clip("die"),
+                ),
+                unitScale = worldUnit,
+                deckY = 0.0,
+                raftHalfX = DEROLLE_RAFT_HALF_X,
+                raftHalfZ = DEROLLE_RAFT_HALF_Z,
+                strikePlayer = ::dragonStrikesPlayer,
+                strikePlayerFixed = ::dragonStrikesPlayerFixed,
+                spawnMine = { x, z -> spawnDeckMine(x, z) },
+                spawnOrb = { fx, fy, fz, dx, dz ->
+                    spawnEnemyShotRaw(
+                        fx, fy, fz, dx, 0.0, dz,
+                        speedUnits = DEROLLE_ORB_SPEED_UNITS,
+                        damage = DeRolLeFight.ORB_DAMAGE,
+                        colorHex = 0xbb44ff,
+                        sizeUnits = 1.4,
+                    )
+                },
+                spawnRock = { x, z -> spawnDeckRock(x, z) },
+                fireBeam = { z -> fireDeckBeam(z) },
+            )
+        }
+    }
+
+    /**
+     * Vol Opt's two bodies handed to their controller, the room dressed with its monitors, and
+     * every form-2 weapon wired through the host's small systems below.
+     */
+    private fun installVolOptFight(coreEnemy: Enemy, robotEnemy: Enemy) {
+        val loader = fieldEnemyLoader ?: return
+        val corePrototype = loader.prototype(coreEnemy.slug) ?: return
+        val robotPrototype = loader.prototype(robotEnemy.slug) ?: return
+        val coreMixer = coreEnemy.animationMixer ?: return
+        val robotMixer = robotEnemy.animationMixer ?: return
+        coreEnemy.ai = null
+        robotEnemy.ai = null
+
+        MainScope().launch {
+            suspend fun coreClip(name: String): NjMotion? = try {
+                loader.loadAnimation(coreEnemy.slug, "${name}_me5p01_y_all.njm", corePrototype.njObject)
+            } catch (e: Throwable) { null }
+            suspend fun robotClip(name: String): NjMotion? = try {
+                loader.loadAnimation(robotEnemy.slug, "${name}_me5p02_y_all.njm", robotPrototype.njObject)
+            } catch (e: Throwable) { null }
+
+            val coreWait = coreClip("wait") ?: return@launch
+            val robotWait = robotClip("wait") ?: return@launch
+
+            // The room's furniture: a monitor bolted to each wall of the hexagon.
+            val objectLoader = ObjectAssetLoader(assetLoader)
+            var i = 0
+            while (i < 6) {
+                val angle = i * (2 * PI / 6)
+                val monitor = objectLoader.loadObject("VolOptMonitorBlue")
+                monitor.position.set(
+                    sin(angle) * VOLOPT_MONITOR_RADIUS, 0.0, cos(angle) * VOLOPT_MONITOR_RADIUS,
+                )
+                monitor.rotation.y = angle + PI
+                context.scene.add(monitor)
+                i++
+            }
+
+            volOptFight = VolOptFight(
+                core = coreEnemy,
+                robot = robotEnemy,
+                coreNjObject = corePrototype.njObject,
+                robotNjObject = robotPrototype.njObject,
+                coreMixer = coreMixer,
+                robotMixer = robotMixer,
+                clips = VolOptClips(
+                    coreWait = coreWait,
+                    coreAttack = coreClip("attack"),
+                    robotStart = robotClip("start"),
+                    robotWait = robotWait,
+                    robotPunchFront = robotClip("f_attack"),
+                    robotPunchLeft = robotClip("l_attack"),
+                    robotPunchRight = robotClip("r_attack"),
+                    robotAttackBack = robotClip("b_attack"),
+                    robotDeath = robotClip("death"),
+                ),
+                unitScale = worldUnit,
+                floorY = 0.0,
+                monitorRadius = VOLOPT_MONITOR_RADIUS,
+                monitorHeight = VOLOPT_MONITOR_HEIGHT,
+                spawnPillar = { x, z, red ->
+                    spawnEnemy?.invoke("VolOptPillar", x, 0.0, z, 0.0)?.also { pillar ->
+                        if (red) {
+                            // The caster wears a warning light; the soaks stand plain.
+                            val light = Mesh(
+                                SphereGeometry(1.2 * worldUnit, 8, 6),
+                                MeshBasicMaterial(obj {
+                                    color = Color(0xff3b30)
+                                    blending = AdditiveBlending
+                                    transparent = true
+                                }).also { it.depthWrite = false },
+                            )
+                            light.position.y = (pillar.visualTop.takeIf { it > 0 } ?: 8.0) + 1.5
+                            pillar.mesh.add(light)
+                        }
+                    }
+                },
+                castGizonde = { fx, fy, fz ->
+                    player?.let { p ->
+                        spawnLightningCrawl(
+                            p.mesh.position.x, p.mesh.position.y, p.mesh.position.z,
+                            count = 5, spreadWorld = 4.0 * worldUnit,
+                        )
+                        dragonStrikesPlayerFixed(VolOptFight.GIZONDE_DAMAGE, false)
+                    }
+                },
+                fireMissile = { fx, fy, fz ->
+                    val p = player
+                    val dx = (p?.mesh?.position?.x ?: 0.0) - fx
+                    val dz = (p?.mesh?.position?.z ?: 1.0) - fz
+                    val length = sqrt(dx * dx + dz * dz).coerceAtLeast(1e-3)
+                    spawnEnemyShotRaw(
+                        fx, fy, fz, dx / length, 0.0, dz / length,
+                        speedUnits = VOLOPT_MISSILE_SPEED_UNITS,
+                        damage = VolOptFight.MISSILE_DAMAGE,
+                        colorHex = 0xff8833,
+                        sizeUnits = 1.2,
+                        homing = VOLOPT_MISSILE_HOMING,
+                    )
+                },
+                stompAt = { x, z -> spawnDeckRock(x, z, damage = VolOptFight.STOMP_DAMAGE) },
+                launchPrison = { launchVolPrison() },
+                healRobot = { amount ->
+                    robotEnemy.hp = (robotEnemy.hp + amount).coerceAtMost(robotEnemy.maxHp)
+                    val glow = effectSprite("burst_bright", 14.0, colorHex = 0x66ff88)
+                    glow.position.set(
+                        robotEnemy.mesh.position.x,
+                        robotEnemy.mesh.position.y + 10.0 * worldUnit,
+                        robotEnemy.mesh.position.z,
+                    )
+                    addEffect(TimedEffect(glow, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 2.0))
+                    showToast("Vol Opt repairs itself!")
+                },
+                strikePlayer = ::dragonStrikesPlayer,
+            )
+        }
+    }
+
+    /**
+     * Dark Falz's two bodies handed to their controller. Divine Punishment and the elemental
+     * volleys run through the host systems below and the shared enemy-shot pipeline.
+     */
+    private fun installDarkFalzFight(mountEnemy: Enemy, soulEnemy: Enemy) {
+        val loader = fieldEnemyLoader ?: return
+        val mountPrototype = loader.prototype(mountEnemy.slug) ?: return
+        val soulPrototype = loader.prototype(soulEnemy.slug) ?: return
+        val mountMixer = mountEnemy.animationMixer ?: return
+        val soulMixer = soulEnemy.animationMixer ?: return
+        mountEnemy.ai = null
+        soulEnemy.ai = null
+
+        MainScope().launch {
+            suspend fun mountClip(name: String): NjMotion? = try {
+                loader.loadAnimation(mountEnemy.slug, "${name}_df1_s_body.njm", mountPrototype.njObject)
+            } catch (e: Throwable) { null }
+            suspend fun soulClip(name: String): NjMotion? = try {
+                loader.loadAnimation(soulEnemy.slug, "${name}_df2_s_body.njm", soulPrototype.njObject)
+            } catch (e: Throwable) { null }
+
+            val mountWait = mountClip("wait") ?: return@launch
+            val soulWait = soulClip("wait") ?: return@launch
+
+            darkFalzFight = DarkFalzFight(
+                mount = mountEnemy,
+                soul = soulEnemy,
+                mountNjObject = mountPrototype.njObject,
+                soulNjObject = soulPrototype.njObject,
+                mountMixer = mountMixer,
+                soulMixer = soulMixer,
+                clips = DarkFalzClips(
+                    mountWait = mountWait,
+                    mountBeamLeft = mountClip("beaml"),
+                    mountBeamRight = mountClip("beamr"),
+                    mountSpawn = mountClip("hoe"),
+                    mountCharge = mountClip("ltame"),
+                    mountDeath = mountClip("dead1"),
+                    soulWait = soulWait,
+                    soulBeamLeft = soulClip("beaml"),
+                    soulBeamRight = soulClip("beamr"),
+                    soulSlam = soulClip("jisin"),
+                    soulCharge = soulClip("ltame"),
+                    soulDeath = soulClip("dead"),
+                ),
+                unitScale = worldUnit,
+                floorY = 0.0,
+                orbitRadius = FALZ_ORBIT_RADIUS,
+                spawnDarvant = { x, z -> spawnEnemy?.invoke("Darvant", x, 0.0, z, 0.0) },
+                fireVolley = { fx, fy, fz, ice ->
+                    val p = player ?: return@DarkFalzFight
+                    var i = 0
+                    while (i < FALZ_VOLLEY_COUNT) {
+                        val spread = (i - (FALZ_VOLLEY_COUNT - 1) / 2.0) * FALZ_VOLLEY_SPREAD
+                        val dx = p.mesh.position.x - fx
+                        val dz = p.mesh.position.z - fz
+                        val base = atan2(dx, dz) + spread
+                        spawnEnemyShotRaw(
+                            fx, fy, fz, sin(base), 0.0, cos(base),
+                            speedUnits = FALZ_VOLLEY_SPEED_UNITS,
+                            damage = FALZ_VOLLEY_DAMAGE,
+                            colorHex = if (ice) 0x77ccff else 0xff6633,
+                            sizeUnits = 1.2,
+                            freezeChance = if (ice) DarkFalzFight.ICE_FREEZE_CHANCE else 0.0,
+                        )
+                        i++
+                    }
+                },
+                divineAt = { x, z, damage -> queueDivineStrike(x, z, damage) },
+                slamAround = { x, z, radiusUnits, damage ->
+                    val p = player ?: return@DarkFalzFight
+                    val dx = p.mesh.position.x - x
+                    val dz = p.mesh.position.z - z
+                    val reach = radiusUnits * worldUnit
+                    val burst = effectSprite("burst_orange", radiusUnits * 1.6, colorHex = 0xaa88ff)
+                    burst.position.set(x, 2.0 * worldUnit, z)
+                    addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 4.0))
+                    if (dx * dx + dz * dz <= reach * reach) {
+                        dragonStrikesPlayerFixed(damage, true)
+                    }
+                },
+                drainPlayer = { boss, damage ->
+                    val p = player ?: return@DarkFalzFight
+                    if (p.hp > 0 && p.invulnerableRemaining <= 0) {
+                        dragonStrikesPlayerFixed(damage, false)
+                        boss.hp = (boss.hp + damage).coerceAtMost(boss.maxHp)
+                        showToast("Your life is drained!")
+                    }
+                },
+                strikePlayerFixed = ::dragonStrikesPlayerFixed,
+            )
+        }
+    }
+
+    /** One Divine Punishment: the marked circle, then the pillar of light that lands in it. */
+    private class DivineStrike(val marker: Object3D, val x: Double, val z: Double, var remaining: Double, val damage: Int)
+
+    private val divineStrikes = mutableListOf<DivineStrike>()
+
+    private fun queueDivineStrike(x: Double, z: Double, damage: Int) {
+        val marker = effectGroundQuad("nt_circle_gold", FALZ_DIVINE_RADIUS_UNITS * 2.2, FALZ_DIVINE_RADIUS_UNITS * 2.2, 0.0, 0xffd24d)
+        marker.position.set(x, 0.4, z)
+        context.scene.add(marker)
+        divineStrikes.add(DivineStrike(marker, x, z, FALZ_DIVINE_DELAY_SECONDS, damage))
+    }
+
+    private fun updateDivineStrikes(p: Player, deltaTime: Double) {
+        val iterator = divineStrikes.iterator()
+        while (iterator.hasNext()) {
+            val strike = iterator.next()
+            strike.remaining -= deltaTime
+            if (strike.remaining <= 0) {
+                spawnLightPillar(strike.x, 0.0, strike.z, 0xffd24d)
+                val dx = p.mesh.position.x - strike.x
+                val dz = p.mesh.position.z - strike.z
+                val reach = FALZ_DIVINE_RADIUS_UNITS * worldUnit
+                if (dx * dx + dz * dz <= reach * reach && p.hp > 0) {
+                    dragonStrikesPlayerFixed(strike.damage, true)
+                }
+                strike.marker.parent?.remove(strike.marker)
+                iterator.remove()
+            }
+        }
+    }
+
+    /** The prison ball in flight, and the cage it drops on whoever it touches. */
+    private var volPrisonBall: Mesh? = null
+    private var volCage: Object3D? = null
+    private var volCageRemaining = 0.0
+
+    private fun launchVolPrison() {
+        if (volPrisonBall != null || volCage != null) return
+        val boss = volOptFight?.robot ?: return
+        val mesh = Mesh(
+            SphereGeometry(1.6 * worldUnit, 10, 8),
+            MeshBasicMaterial(obj {
+                color = Color(0xffdd55)
+                blending = AdditiveBlending
+                transparent = true
+            }).also { it.depthWrite = false },
+        )
+        mesh.position.set(
+            boss.mesh.position.x,
+            boss.mesh.position.y + 12.0 * worldUnit,
+            boss.mesh.position.z,
+        )
+        context.scene.add(mesh)
+        volPrisonBall = mesh
+    }
+
+    private fun updateVolPrison(p: Player, deltaTime: Double) {
+        volPrisonBall?.let { ball ->
+            // Slow homing flight straight at the player's chest.
+            val tx = p.mesh.position.x - ball.position.x
+            val ty = (p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit) - ball.position.y
+            val tz = p.mesh.position.z - ball.position.z
+            val length = sqrt(tx * tx + ty * ty + tz * tz)
+            if (length < VOLOPT_PRISON_CATCH_UNITS * worldUnit) {
+                // Caught: the cage drops over the player and holds them for its charge.
+                ball.parent?.remove(ball)
+                volPrisonBall = null
+                MainScope().launch {
+                    val cage = ObjectAssetLoader(assetLoader).loadObject("VolOptCage")
+                    cage.position.set(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z)
+                    context.scene.add(cage)
+                    volCage = cage
+                    volCageRemaining = VOLOPT_CAGE_SECONDS
+                    p.paralysisRemaining = VOLOPT_CAGE_SECONDS
+                    showToast("Caged!")
+                }
+            } else {
+                val step = VOLOPT_PRISON_SPEED_UNITS * worldUnit * deltaTime
+                ball.position.x += tx / length * step
+                ball.position.y += ty / length * step
+                ball.position.z += tz / length * step
+            }
+        }
+
+        volCage?.let { cage ->
+            volCageRemaining -= deltaTime
+            if (volCageRemaining <= 0) {
+                // The charge lands on whoever is still inside.
+                val dx = p.mesh.position.x - cage.position.x
+                val dz = p.mesh.position.z - cage.position.z
+                val reach = VOLOPT_CAGE_RADIUS_UNITS * worldUnit
+                if (dx * dx + dz * dz <= reach * reach) {
+                    dragonStrikesPlayerFixed(VolOptFight.PRISON_DAMAGE, false)
+                }
+                cage.parent?.remove(cage)
+                volCage = null
+            }
+        }
+    }
+
+    /** A blinking spike mine on the deck; it detonates on its own fuse. */
+    private class DeckMine(val mesh: Mesh, val x: Double, val z: Double, var fuse: Double)
+
+    /** A rock shaken from the tunnel roof, falling toward the deck. */
+    private class DeckRock(val mesh: Mesh, val x: Double, val z: Double, val damage: Int)
+
+    /** One beam band: brief telegraph, then the damage lands across it. */
+    private class DeckBeam(val mesh: Mesh, val z: Double, var remaining: Double, var fired: Boolean)
+
+    private val deckMines = mutableListOf<DeckMine>()
+    private val deckRocks = mutableListOf<DeckRock>()
+    private val deckBeams = mutableListOf<DeckBeam>()
+
+    private fun spawnDeckMine(x: Double, z: Double) {
+        val mesh = Mesh(
+            SphereGeometry(DEROLLE_MINE_RADIUS_UNITS * worldUnit, 10, 8),
+            MeshBasicMaterial(obj {
+                color = Color(0xff5533)
+                transparent = true
+            }).also { it.depthWrite = false },
+        )
+        mesh.scale.y = 0.6
+        mesh.position.set(x, DEROLLE_MINE_RADIUS_UNITS * worldUnit * 0.5, z)
+        context.scene.add(mesh)
+        deckMines.add(DeckMine(mesh, x, z, DEROLLE_MINE_FUSE_SECONDS))
+    }
+
+    private fun spawnDeckRock(x: Double, z: Double, damage: Int = DeRolLeFight.MINE_DAMAGE) {
+        val mesh = Mesh(
+            SphereGeometry(DEROLLE_ROCK_RADIUS_UNITS * worldUnit, 8, 6),
+            MeshBasicMaterial(obj { color = Color(0x7a6a55) }),
+        )
+        mesh.scale.set(1.0, 0.8, 0.9)
+        mesh.position.set(x, DEROLLE_ROCK_DROP_HEIGHT * worldUnit, z)
+        context.scene.add(mesh)
+        deckRocks.add(DeckRock(mesh, x, z, damage))
+    }
+
+    private fun fireDeckBeam(z: Double) {
+        val geometry = CylinderGeometry(
+            DEROLLE_BEAM_HALF_WIDTH * worldUnit, DEROLLE_BEAM_HALF_WIDTH * worldUnit,
+            DEROLLE_RAFT_HALF_X * 2.4, 8,
+        )
+        val mesh = Mesh(
+            geometry,
+            MeshBasicMaterial(obj {
+                color = Color(0xff3355)
+                blending = AdditiveBlending
+                transparent = true
+            }).also { it.depthWrite = false },
+        )
+        // Lying across the deck, spanning its width at the band's z.
+        mesh.rotation.z = PI / 2
+        mesh.position.set(0.0, 2.5 * worldUnit, z)
+        val material: dynamic = mesh.material
+        material.opacity = 0.35
+        context.scene.add(mesh)
+        deckBeams.add(DeckBeam(mesh, z, DEROLLE_BEAM_TELEGRAPH_SECONDS, fired = false))
+    }
+
+    /** Runs the raft's live hazards: fuses, falling rocks, and the beam's telegraph-then-burn. */
+    private fun updateBossDeckHazards(p: Player, deltaTime: Double) {
+        if (deckMines.isEmpty() && deckRocks.isEmpty() && deckBeams.isEmpty()) return
+
+        val mines = deckMines.iterator()
+        while (mines.hasNext()) {
+            val mine = mines.next()
+            mine.fuse -= deltaTime
+            val material: dynamic = mine.mesh.material
+            material.opacity = if ((mine.fuse * 8).toInt() % 2 == 0) 1.0 else 0.5
+            if (mine.fuse <= 0) {
+                val burst = effectSprite("burst_orange", DEROLLE_MINE_BLAST_UNITS * 1.8)
+                burst.position.set(mine.x, 2.0 * worldUnit, mine.z)
+                addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 4.0))
+                val dx = p.mesh.position.x - mine.x
+                val dz = p.mesh.position.z - mine.z
+                val blast = DEROLLE_MINE_BLAST_UNITS * worldUnit
+                if (dx * dx + dz * dz <= blast * blast) {
+                    dragonStrikesPlayerFixed(DeRolLeFight.MINE_DAMAGE, false)
+                }
+                mine.mesh.parent?.remove(mine.mesh)
+                mines.remove()
+            }
+        }
+
+        val rocks = deckRocks.iterator()
+        while (rocks.hasNext()) {
+            val rock = rocks.next()
+            rock.mesh.position.y -= DEROLLE_ROCK_FALL_UNITS_PER_SECOND * worldUnit * deltaTime
+            if (rock.mesh.position.y <= DEROLLE_ROCK_RADIUS_UNITS * worldUnit * 0.6) {
+                val burst = effectSprite("burst_bright", DEROLLE_ROCK_BLAST_UNITS * 1.5, colorHex = 0xc9b18a)
+                burst.position.set(rock.x, 1.5 * worldUnit, rock.z)
+                addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 3.0))
+                val dx = p.mesh.position.x - rock.x
+                val dz = p.mesh.position.z - rock.z
+                val blast = DEROLLE_ROCK_BLAST_UNITS * worldUnit
+                if (dx * dx + dz * dz <= blast * blast) {
+                    dragonStrikesPlayerFixed(rock.damage, false)
+                }
+                rock.mesh.parent?.remove(rock.mesh)
+                rocks.remove()
+            }
+        }
+
+        val beams = deckBeams.iterator()
+        while (beams.hasNext()) {
+            val beam = beams.next()
+            beam.remaining -= deltaTime
+            val material: dynamic = beam.mesh.material
+            if (!beam.fired) {
+                // Telegraph brightening toward the burn.
+                material.opacity = 0.35 + (1.0 - beam.remaining / DEROLLE_BEAM_TELEGRAPH_SECONDS) * 0.4
+                if (beam.remaining <= 0) {
+                    beam.fired = true
+                    beam.remaining = DEROLLE_BEAM_BURN_SECONDS
+                    material.opacity = 1.0
+                    if (abs(p.mesh.position.z - beam.z) <= DEROLLE_BEAM_HALF_WIDTH * worldUnit) {
+                        dragonStrikesPlayerFixed(DeRolLeFight.BEAM_DAMAGE, true)
+                    }
+                }
+            } else if (beam.remaining <= 0) {
+                beam.mesh.parent?.remove(beam.mesh)
+                beams.remove()
+            }
+        }
+    }
+
     private fun handlePlayerDowned(p: Player) {
         val dolls = p.tools[ToolType.SCAPE_DOLL] ?: 0
         if (dolls > 0) {
@@ -6341,8 +6920,10 @@ class GameRenderer(
             }
 
             Technique.ANTI -> {
-                // Cures poison -- which nothing inflicts on the player yet, so today it's the
-                // cast and its ring. Wired so the day statuses arrive, Anti already works.
+                // Cures the status set: the Lilies' poison and paralysis, the Mines' confusion.
+                p.poisonRemaining = 0.0
+                p.paralysisRemaining = 0.0
+                p.confusedRemaining = 0.0
                 supportRing(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, "resta_ring", RESTA_COLOR)
                 spawnHealLights(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, RESTA_COLOR)
             }
@@ -7450,6 +8031,12 @@ class GameRenderer(
                 // The Dragon runs its own fight script -- same pause rules as the enemy pass.
                 if (p.hp > 0 && !gameMenu.isOpen) {
                     dragonFight?.update(deltaTime, p.mesh.position)
+                    deRolLeFight?.update(deltaTime, p.mesh.position)
+                    volOptFight?.update(deltaTime, p.mesh.position)
+                    darkFalzFight?.update(deltaTime, p.mesh.position)
+                    updateDivineStrikes(p, deltaTime)
+                    updateBossDeckHazards(p, deltaTime)
+                    updateVolPrison(p, deltaTime)
                 }
                 if (dragonPartOverrideRemaining > 0) dragonPartOverrideRemaining -= deltaTime
                 updateBossProgress()
@@ -7730,6 +8317,9 @@ class GameRenderer(
     private fun enemyDisplayName(slug: String): String = when (slug) {
         // The converted assets split Bulclaw into body forms; the player just sees a Bulclaw.
         "BulclawOpen", "BulclawClosed" -> "Bulclaw"
+        // Both forms wear the boss's own name; the pillar reads as the machinery it is.
+        "VolOptForm1", "VolOpt" -> "Vol Opt"
+        "VolOptPillar" -> "Pillar"
         else -> slug.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
     }
 
@@ -8255,6 +8845,10 @@ class GameRenderer(
             // structure sits in the -Z wall (rig-confirmed) -- facing the centre the Dragon
             // holds.
             "bossArea1" to (.0 to -145.0),
+            // The raft: arrival at its south end, facing up the deck the worm patrols.
+            "bossArea2" to (.0 to 60.0),
+            // The altar: arrival at the rim, the swarm pours in from all sides.
+            "bossArea4" to (.0 to -70.0),
         )
 
         /** How far from the arena's centre the Dragon fight roams, in world units. */
@@ -8360,6 +8954,42 @@ class GameRenderer(
         private const val PILLAR_REST_SECONDS = 2.5
         private const val PILLAR_CRUSH_RADIUS_UNITS = 4.5
         private const val PILLAR_CRUSH_DAMAGE = 40
+
+        // Dark Falz's circuit and weapons.
+        private const val FALZ_ORBIT_RADIUS = 65.0
+        private const val FALZ_VOLLEY_COUNT = 5
+        private const val FALZ_VOLLEY_SPREAD = 0.16
+        private const val FALZ_VOLLEY_SPEED_UNITS = 20.0
+        private const val FALZ_VOLLEY_DAMAGE = 30
+        private const val FALZ_DIVINE_RADIUS_UNITS = 6.0
+        private const val FALZ_DIVINE_DELAY_SECONDS = 1.3
+
+        // Vol Opt's room and weapons.
+        private const val VOLOPT_MONITOR_RADIUS = 95.0
+        private const val VOLOPT_MONITOR_HEIGHT = 20.0
+        private const val VOLOPT_MISSILE_SPEED_UNITS = 14.0
+        private const val VOLOPT_MISSILE_HOMING = 1.6
+        private const val VOLOPT_PRISON_SPEED_UNITS = 12.0
+        private const val VOLOPT_PRISON_CATCH_UNITS = 2.2
+        private const val VOLOPT_CAGE_SECONDS = 2.4
+        private const val VOLOPT_CAGE_RADIUS_UNITS = 3.0
+
+        // De Rol Le's raft and deck hazards. The raft half-extents were measured off the
+        // arena's own collision; damage figures live in DeRolLeFight (the wiki's Normal
+        // values).
+        private const val DEROLLE_RAFT_HALF_X = 55.0
+        private const val DEROLLE_RAFT_HALF_Z = 80.0
+        private const val DEROLLE_ORB_SPEED_UNITS = 26.0
+        private const val DEROLLE_MINE_RADIUS_UNITS = 1.2
+        private const val DEROLLE_MINE_FUSE_SECONDS = 2.6
+        private const val DEROLLE_MINE_BLAST_UNITS = 6.0
+        private const val DEROLLE_ROCK_RADIUS_UNITS = 2.2
+        private const val DEROLLE_ROCK_DROP_HEIGHT = 60.0
+        private const val DEROLLE_ROCK_FALL_UNITS_PER_SECOND = 55.0
+        private const val DEROLLE_ROCK_BLAST_UNITS = 4.0
+        private const val DEROLLE_BEAM_HALF_WIDTH = 7.0
+        private const val DEROLLE_BEAM_TELEGRAPH_SECONDS = 0.8
+        private const val DEROLLE_BEAM_BURN_SECONDS = 0.5
 
         /** How far the blob jar's venom splashes when it breaks, in PSO units. */
         private const val BLOB_SPLASH_RADIUS_UNITS = 5.0

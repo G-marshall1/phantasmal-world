@@ -595,6 +595,50 @@ val GSL_OBJECT_SPECS: List<GslObjectSpec> = listOf(
         pvmEntry = "fe_obj_h_s_konte.pvm",
     ),
 
+    // Vol Opt's control-room furniture and form-2 props, all from the boss's own archive:
+    // the large monitor in its blue and red states, the prison cage, the missile, and the
+    // stomper pillar.
+    GslObjectSpec(
+        slug = "VolOptMonitorBlue",
+        archive = "bm_boss3_volopt.bml",
+        bmlEntry = "bm_boss3_volopt.bml",
+        njEntry = "fe_obj_vo_mo_dai_ao.nj",
+        pvmEntry = "fe_obj_vo_mo_dai_ao.pvm",
+        topLevelBml = true,
+    ),
+    GslObjectSpec(
+        slug = "VolOptMonitorRed",
+        archive = "bm_boss3_volopt.bml",
+        bmlEntry = "bm_boss3_volopt.bml",
+        njEntry = "fe_obj_vo_mo_dai_aka.nj",
+        pvmEntry = "fe_obj_vo_mo_dai_aka.pvm",
+        topLevelBml = true,
+    ),
+    GslObjectSpec(
+        slug = "VolOptCage",
+        archive = "bm_boss3_volopt.bml",
+        bmlEntry = "bm_boss3_volopt.bml",
+        njEntry = "me5p02_y_cage.nj",
+        pvmEntry = "me5p02_y_cage.pvm",
+        topLevelBml = true,
+    ),
+    GslObjectSpec(
+        slug = "VolOptMissile",
+        archive = "bm_boss3_volopt.bml",
+        bmlEntry = "bm_boss3_volopt.bml",
+        njEntry = "me5p02_y_missile.nj",
+        pvmEntry = "me5p02_y_missile.pvm",
+        topLevelBml = true,
+    ),
+    GslObjectSpec(
+        slug = "VolOptStompPillar",
+        archive = "bm_boss3_volopt.bml",
+        bmlEntry = "bm_boss3_volopt.bml",
+        njEntry = "me5p02_y_pillar.nj",
+        pvmEntry = "me5p02_y_pillar.pvm",
+        topLevelBml = true,
+    ),
+
     // The Ruins' ceiling pillar trap (turigane -- the hanging bell), and the stone monument
     // crystal, both from top-level bmls.
     GslObjectSpec(
