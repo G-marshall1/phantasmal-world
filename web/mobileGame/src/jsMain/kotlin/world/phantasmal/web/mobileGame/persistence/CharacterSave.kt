@@ -58,6 +58,12 @@ data class CharacterSave(
     val magMindExp: Int = 0,
     val magSynchro: Int = 20,
     val magIq: Int = 0,
+    /**
+     * The Mag's evolution (model slug). Blank on saves from before evolutions persisted --
+     * the loader derives those the way the old build did (level 10+ wears the class's first
+     * form), which is always right for them since nothing could evolve past that.
+     */
+    val magForm: String = "",
     /** The feeding window: feeds left, and when the current 3:30 window ends (epoch ms). */
     val magFeedsLeft: Int = 3,
     val magWindowEndMs: Double = 0.0,

@@ -33,7 +33,9 @@ import world.phantasmal.web.externals.three.Vector3
  * area is entered, rather than always showing the same one.
  */
 private val AREA_LAYOUT_COUNTS: Map<String, Int> = mapOf(
-    "cave01" to 6, "cave02" to 5, "cave03" to 6,
+    // Only the variants with encounter tables: caves 04/05 terrains are quest-only in the
+    // source data (no e.dat/.evt), and loading one would mean an empty area.
+    "cave01" to 3, "cave02" to 3, "cave03" to 3,
     "mines01" to 6, "mines02" to 6,
     "ruins01" to 5, "ruins02" to 5, "ruins03" to 5,
     "ultimateCave01" to 6, "ultimateCave02" to 5, "ultimateCave03" to 6,

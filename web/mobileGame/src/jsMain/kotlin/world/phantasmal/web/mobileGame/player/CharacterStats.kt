@@ -106,6 +106,20 @@ fun professionOf(characterClass: CharacterClass): Profession =
     }
 
 /**
+ * The androids: HUcast, HUcaseal, RAcast, RAcaseal. They never learn techniques, and no status
+ * that works on a nervous system -- paralysis, poison -- applies to them.
+ */
+fun isAndroid(characterClass: CharacterClass): Boolean =
+    characterClass.name.contains("cast", ignoreCase = true) ||
+        characterClass.name.contains("caseal", ignoreCase = true)
+
+/** The six female classes -- one Mag third evolution (Andhaka) is female-Force-only. */
+fun isFemaleCharacter(characterClass: CharacterClass): Boolean =
+    characterClass.name.endsWith("newearl") ||
+        characterClass.name.endsWith("marl") ||
+        characterClass.name.endsWith("caseal")
+
+/**
  * The attack power behind one swing: the class's hidden base, plus the equipped weapon, plus a
  * fresh profession roll. [random] is the roll, in [0, 1).
  *

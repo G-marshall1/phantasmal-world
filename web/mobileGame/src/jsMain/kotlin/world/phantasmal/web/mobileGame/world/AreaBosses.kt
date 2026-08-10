@@ -56,4 +56,9 @@ val AREA_BOSSES: Map<String, BossEncounter> = mapOf(
 /** Which boss arena each area's boss teleporter leads to. */
 val BOSS_ARENA_FOR_MAP: Map<String, String> = mapOf(
     "forest02" to "bossArea1",
+    // De Rol Le's and Vol Opt's arenas aren't built yet, so the underground boss warps skip
+    // straight to the next zone -- the loop stays walkable end to end, and these rows move to
+    // the real arenas when the fights exist. Ruins 3's warp stays unmapped (Dark Falz pending).
+    "cave03" to "mines01",
+    "mines02" to "ruins01",
 )

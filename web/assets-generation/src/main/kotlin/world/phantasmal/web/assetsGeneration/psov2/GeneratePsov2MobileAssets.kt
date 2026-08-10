@@ -1,5 +1,7 @@
 package world.phantasmal.web.assetsGeneration.psov2
 
+import kotlin.math.cos
+import kotlin.math.sin
 import mu.KotlinLogging
 import world.phantasmal.psolib.Endianness
 import world.phantasmal.psolib.buffer.Buffer
@@ -327,6 +329,16 @@ private fun generateGslObjects(sourceDir: File, outputDir: File) {
         val textures = decodeTextures(pvmBytes)
         write(outputDir, "objects/${spec.slug}.xvm", buildXvm(textures))
 
+        // The locked twin: the same model, with its status light swapped for the red variant.
+        // Emitted as its own slug so the runtime can simply show one or the other.
+        spec.lockedPvmEntry?.let { redEntry ->
+            val red = decodeTextures(gsl.getValue(redEntry))
+            val swapped = textures.toMutableList()
+            swapped[spec.lockedTextureIndex] = red.first()
+            write(outputDir, "objects/${spec.slug}Locked.nj", bml.getValue(spec.njEntry))
+            write(outputDir, "objects/${spec.slug}Locked.xvm", buildXvm(swapped))
+        }
+
         spec.njmEntry?.let { write(outputDir, "objects/${spec.slug}.njm", bml.getValue(it)) }
     }
 }
@@ -354,7 +366,11 @@ private fun generateAreaSpawns(sourceDir: File, outputDir: File) {
     logger.info("Generating spawns/*.")
 
     for (spec in AREA_SPAWN_SPECS) {
-        val sections = readSectionTable(File(sourceDir, spec.sectionRel))
+        // The forests share one terrain across all their tables; the caves' every layout is
+        // its own terrain, whose section table rides inside that layout's JSON instead.
+        val sharedSections =
+            if (spec.sectionRel.isNotEmpty()) readSectionTable(File(sourceDir, spec.sectionRel))
+            else emptyMap()
         val layouts = mutableListOf<String>()
 
         for (layout in spec.layouts) {
@@ -365,6 +381,10 @@ private fun generateAreaSpawns(sourceDir: File, outputDir: File) {
                 logger.warn("Incomplete layout ${layout.base}, skipping.")
                 continue
             }
+
+            val sections = layout.sectionRel
+                ?.let { readSectionTable(File(sourceDir, it)) }
+                ?: sharedSections
 
             val enemies = readEnemyPlacements(enemyFile.readBytes(), sections)
             val events = readWaveScript(eventFile.readBytes())
@@ -380,8 +400,17 @@ private fun generateAreaSpawns(sourceDir: File, outputDir: File) {
                 if (objectFile.exists()) readObjectPlacements(objectFile.readBytes(), sections)
                 else emptyList()
 
+            val geometryField = layout.geometry?.let { """"geometry":"$it",""" } ?: ""
+            val sectionsField =
+                if (layout.sectionRel != null) {
+                    val rows = sections.entries.sortedBy { it.key }.map { (id, s) ->
+                        """{"id":$id,"x":${s.x},"y":${s.y},"z":${s.z}}"""
+                    }
+                    """"sections":[${rows.joinToString(",")}],"""
+                } else ""
+
             layouts.add(
-                """{"name":"${layout.base}","solo":${layout.solo},""" +
+                """{"name":"${layout.base}","solo":${layout.solo},$geometryField$sectionsField""" +
                     """"enemies":[${enemies.joinToString(",")}],""" +
                     """"events":[${events.joinToString(",")}],""" +
                     """"objects":[${objects.joinToString(",")}]}"""
@@ -395,8 +424,8 @@ private fun generateAreaSpawns(sourceDir: File, outputDir: File) {
         // The section table goes out alongside the (already world-baked) placements because the
         // runtime still needs to know where each room *is* -- that's what tells it which room the
         // player just walked into, and so which wave to start.
-        val sectionJson = sections.entries.sortedBy { it.key }.map { (id, origin) ->
-            """{"id":$id,"x":${origin.first},"y":${origin.second},"z":${origin.third}}"""
+        val sectionJson = sharedSections.entries.sortedBy { it.key }.map { (id, s) ->
+            """{"id":$id,"x":${s.x},"y":${s.y},"z":${s.z}}"""
         }
 
         write(
@@ -413,7 +442,13 @@ private fun generateAreaSpawns(sourceDir: File, outputDir: File) {
  * is read through (see :web:mobileGame's Psov2AreaGeometry, which walks these same 60-byte records
  * to place each section's meshes), read here only for the transform.
  */
-private fun readSectionTable(file: File): Map<Int, Triple<Float, Float, Float>> {
+private class SectionTransform(val x: Float, val y: Float, val z: Float, val yaw: Double) {
+    /** Section-local (lx, lz) to world, by the same R_y the geometry loader composes. */
+    fun worldX(lx: Float, lz: Float): Double = x + lx * cos(yaw) + lz * sin(yaw)
+    fun worldZ(lx: Float, lz: Float): Double = z - lx * sin(yaw) + lz * cos(yaw)
+}
+
+private fun readSectionTable(file: File): Map<Int, SectionTransform> {
     val b = littleEndian(file.readBytes())
     val tableOffset = b.getInt(b.capacity() - 16)
     val count = b.getInt(tableOffset)
@@ -422,22 +457,35 @@ private fun readSectionTable(file: File): Map<Int, Triple<Float, Float, Float>> 
     return buildMap {
         for (i in 0 until count) {
             val base = sectionsOffset + i * SECTION_RECORD_SIZE
+            val id = b.getInt(base)
+            // A few cave connectors carry id -1; nothing references them, and keying them
+            // would have each overwrite the last.
+            if (id < 0) continue
+
             val rotX = b.getInt(base + 16)
             val rotY = b.getInt(base + 20)
             val rotZ = b.getInt(base + 24)
 
-            require(rotX == 0 && rotY == 0 && rotZ == 0) {
-                "Section ${b.getInt(base)} of ${file.name} is rotated; positions can't be baked."
+            // Y rotation is real (the caves' rooms turn); X/Z rotation never appears and the
+            // baking below doesn't handle it, so keep the tripwire for those.
+            require(rotX == 0 && rotZ == 0) {
+                "Section $id of ${file.name} has X/Z rotation; positions can't be baked."
             }
 
-            put(b.getInt(base), Triple(b.getFloat(base + 4), b.getFloat(base + 8), b.getFloat(base + 12)))
+            put(
+                id,
+                SectionTransform(
+                    b.getFloat(base + 4), b.getFloat(base + 8), b.getFloat(base + 12),
+                    rotY * 2.0 * Math.PI / 65536.0,
+                ),
+            )
         }
     }
 }
 
 private fun readEnemyPlacements(
     bytes: ByteArray,
-    sections: Map<Int, Triple<Float, Float, Float>>,
+    sections: Map<Int, SectionTransform>,
 ): List<String> {
     val b = littleEndian(bytes)
 
@@ -455,12 +503,15 @@ private fun readEnemyPlacements(
             val slug = forestEnemySlug(typeId, skin, special) ?: continue
             val origin = sections[section] ?: continue
 
-            val x = origin.first + b.getFloat(base + 20)
-            val y = origin.second + b.getFloat(base + 24)
-            val z = origin.third + b.getFloat(base + 28)
+            val lx = b.getFloat(base + 20)
+            val lz = b.getFloat(base + 28)
+            val x = origin.worldX(lx, lz)
+            val y = origin.y + b.getFloat(base + 24)
+            val z = origin.worldZ(lx, lz)
             // Only the Y rotation matters -- these all stand upright. Ninja's 16-bit-per-turn
-            // angle, converted here so the runtime doesn't have to know the encoding.
-            val yaw = b.getInt(base + 36) * 2.0 * Math.PI / 65536.0
+            // angle, converted (and composed with the section's own turn) here so the runtime
+            // doesn't have to know the encoding.
+            val yaw = b.getInt(base + 36) * 2.0 * Math.PI / 65536.0 + origin.yaw
 
             add("""{"slug":"$slug","section":$section,"wave":$wave,"x":$x,"y":$y,"z":$z,"yaw":$yaw}""")
         }
@@ -495,12 +546,24 @@ private val EMITTED_OBJECT_TYPES = setOf(
     // The rest of the Forest's furniture: probe, weather station, Rico's message pods, energy
     // barriers, the rising bridge, no-door switches and the monuments.
     135, 137, 141, 142, 143, 144, 342,
+    // The Caves: the floor panel a switch door reads (192), the four-button door (193), the
+    // plain door (194) and the switch door (206). The elemental traps (10, 12) and the heal
+    // ring (13) ride along -- all are placed by these layouts in numbers.
+    192, 193, 194, 206, 10, 12, 13,
+    // The Mines: same door family as the caves under new numbers -- the plain door (256), its
+    // floor panel (257), the four-button door (258) and the switch door (268). Type 11 is the
+    // Mines' own trap variant.
+    256, 257, 258, 268, 11,
+    // The Ruins: each area uses its own normal-door type (324/325/326 for Ruins 1/3/2's door
+    // models), plus the floor switch (323) and the Ruins' own in-map warp (321), whose record
+    // is parameter-for-parameter the standard warp's (dest xyz in the floats, yaw in the ints).
+    321, 323, 324, 325, 326,
 )
 private const val OBJECT_RECORD_SIZE = 68
 
 private fun readObjectPlacements(
     bytes: ByteArray,
-    sections: Map<Int, Triple<Float, Float, Float>>,
+    sections: Map<Int, SectionTransform>,
 ): List<String> {
     val b = littleEndian(bytes)
 
@@ -517,10 +580,12 @@ private fun readObjectPlacements(
             val section = b.getShort(base + 12).toInt()
             val origin = sections[section] ?: continue
 
-            val x = origin.first + b.getFloat(base + 16)
-            val y = origin.second + b.getFloat(base + 20)
-            val z = origin.third + b.getFloat(base + 24)
-            val yaw = b.getInt(base + 32) * 2.0 * Math.PI / 65536.0
+            val lx = b.getFloat(base + 16)
+            val lz = b.getFloat(base + 24)
+            val x = origin.worldX(lx, lz)
+            val y = origin.y + b.getFloat(base + 20)
+            val z = origin.worldZ(lx, lz)
+            val yaw = b.getInt(base + 32) * 2.0 * Math.PI / 65536.0 + origin.yaw
             val doorId = b.getInt(base + 52) and 0xFF
             val paramsF = (0 until 3).map { b.getFloat(base + 40 + it * 4) }
             val paramsI = (0 until 3).map { b.getInt(base + 52 + it * 4) }

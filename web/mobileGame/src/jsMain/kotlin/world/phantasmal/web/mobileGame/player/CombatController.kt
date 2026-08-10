@@ -32,6 +32,11 @@ class Enemy(
         world.phantasmal.web.mobileGame.world.Resistances(),
     /** The stat-table slug this enemy spawned from, for death-drop lookups. */
     val slug: String = "",
+    /**
+     * The spawn table's room this enemy belongs to. PSO wakes a room's monsters when the
+     * player walks in, so the AI needs to know which room that is; -1 means unplaced.
+     */
+    val section: Int = -1,
 ) {
     /**
      * Jellen and Zalure: multipliers on this enemy's attack and defense while the debuff runs.

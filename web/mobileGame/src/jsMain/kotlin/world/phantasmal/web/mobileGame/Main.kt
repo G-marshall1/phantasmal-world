@@ -152,6 +152,8 @@ private fun init() {
             // sheet; &fxpage=N pages through the bigger archives.
             fxSheet = params.get("fxsheet"),
             fxSheetPage = params.get("fxpage")?.toIntOrNull() ?: 0,
+            // DEBUG: ?fxslow=1 stretches timed effects 20x for headless capture.
+            fxSlowMotion = params.get("fxslow") != null,
             poseOverride = params.get("pose")
                 ?.split(",")
                 ?.mapNotNull { it.trim().toIntOrNull() }

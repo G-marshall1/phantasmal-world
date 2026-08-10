@@ -35,7 +35,8 @@ class RoomWaveDirector(
     private val volumes: List<TriggerVolume> = emptyList(),
     private val spawn: (SpawnEnemy) -> SpawnedEnemy?,
 ) {
-    private val sections = table.sections
+    // The caves' layout variants each carry their own terrain, and so their own section table.
+    private val sections = layout.sections.ifEmpty { table.sections }
     private val eventsById = layout.events.associateBy { it.id }
 
     /** Every wave's enemies, keyed the way events name them. */
@@ -81,7 +82,7 @@ class RoomWaveDirector(
         private set
 
     /** Every room this area has, whether or not it holds an encounter. */
-    val allSections: List<SpawnSection> = table.sections
+    val allSections: List<SpawnSection> = sections
 
     /** Waves that are on the map right now, with the enemies each is waiting to have killed. */
     private val activeWaves = mutableMapOf<Int, MutableList<SpawnedEnemy>>()
@@ -206,6 +207,8 @@ class RoomWaveDirector(
  * [override] names one by [SpawnLayout.name] instead, for testing a particular room's waves
  * repeatedly rather than getting a different area every load.
  */
-fun AreaSpawnTable.pickSoloLayout(override: String? = null): SpawnLayout? =
+fun AreaSpawnTable.pickSoloLayout(override: String? = null, geometry: String? = null): SpawnLayout? =
     if (override != null) layouts.find { it.name == override }
-    else layouts.filter { it.solo }.randomOrNull()
+    // A layout tagged with a geometry slug only fits that terrain (the caves); untagged tables
+    // (the forests) fit whatever loaded.
+    else layouts.filter { it.solo && (it.geometry == null || it.geometry == geometry) }.randomOrNull()

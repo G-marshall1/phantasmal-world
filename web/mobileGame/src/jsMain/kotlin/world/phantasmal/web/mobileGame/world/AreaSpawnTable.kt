@@ -28,6 +28,14 @@ class SpawnSection(val id: Int, val x: Double, val y: Double, val z: Double)
 class SpawnLayout(
     val name: String,
     val solo: Boolean,
+    /**
+     * The runtime geometry slug this table belongs to ("cave01Layout3"): the caves' every
+     * layout variant is its own terrain, so table and terrain must be picked together. Null
+     * (the forests) fits any.
+     */
+    val geometry: String? = null,
+    /** Per-layout section table, for areas whose variants carry their own terrain. */
+    val sections: List<SpawnSection> = emptyList(),
     val enemies: List<SpawnEnemy>,
     val events: List<SpawnEvent>,
     /**
@@ -117,6 +125,32 @@ class SpawnObject(
         const val TYPE_SWITCH_NONE_DOOR = 144
 
         const val TYPE_MONUMENT = 342
+
+        // The Caves. A floor panel is the switch a four-button door counts; the switch door
+        // and the plain door are ordinary door-ID gates. See psolib's ObjectType.
+        const val TYPE_CAVE_FLOOR_PANEL = 192
+        const val TYPE_CAVE_4_BUTTON_DOOR = 193
+        const val TYPE_CAVE_DOOR = 194
+        const val TYPE_CAVE_SWITCH_DOOR = 206
+        const val TYPE_ELEMENTAL_TRAP = 10
+        const val TYPE_LARGE_ELEMENTAL_TRAP = 12
+        const val TYPE_HEAL_RING = 13
+
+        // The Mines: the same door family as the caves under its own numbers, plus the Mines'
+        // trap variant.
+        const val TYPE_MINE_DOOR = 256
+        const val TYPE_MINE_FLOOR_PANEL = 257
+        const val TYPE_MINE_4_BUTTON_DOOR = 258
+        const val TYPE_MINE_SWITCH_DOOR = 268
+        const val TYPE_MINE_TRAP = 11
+
+        // The Ruins: an in-map warp whose record matches the standard warp's, the floor switch,
+        // and one normal-door type per area (324/325/326 belong to Ruins 1/3/2's own models).
+        const val TYPE_RUINS_WARP = 321
+        const val TYPE_RUINS_SWITCH = 323
+        const val TYPE_RUINS_DOOR_A1 = 324
+        const val TYPE_RUINS_DOOR_A3 = 325
+        const val TYPE_RUINS_DOOR_A2 = 326
     }
 }
 

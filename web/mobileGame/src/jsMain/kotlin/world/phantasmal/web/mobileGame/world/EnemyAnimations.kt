@@ -157,12 +157,164 @@ private val DRAGON = EnemyAnimationSet(
     stun = "daml_boss1_s_nb_dragon.njm",
 )
 
+/** The Lilies: rooted, swaying closed until something steps close enough to bite. */
+private val LILY = EnemyAnimationSet(
+    wait = "waitc_re2_b_root.njm",
+    damage = "damege_re2_b_root.njm",
+    death = "die_re2_b_root.njm",
+    wakeUp = "wake_re2_b_root.njm",
+)
+
+private val GRASS_ASSASSIN = EnemyAnimationSet(
+    wait = "wait_re1_b_base.njm",
+    damage = "damege_re1_b_base.njm",
+    death = "die_re1_b_base.njm",
+    // Left and right scythe.
+    attackAlt = "rattack_re1_b_base.njm",
+)
+
+private val NANO_DRAGOON = EnemyAnimationSet(
+    wait = "wait_bm6_s_drc_body.njm",
+    damage = "damgrd_bm6_s_drc_body.njm",
+    death = "deadg_bm6_s_drc_body.njm",
+)
+
+/**
+ * The slimes. Only the "ma" (raised) body's clips are wired: the "mb" puddle-form clips drive a
+ * different rig and mixing them dismembers the mesh -- the same class of bug the Dragon had.
+ */
+private val SLIME = EnemyAnimationSet(
+    wait = "wait_bm4_ps_ma_body.njm",
+    damage = "damage_bm4_ps_ma_body.njm",
+    death = "kie_bm4_ps_ma_body.njm",
+)
+
+private val PAN_ARMS = EnemyAnimationSet(
+    wait = "wait_bm7_s_paa_body.njm",
+    damage = "damage_bm7_s_paa_body.njm",
+    death = "deada_bm7_s_paa_body.njm",
+)
+
+// ---- The Mines' machines. ----
+
+/**
+ * Dubchic/Gilchic. The rig has no death clip at all -- in the real game a downed Dubchic
+ * collapses and waits for its Dubswitch to revive it, so the backward collapse stands in as
+ * the death animation.
+ */
+private val DUBCHIC = EnemyAnimationSet(
+    wait = "wait01_me2_y_me2.njm",
+    damage = "damage_f_me2_y_me2.njm",
+    death = "damage_b_me2_y_me2.njm",
+    wakeUp = "starting_me2_y_me2.njm",
+    attackAlt = "scratch02_me2_y_me2.njm",
+)
+
+private val GARANZ = EnemyAnimationSet(
+    wait = "wait_me4_y_me4.njm",
+    damage = "damage01_me4_y_me4.njm",
+    death = "deth_me4_y_me4.njm",
+)
+
+/** The flying Canadines: hover loops for everything, damage jolt, no dedicated death. */
+private val CANADINE = EnemyAnimationSet(
+    wait = "wait01_me1_y_mb.njm",
+    damage = "damage01_me1_y_mb.njm",
+    death = "damage02_me1_y_mb.njm",
+)
+
+private val SINOW = EnemyAnimationSet(
+    wait = "wait_me3_y_me3.njm",
+    damage = "damage_me3_y_me3.njm",
+    death = "death_me3_y_me3.njm",
+    appear = "apper_me3_y_me3.njm",
+    attackAlt = "f_attack_me3_y_me3.njm",
+)
+
+// ---- The Ruins' dark breed. ----
+
+private val DELSABER = EnemyAnimationSet(
+    wait = "wait_df1_s_kil_body.njm",
+    damage = "damage_df1_s_kil_body.njm",
+    death = "dead_df1_s_kil_body.njm",
+    attackAlt = "nail_df1_s_kil_body.njm",
+)
+
+private val CHAOS_SORCERER = EnemyAnimationSet(
+    wait = "wait_re4_b_body.njm",
+    damage = "damage_re4_b_body.njm",
+    death = "die_re4_b_body.njm",
+    appear = "enter_re4_b_body.njm",
+    attackAlt = "attack2_re4_b_body.njm",
+)
+
+// Note the data's own spelling of its damage clip: "damege".
+private val DARK_BELRA = EnemyAnimationSet(
+    wait = "wait_re7_b_body.njm",
+    damage = "damege_re7_b_body.njm",
+    death = "die_re7_b_body.njm",
+    attackAlt = "lattack_re7_b_body.njm",
+)
+
+private val DARK_GUNNER = EnemyAnimationSet(
+    wait = "wait_re5_b_body.njm",
+    damage = "damage_re5_b_body.njm",
+    death = "die_re5_b_body.njm",
+)
+
+private val CHAOS_BRINGER = EnemyAnimationSet(
+    wait = "wait_bm8_s_kb_body.njm",
+    damage = "damage_bm8_s_kb_body.njm",
+    death = "dead_bm8_s_kb_body.njm",
+    run = "run_bm8_s_kb_body.njm",
+)
+
+private val BULCLAW = EnemyAnimationSet(
+    wait = "balwait_re6_b_bal_body.njm",
+    damage = "baldamage_re6_b_bal_body.njm",
+    death = "baldie_re6_b_bal_body.njm",
+    attackAlt = "balcomb_re6_b_bal_body.njm",
+)
+
+private val CLAW = EnemyAnimationSet(
+    wait = "clwait_re6_b_claw_body.njm",
+    damage = "cldamage_re6_b_claw_body.njm",
+    death = "cldie_re6_b_claw_body.njm",
+)
+
 val ENEMY_ANIMATIONS: Map<String, EnemyAnimationSet> = mapOf(
     "Booma" to BOOMA,
     "GoBooma" to BOOMA,
     "GigaBooma" to BOOMA,
+    // The shark family runs on the Booma rig with identical clip names.
     "EvilShark" to BOOMA,
+    "PalShark" to BOOMA,
+    "GuilShark" to BOOMA,
+    // The Dimenian family also runs on the Booma rig.
     "Dimenian" to BOOMA,
+    "LaDimenian" to BOOMA,
+    "SoDimenian" to BOOMA,
+    "Dubchic" to DUBCHIC,
+    "Gilchic" to DUBCHIC,
+    "Garanz" to GARANZ,
+    "Canadine" to CANADINE,
+    "Canane" to CANADINE,
+    "SinowBeat" to SINOW,
+    "SinowGold" to SINOW,
+    "Delsaber" to DELSABER,
+    "ChaosSorcerer" to CHAOS_SORCERER,
+    "DarkBelra" to DARK_BELRA,
+    "DarkGunner" to DARK_GUNNER,
+    "ChaosBringer" to CHAOS_BRINGER,
+    "BulclawOpen" to BULCLAW,
+    "Claw" to CLAW,
+    "PoisonLily" to LILY,
+    "NarLily" to LILY,
+    "GrassAssasin" to GRASS_ASSASSIN,
+    "NanoDragoon" to NANO_DRAGOON,
+    "PofuillySlimeBlue" to SLIME,
+    "PouillySlimeRed" to SLIME,
+    "PanArms" to PAN_ARMS,
     "Rappy" to RAPPY,
     // The rare variants ship their own copies of their base species' clips.
     "AlRappy" to RAPPY,

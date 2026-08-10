@@ -19,6 +19,7 @@ import org.w3c.dom.HTMLCanvasElement
 import world.phantasmal.psolib.Endianness
 import world.phantasmal.psolib.cursor.cursor
 import world.phantasmal.psolib.fileFormats.ninja.NjMotion
+import world.phantasmal.psolib.fileFormats.ninja.parseXj
 import world.phantasmal.psolib.fileFormats.ninja.parseXvm
 import world.phantasmal.web.core.rendering.conversion.xvrTextureToThree
 import world.phantasmal.web.core.boundingSphere
@@ -28,6 +29,7 @@ import world.phantasmal.web.core.rendering.RenderContext
 import world.phantasmal.web.core.rendering.Renderer
 import world.phantasmal.web.core.rendering.conversion.PSO_FRAME_RATE_DOUBLE
 import world.phantasmal.web.core.rendering.conversion.collisionGeometryToGroup
+import world.phantasmal.web.core.rendering.conversion.ninjaObjectToMesh
 import world.phantasmal.web.core.rendering.conversion.createAnimationClip
 import world.phantasmal.web.externals.three.AnimationAction
 import world.phantasmal.web.externals.three.AnimationMixer
@@ -44,6 +46,8 @@ import world.phantasmal.web.mobileGame.input.DamageNumbers
 import world.phantasmal.web.mobileGame.input.FlightVerticalControls
 import world.phantasmal.web.mobileGame.input.VirtualJoystick
 import world.phantasmal.web.mobileGame.input.PhotonBlastOverlay
+import world.phantasmal.web.mobileGame.input.MapDoor
+import world.phantasmal.web.mobileGame.input.MapRoom
 import world.phantasmal.web.mobileGame.input.MiniMap
 import world.phantasmal.web.mobileGame.input.PlayerStatusPanel
 import world.phantasmal.web.mobileGame.input.TargetInfoPanel
@@ -57,7 +61,11 @@ import world.phantasmal.web.mobileGame.player.ActionPaletteConfig
 import world.phantasmal.web.mobileGame.player.AttackType
 import world.phantasmal.web.mobileGame.player.effectiveAtp
 import world.phantasmal.web.mobileGame.player.isKnockdown
+import world.phantasmal.web.mobileGame.player.isAndroid
+import world.phantasmal.web.mobileGame.player.isRanged
+import world.phantasmal.web.mobileGame.player.isFemaleCharacter
 import world.phantasmal.web.mobileGame.player.professionOf
+import world.phantasmal.web.shared.dto.SectionId
 import world.phantasmal.web.mobileGame.player.GameAction
 import world.phantasmal.web.mobileGame.player.BaseStats
 import world.phantasmal.web.mobileGame.player.Mag
@@ -247,6 +255,12 @@ class GameRenderer(
      */
     private val fxSheet: String? = null,
     private val fxSheetPage: Int = 0,
+    /**
+     * DEBUG: stretch every timed effect 20x (rates scaled to match). Headless captures under
+     * --virtual-time-budget fast-forward the clock, so a sub-second effect expires before any
+     * screenshot -- this keeps the shipped code paths while making them photographable.
+     */
+    private val fxSlowMotion: Boolean = false,
     /**
      * Invoked once when the player steps onto a pad that leaves this map (see
      * Pioneer2Teleporter.destinationMap), with the slug to load. The renderer can't swap its own
@@ -629,6 +643,191 @@ class GameRenderer(
 
     /** The area's enemy loader, kept past setup so the boss's extra clips can be fetched. */
     private var fieldEnemyLoader: EnemyAssetLoader? = null
+
+    /** Which geometry variant loadArea resolved to -- the caves' spawn tables key off it. */
+    private var resolvedGeometrySlug: String? = null
+
+    /**
+     * A shot fired by an enemy: the Nano Dragon's nano laser and the Poison Lily's venom spit.
+     * Enemy fire is a real projectile rather than the hitscan the player's guns use -- these
+     * cross a whole room, so they have to be dodgeable in flight.
+     */
+    private class EnemyShot(
+        val mesh: Object3D,
+        val dirX: Double,
+        val dirY: Double,
+        val dirZ: Double,
+        val speed: Double,
+        var remaining: Double,
+        val damage: Int,
+        /** Venom: poisons on contact. */
+        val poisons: Boolean,
+    )
+
+    private val enemyShots = mutableListOf<EnemyShot>()
+
+    /**
+     * Puts one enemy shot in the world, aimed from the firing body at the player's chest.
+     * [poisons] marks the Lily's venom; the laser simply hurts.
+     */
+    private fun fireEnemyShot(
+        enemy: Enemy,
+        speedUnits: Double,
+        damage: Int,
+        poisons: Boolean,
+        colorHex: Int,
+        sizeUnits: Double,
+    ) {
+        val p = player ?: return
+        val fromX = enemy.mesh.position.x
+        val fromY = enemy.mesh.position.y +
+            (if (enemy.visualTop > 0) enemy.visualTop * 0.65 else enemy.hitboxRadius)
+        val fromZ = enemy.mesh.position.z
+
+        val dx = p.mesh.position.x - fromX
+        val dy = (p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit) - fromY
+        val dz = p.mesh.position.z - fromZ
+        val length = sqrt(dx * dx + dy * dy + dz * dz)
+        if (length < 1e-3) return
+
+        val mesh = Mesh(
+            SphereGeometry(sizeUnits * worldUnit, 10, 8),
+            MeshBasicMaterial(obj {
+                color = Color(colorHex)
+                blending = AdditiveBlending
+                transparent = true
+            }).also { it.depthWrite = false },
+        )
+        // The laser reads as a bolt rather than a ball: stretched along its flight.
+        if (!poisons) mesh.scale.set(1.0, 1.0, ENEMY_LASER_STRETCH)
+        mesh.position.set(fromX, fromY, fromZ)
+        mesh.rotation.y = atan2(dx, dz)
+        context.scene.add(mesh)
+
+        enemyShots.add(
+            EnemyShot(
+                mesh,
+                dx / length, dy / length, dz / length,
+                speedUnits * worldUnit,
+                ENEMY_SHOT_LIFETIME,
+                damage,
+                poisons,
+            )
+        )
+    }
+
+    /** Flies every enemy shot, and resolves the ones that reach the player. */
+    private fun updateEnemyShots(deltaTime: Double) {
+        val p = player
+        val iterator = enemyShots.iterator()
+
+        while (iterator.hasNext()) {
+            val shot = iterator.next()
+            shot.remaining -= deltaTime
+            val step = shot.speed * deltaTime
+            shot.mesh.position.x += shot.dirX * step
+            shot.mesh.position.y += shot.dirY * step
+            shot.mesh.position.z += shot.dirZ * step
+
+            var hit = false
+            if (p != null && p.hp > 0 && p.invulnerableRemaining <= 0) {
+                val dx = p.mesh.position.x - shot.mesh.position.x
+                val dy = (p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit) -
+                    shot.mesh.position.y
+                val dz = p.mesh.position.z - shot.mesh.position.z
+                val reach = ENEMY_SHOT_HIT_UNITS * worldUnit
+                if (dx * dx + dy * dy + dz * dz <= reach * reach) {
+                    hit = true
+                    hurtPlayerFlat(p, shot.damage)
+                    if (shot.poisons) applyPoison(p)
+                }
+            }
+
+            if (hit || shot.remaining <= 0) {
+                shot.mesh.parent?.remove(shot.mesh)
+                iterator.remove()
+            }
+        }
+    }
+
+    /** Flat damage on the player from a source that doesn't roll to hit -- enemy fire. */
+    private fun hurtPlayerFlat(p: Player, damage: Int) {
+        p.hp = (p.hp - damage).coerceAtLeast(0)
+        p.photonBlast.onDamageTaken(damage, p.level)
+        p.invulnerableRemaining = INVULNERABILITY_DURATION
+        p.hitReactionRemaining = HIT_REACTION_DURATION
+        playerStatusPanel.setHealth(p.hp, p.maxHp)
+        if (p.hp <= 0) handlePlayerDowned(p)
+    }
+
+    /** Venom: ticking damage that can wound but never finish the job. */
+    private fun applyPoison(p: Player) {
+        if (p.poisonRemaining <= 0) showToast("Poisoned!")
+        p.poisonRemaining = POISON_SECONDS
+        p.poisonTickRemaining = POISON_TICK_SECONDS
+    }
+
+    /**
+     * A Lily's screech at whoever shoots it from range. Androids don't have a nervous system to
+     * seize -- the wiki is explicit that paralysis simply doesn't apply to them.
+     */
+    private fun applyParalysis(p: Player) {
+        if (isAndroid(p.characterClass)) return
+        if (p.paralysisRemaining > 0) return
+        p.paralysisRemaining = PARALYSIS_SECONDS
+        showToast("Paralyzed!")
+    }
+
+    /** Runs the player's own status clocks: venom ticks, paralysis wearing off. */
+    private fun updatePlayerStatuses(p: Player, deltaTime: Double) {
+        if (p.paralysisRemaining > 0) p.paralysisRemaining -= deltaTime
+
+        if (p.poisonRemaining > 0) {
+            p.poisonRemaining -= deltaTime
+            p.poisonTickRemaining -= deltaTime
+            if (p.poisonTickRemaining <= 0) {
+                p.poisonTickRemaining = POISON_TICK_SECONDS
+                // Poison wounds but never kills: PSO always leaves the last point of health.
+                if (p.hp > 1) {
+                    p.hp = (p.hp - POISON_TICK_DAMAGE).coerceAtLeast(1)
+                    playerStatusPanel.setHealth(p.hp, p.maxHp)
+                    damageNumbers.showDamage(
+                        p.mesh.position.x,
+                        p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit,
+                        p.mesh.position.z,
+                        POISON_TICK_DAMAGE,
+                        false,
+                    )
+                }
+            }
+        }
+    }
+
+    /** The Caves' heal rings: world position, and whether this visit has spent it. */
+    private val healRings = mutableListOf<Triple<Double, Double, Double>>()
+    private val spentHealRings = mutableSetOf<Int>()
+
+    /** Restores the player when they step into a heal ring they haven't used yet. */
+    private fun updateHealRings(p: Player) {
+        if (healRings.isEmpty() || p.hp <= 0) return
+        val radius = HEAL_RING_RADIUS_UNITS * worldUnit
+
+        for ((index, ring) in healRings.withIndex()) {
+            if (index in spentHealRings) continue
+            val dx = p.mesh.position.x - ring.first
+            val dz = p.mesh.position.z - ring.third
+            if (dx * dx + dz * dz > radius * radius) continue
+            if (p.hp >= p.maxHp) continue
+
+            spentHealRings.add(index)
+            p.hp = p.maxHp
+            playerStatusPanel.setHealth(p.hp, p.maxHp)
+            supportRing(ring.first, ring.second, ring.third, "resta_ring", RESTA_COLOR)
+            spawnHealLights(ring.first, ring.second, ring.third, RESTA_COLOR)
+            showToast("The ring restores you")
+            persistProgress()
+        }
+    }
 
     /** The warp home, which only exists once the boss falls. */
     private var returnWarp: Object3D? = null
@@ -1169,13 +1368,20 @@ class GameRenderer(
                 npcDialog.close()
                 transitionTo("forest01")
             },
-            DialogRow(
-                "", "Cave 1",
-                if (dragonDown) "unlocked -- the Caves open with their own update"
-                else "defeat the Dragon",
-            ),
-            DialogRow("", "Mine 1", "defeat De Rol Le"),
-            DialogRow("", "Ruins 1", "defeat Vol Opt"),
+            if (dragonDown) DialogRow("GO", "Cave 1") {
+                npcDialog.close()
+                transitionTo("cave01")
+            } else DialogRow("", "Cave 1", "defeat the Dragon"),
+            // De Rol Le and Vol Opt aren't built yet, so the underground zones open together
+            // once the Dragon falls -- the gate moves onto the real bosses when they exist.
+            if (dragonDown) DialogRow("GO", "Mine 1") {
+                npcDialog.close()
+                transitionTo("mines01")
+            } else DialogRow("", "Mine 1", "defeat the Dragon"),
+            if (dragonDown) DialogRow("GO", "Ruins 1") {
+                npcDialog.close()
+                transitionTo("ruins01")
+            } else DialogRow("", "Ruins 1", "defeat the Dragon"),
         )
         npcDialog.open(
             NpcDialogState(
@@ -1598,9 +1804,7 @@ class GameRenderer(
     private var magFormLoaded: String? = null
     private var magBobPhase = 0.0
 
-    private fun currentMagForm(p: Player): String =
-        if (p.mag.level >= Mag.FIRST_EVOLUTION_LEVEL) firstEvolutionOf(appearance.characterClass)
-        else "Mag"
+    private fun currentMagForm(p: Player): String = p.mag.form
 
     /**
      * Loads the Mag's model -- or swaps it after an evolution. The forms are the game's own
@@ -2121,8 +2325,12 @@ class GameRenderer(
                 mapAssetLoader.loadStage(mapSlug)
             } else {
                 // Cave/Mine/Ruins pick a random one of their several layout variants each time,
-                // same as the real game -- see randomAreaLayoutSlug's doc comment.
-                mapAssetLoader.loadArea(randomAreaLayoutSlug(mapSlug))
+                // same as the real game -- see randomAreaLayoutSlug's doc comment. The
+                // resolved slug is kept: the caves' encounter tables are per-terrain, so the
+                // spawn layout pick below must match the geometry that actually loaded.
+                mapAssetLoader.loadArea(
+                    randomAreaLayoutSlug(mapSlug).also { resolvedGeometrySlug = it }
+                )
             }
             context.scene.add(map.renderObject)
             // Kept for anything built after setup -- the boss-room warp stands on it.
@@ -2357,7 +2565,7 @@ class GameRenderer(
                 // the arc of one-of-every-species that used to be dropped around the spawn point
                 // -- that was a load-test sweep over the converted models, never an encounter.
                 val spawnTable = loadAreaSpawnTable(assetLoader, mapSlug)
-                val layout = spawnTable?.pickSoloLayout(layoutOverride)
+                val layout = spawnTable?.pickSoloLayout(layoutOverride, resolvedGeometrySlug)
 
                 if (spawnTable != null && layout != null) {
                     val clipSets = mutableMapOf<String, EnemyClipSet>()
@@ -2388,6 +2596,7 @@ class GameRenderer(
                         y: Double,
                         z: Double,
                         yaw: Double,
+                        section: Int = -1,
                     ): Enemy? {
                         val prototype = enemyLoader.prototype(slug)
                         val clips = clipSets[slug]
@@ -2427,6 +2636,9 @@ class GameRenderer(
 
                         val mixer = AnimationMixer(mesh)
 
+                        // Filled in below, once the Enemy the shot comes from exists.
+                        var firer: (() -> Unit)? = null
+
                         val ai = EnemyAI(
                             mesh,
                             prototype.njObject,
@@ -2448,8 +2660,16 @@ class GameRenderer(
                             stunMotion = clips.stun,
                             appearMotion = clips.appear,
                             isStationary = stats.isStationary,
+                            strikesWhileRooted = stats.strikesWhileRooted,
                             hoverUnits = stats.hoverUnits,
                             hiveClips = clips.hive,
+                            rangedRangeUnits = stats.rangedRangeUnits,
+                            fleeRangeUnits = stats.fleeRangeUnits,
+                            // The shot itself needs the Enemy, which doesn't exist yet -- the
+                            // firer is filled in the moment it does, just below.
+                            onRangedAttack =
+                                if (stats.rangedRangeUnits > 0) ({ firer?.invoke() })
+                                else null,
                         )
 
                         val enemy = Enemy(
@@ -2466,11 +2686,85 @@ class GameRenderer(
                             maxHp = stats.hp,
                             resistances = stats.resistances,
                             slug = slug,
+                            section = section,
                         )
                         // matrixWorld hasn't been refreshed this early, so the measured sphere
                         // is at model scale; apply the species' own multiplier by hand.
                         enemy.visualRadius = boundingSphere(mesh).radius * stats.modelScale
                         enemy.visualTop = (geometryTopY(mesh) ?: 0.0) * stats.modelScale
+
+                        // Now that the body exists, give its AI something to fire. The Nano
+                        // Dragon's nano laser crosses the room; a Lily spits venom.
+                        if (stats.rangedRangeUnits > 0) {
+                            firer = {
+                                when (slug) {
+                                    // The nano laser: fast, violet, room-length.
+                                    "NanoDragoon" -> fireEnemyShot(
+                                        enemy,
+                                        speedUnits = NANO_LASER_SPEED_UNITS,
+                                        damage = NANO_LASER_DAMAGE,
+                                        poisons = false,
+                                        colorHex = NANO_LASER_COLOR,
+                                        sizeUnits = 0.7,
+                                    )
+                                    // Garanz's missiles: slower and heavier than any laser.
+                                    "Garanz" -> fireEnemyShot(
+                                        enemy,
+                                        speedUnits = GARANZ_MISSILE_SPEED_UNITS,
+                                        damage = GARANZ_MISSILE_DAMAGE,
+                                        poisons = false,
+                                        colorHex = GARANZ_MISSILE_COLOR,
+                                        sizeUnits = 1.1,
+                                    )
+                                    // The Canadines' airborne zap.
+                                    "Canadine", "Canane" -> fireEnemyShot(
+                                        enemy,
+                                        speedUnits = CANADINE_ZAP_SPEED_UNITS,
+                                        damage = CANADINE_ZAP_DAMAGE,
+                                        poisons = false,
+                                        colorHex = CANADINE_ZAP_COLOR,
+                                        sizeUnits = 0.6,
+                                    )
+                                    // The Sorcerer's technique orb.
+                                    "ChaosSorcerer" -> fireEnemyShot(
+                                        enemy,
+                                        speedUnits = SORCERER_ORB_SPEED_UNITS,
+                                        damage = SORCERER_ORB_DAMAGE,
+                                        poisons = false,
+                                        colorHex = SORCERER_ORB_COLOR,
+                                        sizeUnits = 0.9,
+                                    )
+                                    // A Belra's arm strike crosses half the room.
+                                    "DarkBelra" -> fireEnemyShot(
+                                        enemy,
+                                        speedUnits = BELRA_ARM_SPEED_UNITS,
+                                        damage = BELRA_ARM_DAMAGE,
+                                        poisons = false,
+                                        colorHex = BELRA_ARM_COLOR,
+                                        sizeUnits = 1.2,
+                                    )
+                                    // The Dark Gunner's cannon.
+                                    "DarkGunner" -> fireEnemyShot(
+                                        enemy,
+                                        speedUnits = GUNNER_LASER_SPEED_UNITS,
+                                        damage = GUNNER_LASER_DAMAGE,
+                                        poisons = false,
+                                        colorHex = GUNNER_LASER_COLOR,
+                                        sizeUnits = 0.7,
+                                    )
+                                    // The Lilies' venom spit.
+                                    else -> fireEnemyShot(
+                                        enemy,
+                                        speedUnits = LILY_SPIT_SPEED_UNITS,
+                                        damage = LILY_SPIT_DAMAGE,
+                                        poisons = true,
+                                        colorHex = LILY_SPIT_COLOR,
+                                        sizeUnits = 1.0,
+                                    )
+                                }
+                            }
+                        }
+
                         enemies.add(enemy)
                         return enemy
                     }
@@ -2495,6 +2789,7 @@ class GameRenderer(
                             placement.slug,
                             placement.x, placement.y, placement.z,
                             placement.yaw,
+                            placement.section,
                         )?.let { hives.add(HiveState(it)) }
                     }
 
@@ -2506,6 +2801,13 @@ class GameRenderer(
                             TriggerVolume(obj.x, obj.z, radius, eventId)
                         }
 
+                    // The map's fog of war works off the same rooms the wave director does.
+                    miniMap?.setRooms(
+                        (layout.sections.ifEmpty { spawnTable.sections }).map { section ->
+                            MapRoom(section.id, section.x, section.z)
+                        }
+                    )
+
                     roomWaveDirector = RoomWaveDirector(spawnTable, layout, volumes = triggerVolumes) { placement ->
                         // Already standing (above) -- and not something a wave should wait on.
                         if (placement.slug == "Monest") return@RoomWaveDirector null
@@ -2514,6 +2816,7 @@ class GameRenderer(
                             placement.slug,
                             placement.x, placement.y, placement.z,
                             placement.yaw,
+                            placement.section,
                         )
 
                         // A skipped species still counts as cleared, so the room can't dead-end.
@@ -2548,6 +2851,15 @@ class GameRenderer(
                     }
 
                     val switchPlacements = mutableListOf<SpawnObject>()
+
+                    /**
+                     * The Caves' four-button doors, by door ID: each opens only once every
+                     * floor panel in its set has been stood on. A panel's Switch ID is its
+                     * door's ID plus one through four, which is how a panel finds its door.
+                     */
+                    val buttonDoors = mutableListOf<Pair<Int, FieldGates.Gate>>()
+                    val buttonDoorPanels = mutableMapOf<Int, MutableList<SpawnObject>>()
+                    val buttonDoorPressed = mutableMapOf<Int, MutableSet<Int>>()
 
                     for (obj in layout.objects) {
                         when (obj.typeId) {
@@ -2598,7 +2910,84 @@ class GameRenderer(
                             SpawnObject.TYPE_FOREST_SWITCH,
                             SpawnObject.TYPE_LASER_FENCE_SWITCH,
                             SpawnObject.TYPE_SWITCH_NONE_DOOR,
+                            SpawnObject.TYPE_CAVE_FLOOR_PANEL,
+                            SpawnObject.TYPE_MINE_FLOOR_PANEL,
+                            SpawnObject.TYPE_RUINS_SWITCH,
                             -> switchPlacements.add(obj)
+
+                            // The Caves' doors. All three models are plain gates keyed by door
+                            // ID: the wave script opens the ordinary ones, a set of floor
+                            // panels opens a four-button door, and the switch doors carry IDs
+                            // no event names -- the safety net below spawns those open.
+                            SpawnObject.TYPE_CAVE_DOOR,
+                            SpawnObject.TYPE_CAVE_SWITCH_DOOR,
+                            SpawnObject.TYPE_CAVE_4_BUTTON_DOOR,
+                            SpawnObject.TYPE_MINE_DOOR,
+                            SpawnObject.TYPE_MINE_SWITCH_DOOR,
+                            SpawnObject.TYPE_MINE_4_BUTTON_DOOR,
+                            SpawnObject.TYPE_RUINS_DOOR_A1,
+                            SpawnObject.TYPE_RUINS_DOOR_A2,
+                            SpawnObject.TYPE_RUINS_DOOR_A3,
+                            -> {
+                                // Both twins are loaded: the red one is what stands there
+                                // while the door is locked, the green one takes over the
+                                // moment it releases. The door never vanishes -- unlocked, it
+                                // slides open and shut as you come and go. The Mines and Ruins
+                                // run the exact same mechanism on their own models.
+                                val slug = when (obj.typeId) {
+                                    SpawnObject.TYPE_CAVE_4_BUTTON_DOOR -> "CaveDoor02"
+                                    SpawnObject.TYPE_MINE_4_BUTTON_DOOR -> "MineDoor02"
+                                    SpawnObject.TYPE_MINE_DOOR,
+                                    SpawnObject.TYPE_MINE_SWITCH_DOOR,
+                                    -> "MineDoor01"
+                                    SpawnObject.TYPE_RUINS_DOOR_A1 -> "RuinsDoor01"
+                                    SpawnObject.TYPE_RUINS_DOOR_A2 -> "RuinsDoor02"
+                                    SpawnObject.TYPE_RUINS_DOOR_A3 -> "RuinsDoor03"
+                                    else -> "CaveDoor01"
+                                }
+
+                                val unlockedMesh = gateLoader.loadObject(slug)
+                                val lockedMesh = gateLoader.loadObject("${slug}Locked")
+                                for (mesh in listOf(unlockedMesh, lockedMesh)) {
+                                    mesh.position.set(obj.x, obj.y, obj.z)
+                                    mesh.rotation.y = obj.yaw
+                                    context.scene.add(mesh)
+                                }
+
+                                val gate = FieldGates.Gate(
+                                    meshes = listOf(unlockedMesh),
+                                    mixers = emptyList(),
+                                    openActions = emptyList(),
+                                    doorId = obj.doorId,
+                                    x = obj.x, y = obj.y, z = obj.z,
+                                    halfWidth = FieldGates.DOOR_HALF_WIDTH,
+                                    yaw = obj.yaw,
+                                    hideOnOpen = false,
+                                    lockedMeshes = listOf(lockedMesh),
+                                    slideHeight = meshHeightWorld(unlockedMesh)
+                                        ?: CAVE_DOOR_SLIDE_FALLBACK,
+                                )
+                                gates.doors.add(gate)
+                                if (obj.typeId == SpawnObject.TYPE_CAVE_4_BUTTON_DOOR ||
+                                    obj.typeId == SpawnObject.TYPE_MINE_4_BUTTON_DOOR
+                                ) {
+                                    buttonDoors.add(obj.doorId to gate)
+                                }
+                            }
+
+                            // A heal ring restores anyone who steps into it, once.
+                            SpawnObject.TYPE_HEAL_RING -> {
+                                val healSlug = when {
+                                    mapSlug.startsWith("mines") -> "MineHealRing"
+                                    mapSlug.startsWith("ruins") -> "RuinsHealRing"
+                                    else -> "CaveHealRing"
+                                }
+                                val mesh = gateLoader.loadObject(healSlug)
+                                mesh.position.set(obj.x, obj.y, obj.z)
+                                mesh.rotation.y = obj.yaw
+                                context.scene.add(mesh)
+                                healRings.add(Triple(obj.x, obj.y, obj.z))
+                            }
 
                             SpawnObject.TYPE_ENERGY_BARRIER -> {
                                 // The decorative posts stand always; the humming beam between
@@ -2719,7 +3108,9 @@ class GameRenderer(
                                 )
                             }
 
-                            SpawnObject.TYPE_WARP -> {
+                            SpawnObject.TYPE_WARP,
+                            SpawnObject.TYPE_RUINS_WARP,
+                            -> {
                                 val pad = gateLoader.loadObject("WarpPad")
                                 pad.position.set(obj.x, obj.y, obj.z)
                                 pad.rotation.y = obj.yaw
@@ -2787,7 +3178,91 @@ class GameRenderer(
                     // converted yet, so the fence switch's pedestal stands in for it visually.)
                     val switchDoorIds = mutableSetOf<Int>()
 
+                    // Group each cave/mine floor panel with the four-button door it belongs to.
+                    for (panel in switchPlacements) {
+                        if (panel.typeId != SpawnObject.TYPE_CAVE_FLOOR_PANEL &&
+                            panel.typeId != SpawnObject.TYPE_MINE_FLOOR_PANEL
+                        ) continue
+                        val switchId = panel.paramsI.getOrNull(0) ?: panel.doorId
+                        val door = buttonDoors.firstOrNull { (doorId, _) ->
+                            switchId - doorId in 1..4
+                        }
+                        if (door != null) {
+                            buttonDoorPanels.getOrPut(door.first) { mutableListOf() }.add(panel)
+                        }
+                    }
+
                     for (obj in switchPlacements) {
+                        // A floor panel is its own kind: the real model, red until stood on.
+                        // Cave and Mine panels count toward their four-button door; a Ruins
+                        // switch opens the door carrying its own number outright.
+                        val panelSlug = when (obj.typeId) {
+                            SpawnObject.TYPE_CAVE_FLOOR_PANEL -> "CaveFloorPanel"
+                            SpawnObject.TYPE_MINE_FLOOR_PANEL -> "MineFloorPanel"
+                            SpawnObject.TYPE_RUINS_SWITCH -> "RuinsFloorPanel"
+                            else -> null
+                        }
+                        if (panelSlug != null) {
+                            val switchId = obj.paramsI.getOrNull(0) ?: obj.doorId
+                            val door =
+                                if (obj.typeId == SpawnObject.TYPE_RUINS_SWITCH) null
+                                else buttonDoors.firstOrNull { (doorId, _) ->
+                                    switchId - doorId in 1..4
+                                }
+                            door?.let { switchDoorIds.add(it.first) }
+
+                            val directDoor =
+                                if (obj.typeId == SpawnObject.TYPE_RUINS_SWITCH) {
+                                    switchDoorIds.add(obj.doorId)
+                                    gates.doors.find { it.doorId == obj.doorId }
+                                } else null
+
+                            // Red until it's stood on, then green -- the same twin-model trick
+                            // the doors use.
+                            val pressedMesh = gateLoader.loadObject(panelSlug)
+                            val unpressedMesh = gateLoader.loadObject("${panelSlug}Locked")
+                            for (mesh in listOf(pressedMesh, unpressedMesh)) {
+                                mesh.position.set(obj.x, obj.y, obj.z)
+                                mesh.rotation.y = obj.yaw
+                                context.scene.add(mesh)
+                            }
+                            pressedMesh.visible = false
+
+                            gates.switches.add(
+                                FieldGates.FloorSwitch(
+                                    meshes = listOf(pressedMesh, unpressedMesh),
+                                    mixers = emptyList(),
+                                    pressActions = emptyList(),
+                                    linked = null,
+                                    x = obj.x, y = obj.y, z = obj.z,
+                                    onPressed = {
+                                        pressedMesh.visible = true
+                                        unpressedMesh.visible = false
+                                        directDoor?.let {
+                                            it.open()
+                                            showToast("The door grinds open")
+                                        }
+                                        door?.let { (doorId, gate) ->
+                                            val pressed = buttonDoorPressed
+                                                .getOrPut(doorId) { mutableSetOf() }
+                                            pressed.add(switchId)
+                                            val needed =
+                                                buttonDoorPanels[doorId]?.size ?: 0
+                                            if (pressed.size >= needed) {
+                                                gate.open()
+                                                showToast("The door grinds open")
+                                            } else {
+                                                showToast(
+                                                    "Panel lit -- ${needed - pressed.size} to go"
+                                                )
+                                            }
+                                        }
+                                    },
+                                )
+                            )
+                            continue
+                        }
+
                         val linked = when (obj.typeId) {
                             SpawnObject.TYPE_FOREST_SWITCH -> {
                                 switchDoorIds.add(obj.doorId)
@@ -3187,6 +3662,34 @@ class GameRenderer(
                         ?.let { effectTextures["technic_bolt"] = xvrTextureToThree(it) }
                     technicRingFrames = technicPt.textures.take(7).map { xvrTextureToThree(it) }
                     technicRingFrames.firstOrNull()?.let { effectTextures["technic_ring"] = it }
+
+                    // effect_nt.xvm: the general effect sheet -- explosions, lightning, the
+                    // casting glyphs. Indices read off the fxsheet contact pages.
+                    val effectNt = parseXvm(
+                        assetLoader.loadArrayBuffer("/fx/effect_nt.xvm").cursor(Endianness.Little)
+                    ).unwrap()
+                    fun seedNt(name: String, index: Int) {
+                        effectNt.textures.getOrNull(index)
+                            ?.let { effectTextures[name] = xvrTextureToThree(it) }
+                    }
+                    seedNt("nt_spark_blue", 18)
+                    seedNt("nt_seal_hex", 22)
+                    seedNt("nt_plasma", 23)
+                    seedNt("nt_explosion_purple", 26)
+                    seedNt("nt_explosion_white", 27)
+                    seedNt("nt_explosion_gold", 28)
+                    seedNt("nt_explosion_cyan", 29)
+                    seedNt("nt_dust", 31)
+                    seedNt("nt_glyphs", 37)
+                    seedNt("nt_circle_gold", 38)
+                    seedNt("nt_bolts", 41)
+                    seedNt("nt_shard", 48)
+
+                    // bm_eff_ice's crystal model (extracted from the BML): the formations the
+                    // ice techniques encase their victims in.
+                    iceXjObject = parseXj(
+                        assetLoader.loadArrayBuffer("/fx/IceBreak.xj").cursor(Endianness.Little)
+                    ).unwrap().firstOrNull()
                 } catch (e: Throwable) {
                     console.warn("technic fx archives failed to load: ${e.message}")
                 }
@@ -3196,7 +3699,7 @@ class GameRenderer(
                 val xvm = parseXvm(
                     assetLoader.loadArrayBuffer("/fx/$sheet.xvm").cursor(Endianness.Little)
                 ).unwrap()
-                val perPage = FX_SHEET_COLUMNS * FX_SHEET_COLUMNS
+                val perPage = FX_SHEET_COLUMNS * 2
                 val start = fxSheetPage * perPage
                 console.log("FXSHEET $sheet: ${xvm.textures.size} textures, page $fxSheetPage from $start")
                 xvm.textures.drop(start).take(perPage).forEachIndexed { i, xvr ->
@@ -3255,7 +3758,8 @@ class GameRenderer(
                 palette.setUnusable(GameAction.SPECIAL_ATTACK, true)
             }
           } catch (e: Throwable) {
-            console.error("Failed to build the world for $mapSlug", e)
+            console.error("Failed to build the world for $mapSlug: ${e.message}")
+            console.error(e.stackTraceToString())
             onSetupError?.invoke(e)
           }
         }
@@ -3692,7 +4196,15 @@ class GameRenderer(
             p.materialPower = s.materialPower
             p.materialMind = s.materialMind
             p.materialHp = s.materialHp
-            p.mag = Mag(s.magDefExp, s.magPowExp, s.magDexExp, s.magMindExp, s.magSynchro, s.magIq)
+            p.mag = Mag(
+                s.magDefExp, s.magPowExp, s.magDexExp, s.magMindExp, s.magSynchro, s.magIq,
+                form = s.magForm.ifBlank {
+                    // Pre-evolution saves: derive what the old build displayed.
+                    val level = (s.magDefExp + s.magPowExp + s.magDexExp + s.magMindExp) / Mag.EXP_PER_LEVEL
+                    if (level >= Mag.FIRST_EVOLUTION_LEVEL) firstEvolutionOf(appearance.characterClass)
+                    else Mag.BASE_FORM
+                },
+            )
             p.magFeedsLeft = s.magFeedsLeft
             p.magWindowEndMs = s.magWindowEndMs
             p.bankMeseta = s.bankMeseta
@@ -3745,6 +4257,7 @@ class GameRenderer(
                 magMindExp = p.mag.mindExp,
                 magSynchro = p.mag.synchro,
                 magIq = p.mag.iq,
+                magForm = p.mag.form,
                 magFeedsLeft = p.magFeedsLeft,
                 magWindowEndMs = p.magWindowEndMs,
                 defeatedBosses = p.defeatedBosses.toList(),
@@ -3816,6 +4329,26 @@ class GameRenderer(
                 // TP grows with the level too, so the bar's ceiling moves with it.
                 playerStatusPanel.setTp(p.tp, p.stats.tp)
                 showToast("LEVEL UP!  Lv.$newLevel")
+            }
+        }
+
+        // A Lily's last act: it pumps itself so full of venom that it bursts, and anything
+        // standing over the corpse wears it.
+        if (enemy.slug == "PoisonLily" || enemy.slug == "NarLily") {
+            val burst = effectSprite("burst_bright", LILY_BURST_RADIUS_UNITS * 1.4, colorHex = LILY_SPIT_COLOR)
+            burst.position.set(
+                enemy.mesh.position.x, centerMassHeight(enemy), enemy.mesh.position.z,
+            )
+            addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 3.0))
+
+            player?.let { p ->
+                val dx = p.mesh.position.x - enemy.mesh.position.x
+                val dz = p.mesh.position.z - enemy.mesh.position.z
+                val reach = LILY_BURST_RADIUS_UNITS * worldUnit
+                if (dx * dx + dz * dz <= reach * reach && p.hp > 0) {
+                    hurtPlayerFlat(p, LILY_BURST_DAMAGE)
+                    applyPoison(p)
+                }
             }
         }
 
@@ -4070,10 +4603,129 @@ class GameRenderer(
 
     private val techEffects = mutableListOf<TimedEffect>()
 
+    /** A gameplay consequence scheduled mid-spell -- Gifoie's ring reaching each enemy. */
+    private class DelayedAction(var remaining: Double, val action: () -> Unit)
+
+    private val delayedTechActions = mutableListOf<DelayedAction>()
+
     private val effectTextures = mutableMapOf<String, Texture>()
 
     /** technic_pt.xvm's seven golden ring frames -- the cast stamp every technique fires. */
     private var technicRingFrames: List<Texture> = emptyList()
+
+    /** bm_eff_ice's crystal model, parsed once; every ice burst builds fresh meshes from it. */
+    private var iceXjObject: world.phantasmal.psolib.fileFormats.ninja.XjObject? = null
+
+    /**
+     * A clutch of the real ice-crystal models bursting out of the ground -- the encasing
+     * formations the reference captures show swallowing whole enemies. Each crystal is the
+     * model at a random yaw and an uneven scale, in an additive frost blue.
+     */
+    private fun spawnIceCrystals(
+        x: Double, y: Double, z: Double,
+        count: Int,
+        radiusWorld: Double,
+        scale: Double,
+    ) {
+        val xj = iceXjObject ?: return
+        for (k in 0 until count) {
+            val material = MeshBasicMaterial(obj {
+                color = Color(ICE_CRYSTAL_COLOR)
+                blending = AdditiveBlending
+                transparent = true
+                side = DoubleSide
+                opacity = 0.85
+            }).also { it.depthWrite = false }
+            val crystal = ninjaObjectToMesh(xj, emptyList(), defaultMaterial = material)
+            val angle = Random.nextDouble() * 2 * PI
+            val r = Random.nextDouble() * radiusWorld
+            crystal.position.set(x + sin(angle) * r, y, z + cos(angle) * r)
+            crystal.rotation.y = Random.nextDouble() * 2 * PI
+            val s = scale * (0.7 + Random.nextDouble() * 0.6)
+            crystal.scale.set(s, s * (0.8 + Random.nextDouble() * 0.6), s)
+            addEffect(
+                TimedEffect(
+                    crystal, ICE_CRYSTAL_SECONDS, ICE_CRYSTAL_SECONDS,
+                    riseUnits = 0.5, growPerSecond = 0.35,
+                )
+            )
+        }
+    }
+
+    /** The huge additive blast sphere the Ra-explosions swell into -- the reference's dome. */
+    private fun spawnExplosionDome(x: Double, y: Double, z: Double, radiusWorld: Double, colorHex: Int) {
+        val dome = Mesh(
+            SphereGeometry(1.0, 20, 14),
+            MeshBasicMaterial(obj {
+                color = Color(colorHex)
+                blending = AdditiveBlending
+                transparent = true
+                opacity = 0.8
+            }).also { it.depthWrite = false },
+        )
+        dome.position.set(x, y, z)
+        val start = radiusWorld * 0.35
+        dome.scale.set(start, start, start)
+        addEffect(TimedEffect(dome, DOME_SECONDS, DOME_SECONDS, growPerSecond = 4.5))
+    }
+
+    /** Jagged forks scattered flat on the ground -- lightning crawling away from a strike. */
+    private fun spawnLightningCrawl(x: Double, y: Double, z: Double, count: Int, spreadWorld: Double) {
+        if ("nt_bolts" !in effectTextures) return
+        for (k in 0 until count) {
+            val fork = effectGroundQuad(
+                "nt_bolts", 7.0, 2.8, Random.nextDouble() * 2 * PI, ZONDE_COLOR,
+            )
+            fork.position.set(
+                x + (Random.nextDouble() - 0.5) * spreadWorld,
+                y + 0.35,
+                z + (Random.nextDouble() - 0.5) * spreadWorld,
+            )
+            addEffect(
+                TimedEffect(fork, CRAWL_SECONDS + Random.nextDouble() * 0.15, CRAWL_SECONDS)
+            )
+        }
+    }
+
+    /** The column of light Grants brings down on the judged. */
+    private fun spawnLightPillar(x: Double, y: Double, z: Double, colorHex: Int) {
+        val height = PILLAR_HEIGHT_UNITS * worldUnit
+        val pillar = Mesh(
+            CylinderGeometry(PILLAR_RADIUS_UNITS * worldUnit, PILLAR_RADIUS_UNITS * worldUnit, height, 18),
+            MeshBasicMaterial(obj {
+                color = Color(colorHex)
+                blending = AdditiveBlending
+                transparent = true
+                opacity = 0.65
+            }).also { it.depthWrite = false },
+        )
+        pillar.position.set(x, y + height / 2, z)
+        addEffect(TimedEffect(pillar, PILLAR_SECONDS, PILLAR_SECONDS))
+    }
+
+    /** The down-pointing pyramid markers a debuff hangs over its victims. */
+    private fun spawnDebuffMarker(enemy: Enemy, colorHex: Int) {
+        val size = DEBUFF_MARKER_UNITS * worldUnit
+        val marker = Mesh(
+            CylinderGeometry(0.0, size * 0.6, size, 4, 1),
+            MeshBasicMaterial(obj {
+                color = Color(colorHex)
+                blending = AdditiveBlending
+                transparent = true
+                opacity = 0.9
+            }).also { it.depthWrite = false },
+        )
+        // Cone points DOWN at the victim.
+        marker.rotation.x = PI
+        marker.position.set(
+            enemy.mesh.position.x,
+            enemy.mesh.position.y + (if (enemy.visualTop > 0) enemy.visualTop else enemy.visualRadius) + size,
+            enemy.mesh.position.z,
+        )
+        addEffect(
+            TimedEffect(marker, DEBUFF_MARKER_SECONDS, DEBUFF_MARKER_SECONDS, spinPerSecond = 3.2)
+        )
+    }
 
     private fun effectTexture(name: String): Texture =
         effectTextures.getOrPut(name) { TextureLoader().load("assets/skin/effects/$name.png") }
@@ -4128,11 +4780,29 @@ class GameRenderer(
 
     private fun addEffect(effect: TimedEffect) {
         context.scene.add(effect.root)
-        techEffects.add(effect)
+        techEffects.add(
+            if (!fxSlowMotion) effect
+            else TimedEffect(
+                effect.root,
+                effect.duration * FX_SLOW_FACTOR,
+                effect.remaining * FX_SLOW_FACTOR,
+                effect.frames,
+                effect.frameRate / FX_SLOW_FACTOR,
+                effect.riseUnits / FX_SLOW_FACTOR,
+                effect.growPerSecond / FX_SLOW_FACTOR,
+                effect.spinPerSecond / FX_SLOW_FACTOR,
+            )
+        )
     }
 
     /** Foie's burst on connection: the game's own 16-frame flame flipbook. */
     private fun spawnFoieImpact(x: Double, y: Double, z: Double) {
+        // effect_nt's gold starburst underneath the flames, blowing outward.
+        if ("nt_explosion_gold" in effectTextures) {
+            val burst = effectSprite("nt_explosion_gold", 2.2)
+            burst.position.set(x, y, z)
+            addEffect(TimedEffect(burst, FOIE_BURST_SECONDS, FOIE_BURST_SECONDS, growPerSecond = 4.2))
+        }
         val frames = (0 until 16).map { effectTexture("foie_flame_$it") }
         val impact = effectSprite("foie_flame_0", 2.6)
         impact.position.set(x, y, z)
@@ -4151,10 +4821,14 @@ class GameRenderer(
      */
     private fun findFocusTarget(p: Player): Enemy? {
         // A caster's engagement range is their techniques, not the cane in their hand -- a
-        // Force locks at spell distance the way a Ranger locks down a gun's sightline.
+        // Force locks at spell distance the way a Ranger locks down a gun's sightline. And
+        // nobody's lock stops at their weapon's edge: the real game's reticle finds targets
+        // well before a saber can touch them, which is what lets you pick a fight on your own
+        // terms -- hence the floor under every class.
         val engagementReach = maxOf(
             p.weaponType.effectiveReach,
             if (professionOf(p.characterClass) == Profession.FORCE) TECH_FOCUS_RANGE_UNITS else 0.0,
+            FOCUS_RANGE_FLOOR_UNITS,
         )
         val rangeWorld = (engagementReach + FOCUS_MARGIN_UNITS) * worldUnit
         var best: Enemy? = null
@@ -4344,6 +5018,23 @@ class GameRenderer(
             )
         }
 
+        // The floating cast glyphs -- effect_nt's rune sheet rising beside the caster, the
+        // original game's most recognisable casting tell.
+        if ("nt_glyphs" in effectTextures) {
+            for (side in intArrayOf(-1, 1)) {
+                val glyphs = effectSprite("nt_glyphs", 2.2, 3.2, colorHex = CAST_GLYPH_COLOR)
+                val angle = p.mesh.rotation.y + side * 1.1
+                glyphs.position.set(
+                    p.mesh.position.x + sin(angle) * 1.7 * worldUnit,
+                    p.mesh.position.y + 1.1 * worldUnit,
+                    p.mesh.position.z + cos(angle) * 1.7 * worldUnit,
+                )
+                addEffect(
+                    TimedEffect(glyphs, CAST_GLYPH_SECONDS, CAST_GLYPH_SECONDS, riseUnits = 2.4)
+                )
+            }
+        }
+
         when (technique) {
             Technique.FOIE -> {
                 // The fireball is technic_pt.xvm's own 8-frame orb, cycled in flight.
@@ -4415,6 +5106,33 @@ class GameRenderer(
                     )
                     addEffect(TimedEffect(bolt, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
 
+                    // Lightning crawls away from the strike along the ground.
+                    spawnLightningCrawl(
+                        target.mesh.position.x, target.mesh.position.y, target.mesh.position.z,
+                        count = 4, spreadWorld = 9.0 * worldUnit,
+                    )
+                    // effect_nt's own forked-lightning sheet crossed over the strike, with its
+                    // plasma ball at the point of contact.
+                    if ("nt_bolts" in effectTextures) {
+                        val forks = effectSprite("nt_bolts", 4.6, 7.0, colorHex = ZONDE_COLOR)
+                        forks.position.set(
+                            target.mesh.position.x,
+                            strikeY + 1.6 * worldUnit,
+                            target.mesh.position.z,
+                        )
+                        addEffect(TimedEffect(forks, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
+                        val plasma = effectSprite("nt_plasma", 2.8)
+                        plasma.position.set(
+                            target.mesh.position.x, strikeY, target.mesh.position.z,
+                        )
+                        addEffect(
+                            TimedEffect(
+                                plasma, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS,
+                                growPerSecond = 2.6,
+                            )
+                        )
+                    }
+
                     val flash = effectSprite("zonde_flash", 4.2, colorHex = ZONDE_COLOR)
                     flash.position.set(
                         target.mesh.position.x,
@@ -4449,6 +5167,11 @@ class GameRenderer(
                         )
                         addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
                         hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.ice))
+                        spawnIceCrystals(
+                            enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
+                            count = 2, radiusWorld = enemy.hitboxRadius * 0.8,
+                            scale = 0.8 + enemy.hitboxRadius / (8.0 * worldUnit),
+                        )
                     }
                 }
                 breakBoxesInLine(
@@ -4467,28 +5190,55 @@ class GameRenderer(
                 playerStatusPanel.setHealth(p.hp, p.maxHp)
                 supportRing(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, "resta_ring", RESTA_COLOR)
                 spawnHealLights(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, RESTA_COLOR)
+                // The reference's green glitter falling around the healed from above.
+                for (k in 0 until RESTA_GLINT_COUNT) {
+                    spawnParticle(
+                        if ("nt_spark_blue" in effectTextures) "nt_spark_blue" else "burst_bright",
+                        p.mesh.position.x + (Random.nextDouble() - 0.5) * 7.0,
+                        p.mesh.position.y + 8.0 + Random.nextDouble() * 4.0,
+                        p.mesh.position.z + (Random.nextDouble() - 0.5) * 7.0,
+                        sizeWorld = 1.4,
+                        colorHex = RESTA_COLOR,
+                        vy = -7.0,
+                        seconds = 1.0,
+                        delaySeconds = Random.nextDouble() * 0.5,
+                    )
+                }
             }
 
             Technique.GIFOIE -> {
-                // A ring of fire circling the caster: everything inside the zone burns once.
+                // The fire SPREADS: the spiral starts at the caster's feet and winds outward,
+                // wider with every turn, and each enemy burns when the ring actually reaches
+                // them -- not all at once inside a fixed circle.
                 for (enemy in enemiesWithin(p.mesh.position.x, p.mesh.position.z, GIFOIE_RADIUS_UNITS)) {
-                    hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.fire))
+                    val dx = enemy.mesh.position.x - p.mesh.position.x
+                    val dz = enemy.mesh.position.z - p.mesh.position.z
+                    val arrival =
+                        sqrt(dx * dx + dz * dz) / (GIFOIE_RADIUS_UNITS * worldUnit) * GIFOIE_SECONDS
+                    delayedTechActions.add(DelayedAction(arrival) {
+                        if (!enemy.isDead) {
+                            hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.fire))
+                        }
+                    })
                 }
-                // Three arms of fire orbiting the caster for the spell's whole turn. Each arm
-                // is a train of short-lived flames laid around the circle on a delay, so the eye
-                // sees fire *travelling* -- not a textured disc spinning in place.
+                // Three arms of fire spiralling outward for the spell's whole turn: a train of
+                // short-lived flames whose orbit radius grows with time, so the eye sees fire
+                // travelling AND spreading.
+                val flameFrames = (0 until 16).map { effectTexture("foie_flame_$it") }
                 for (arm in 0 until GIFOIE_ARMS) {
                     for (step in 0 until GIFOIE_STEPS) {
                         val t = step.toDouble() / GIFOIE_STEPS * GIFOIE_SECONDS
                         val angle = arm * 2 * PI / GIFOIE_ARMS + GIFOIE_SPIN * t
-                        val radius = GIFOIE_RADIUS_UNITS * worldUnit
+                        val radius =
+                            (2.0 + (GIFOIE_RADIUS_UNITS - 2.0) * t / GIFOIE_SECONDS) * worldUnit
                         spawnParticle(
                             "foie_flame_0",
                             p.mesh.position.x + sin(angle) * radius,
                             p.mesh.position.y + 4.0,
                             p.mesh.position.z + cos(angle) * radius,
-                            sizeWorld = 5.0, colorHex = FOIE_COLOR,
-                            seconds = 0.3, growPerSecond = 0.5,
+                            sizeWorld = 6.0, colorHex = FOIE_COLOR,
+                            seconds = 0.35, growPerSecond = 0.5,
+                            frames = flameFrames, frameRate = 24.0,
                             delaySeconds = t,
                         )
                     }
@@ -4508,6 +5258,12 @@ class GameRenderer(
                         hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.fire))
                     }
                     spawnFoieImpact(tx, centerMassHeight(target), tz)
+                    // The whole blast zone swells as one molten dome -- the reference's giant
+                    // orange sphere -- with the starburst inside it.
+                    spawnExplosionDome(
+                        tx, centerMassHeight(target), tz,
+                        RAFOIE_RADIUS_UNITS * worldUnit, FOIE_COLOR,
+                    )
                     val burst = effectSprite("burst_orange", RAFOIE_RADIUS_UNITS * 1.6, colorHex = FOIE_COLOR)
                     burst.position.set(tx, centerMassHeight(target), tz)
                     addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 2.0))
@@ -4542,6 +5298,13 @@ class GameRenderer(
                     ) {
                         hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.ice))
                         if (!enemy.isDead) maybeFreeze(enemy)
+                        // The breath leaves its victims encased -- the real crystal model
+                        // bursting up around each body caught in the cone.
+                        spawnIceCrystals(
+                            enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
+                            count = 3, radiusWorld = enemy.hitboxRadius,
+                            scale = 1.0 + enemy.hitboxRadius / (6.0 * worldUnit),
+                        )
                     }
                 }
                 // gibartalv1star's recipe: ten crystals breathed forward at speed 50, fanning
@@ -4569,6 +5332,11 @@ class GameRenderer(
                 for (enemy in enemiesWithin(p.mesh.position.x, p.mesh.position.z, RABARTA_RADIUS_UNITS)) {
                     hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.ice))
                     if (!enemy.isDead) maybeFreeze(enemy)
+                    spawnIceCrystals(
+                        enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
+                        count = 3, radiusWorld = enemy.hitboxRadius,
+                        scale = 1.0 + enemy.hitboxRadius / (6.0 * worldUnit),
+                    )
                     val burst = effectSprite("barta_burst", 3.2, colorHex = BARTA_COLOR)
                     burst.position.set(
                         enemy.mesh.position.x, centerMassHeight(enemy), enemy.mesh.position.z,
@@ -4611,6 +5379,10 @@ class GameRenderer(
                     val toY = centerMassHeight(current)
                     val toZ = current.mesh.position.z
                     boltBetween(fromX, fromY, fromZ, toX, toY, toZ)
+                    spawnLightningCrawl(
+                        toX, current.mesh.position.y, toZ,
+                        count = 2, spreadWorld = 6.0 * worldUnit,
+                    )
                     val flash = effectSprite("zonde_flash", 3.4, colorHex = ZONDE_COLOR)
                     flash.position.set(toX, toY, toZ)
                     addEffect(
@@ -4635,6 +5407,11 @@ class GameRenderer(
 
             Technique.RAZONDE -> {
                 // The storm around the caster -- the one lightning technique that needs no target.
+                // The whole zone becomes the reference's crawling lightning field.
+                spawnLightningCrawl(
+                    p.mesh.position.x, p.mesh.position.y, p.mesh.position.z,
+                    count = 10, spreadWorld = RAZONDE_RADIUS_UNITS * worldUnit * 1.6,
+                )
                 val caught = enemiesWithin(p.mesh.position.x, p.mesh.position.z, RAZONDE_RADIUS_UNITS)
                 for (enemy in caught) {
                     val bolt = effectSprite("zonde_bolt", 2.6, 9.0, colorHex = ZONDE_COLOR)
@@ -4676,6 +5453,27 @@ class GameRenderer(
                     showToast("Grants needs a target")
                 } else {
                     hurtEnemy(target, techniqueDamage(power, mst, target.resistances.light))
+                    // The reference's column of light dropped on the judged.
+                    spawnLightPillar(
+                        target.mesh.position.x, target.mesh.position.y, target.mesh.position.z,
+                        GRANTS_COLOR,
+                    )
+                    // effect_nt's golden magic circle turning under the judged -- the seal the
+                    // real Grants stamps its target with.
+                    if ("nt_circle_gold" in effectTextures) {
+                        val seal = effectGroundQuad("nt_circle_gold", 3.8, 3.8, 0.0)
+                        seal.position.set(
+                            target.mesh.position.x,
+                            target.mesh.position.y + 0.3 * worldUnit,
+                            target.mesh.position.z,
+                        )
+                        addEffect(
+                            TimedEffect(
+                                seal, GRANTS_SEAL_SECONDS, GRANTS_SEAL_SECONDS,
+                                spinPerSecond = 2.6,
+                            )
+                        )
+                    }
                     // Light gathers before it strikes: rays converging on the mark from a ring.
                     val cy = centerMassHeight(target)
                     for (k in 0 until GRANTS_RAY_COUNT) {
@@ -4755,6 +5553,7 @@ class GameRenderer(
                         enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
                         JELLEN_COLOR,
                     )
+                    spawnDebuffMarker(enemy, JELLEN_COLOR)
                 }
                 if (caught.isEmpty()) showToast("Nothing in reach")
             }
@@ -4772,6 +5571,7 @@ class GameRenderer(
                         enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
                         ZALURE_COLOR,
                     )
+                    spawnDebuffMarker(enemy, ZALURE_COLOR)
                 }
                 if (caught.isEmpty()) showToast("Nothing in reach")
             }
@@ -4993,6 +5793,23 @@ class GameRenderer(
                 growPerSecond = 1.2,
                 delaySeconds = t * BARTA_WAVE_TRAVEL_SECONDS,
             )
+            // Splinters of real ice kicked out of the wave as it passes.
+            if ("nt_shard" in effectTextures && k % 2 == 0) {
+                spawnParticle(
+                    "nt_shard",
+                    px + dirX * rangeWorld * t + dirZ * lateral,
+                    py + 0.6,
+                    pz + dirZ * rangeWorld * t - dirX * lateral,
+                    sizeWorld = 1.5,
+                    colorHex = 0xdff4ff,
+                    vx = dirZ * (Random.nextDouble() - 0.5) * 14.0,
+                    vy = 8.0 + Random.nextDouble() * 5.0,
+                    vz = -dirX * (Random.nextDouble() - 0.5) * 14.0,
+                    gravity = 34.0,
+                    seconds = 0.55,
+                    delaySeconds = t * BARTA_WAVE_TRAVEL_SECONDS,
+                )
+            }
         }
     }
 
@@ -5100,6 +5917,25 @@ class GameRenderer(
         )
     }
 
+    /**
+     * A Lily's answer to being shot at: a screech that seizes whoever is doing it. Only fires
+     * against attacks from outside its own reach -- close in, the plant is defenceless, which
+     * is exactly the trade the wiki describes.
+     */
+    private fun maybeLilyScreech(enemy: Enemy) {
+        if (enemy.slug != "PoisonLily" && enemy.slug != "NarLily") return
+        val p = player ?: return
+        if (enemy.isDead) return
+
+        val dx = p.mesh.position.x - enemy.mesh.position.x
+        val dz = p.mesh.position.z - enemy.mesh.position.z
+        val melee = (enemyStats(enemy.slug).attackRange + 1.0) * worldUnit
+        if (dx * dx + dz * dz <= melee * melee) return
+        if (Random.nextDouble() > LILY_SCREECH_CHANCE) return
+
+        applyParalysis(p)
+    }
+
     /** Technique damage lands exactly like a weapon hit: numbers, flinch, and the kill payout. */
     private fun hurtEnemy(enemy: Enemy, damage: Int) {
         // The Dragon under the arena floor can't be hurt -- the wiki's own rule: wait for it
@@ -5110,10 +5946,21 @@ class GameRenderer(
             enemy.mesh.position.x, labelHeight(enemy), enemy.mesh.position.z,
             damage, false,
         )
+        maybeLilyScreech(enemy)
         if (enemy.isDead) onEnemyKilled(enemy) else enemy.ai?.onDamaged()
     }
 
     private fun updateTechEffects(deltaTime: Double) {
+        val actions = delayedTechActions.iterator()
+        while (actions.hasNext()) {
+            val delayed = actions.next()
+            delayed.remaining -= deltaTime
+            if (delayed.remaining <= 0) {
+                actions.remove()
+                delayed.action()
+            }
+        }
+
         val projectiles = techProjectiles.iterator()
         while (projectiles.hasNext()) {
             val proj = projectiles.next()
@@ -5295,12 +6142,46 @@ class GameRenderer(
             if (held <= 1) p.tools.remove(tool) else p.tools[tool] = held - 1
         }
 
-        if (levelBefore < Mag.FIRST_EVOLUTION_LEVEL && fed.level >= Mag.FIRST_EVOLUTION_LEVEL) {
-            showToast("The Mag evolved into ${firstEvolutionOf(appearance.characterClass)}!")
+        checkMagEvolution(p)?.let { evolved ->
+            showToast("The Mag evolved into $evolved!")
             refreshMagMesh()
         }
         persistProgress()
         return true
+    }
+
+    /**
+     * The evolution ladder, in order: the class's own level-10 form first; at 35, whichever
+     * stat the feeding favoured picks the permanent second form (see Mag.secondEvolutionForm).
+     * Returns the new form when one happened.
+     */
+    private fun checkMagEvolution(p: Player): String? {
+        if (p.mag.form == Mag.BASE_FORM && p.mag.level >= Mag.FIRST_EVOLUTION_LEVEL) {
+            p.mag = p.mag.withForm(firstEvolutionOf(appearance.characterClass))
+            return p.mag.form
+        }
+        if (p.mag.form in Mag.FIRST_FORMS && p.mag.level >= Mag.SECOND_EVOLUTION_LEVEL) {
+            p.mag.secondEvolutionForm()?.let { evolved ->
+                p.mag = p.mag.withForm(evolved)
+                return evolved
+            }
+        }
+        // Third evolutions happen only ON the multiples of five from 50 up -- a Mag sitting at
+        // 52 waits for 55, per the wiki's cadence.
+        if (p.mag.form in Mag.SECOND_FORMS &&
+            p.mag.level >= Mag.THIRD_EVOLUTION_LEVEL &&
+            p.mag.level % Mag.THIRD_EVOLUTION_STEP == 0
+        ) {
+            p.mag.thirdEvolutionForm(
+                professionOf(appearance.characterClass),
+                isFemaleCharacter(appearance.characterClass),
+                appearance.sectionId in MAG_SECTION_GROUP_A,
+            )?.let { evolved ->
+                p.mag = p.mag.withForm(evolved)
+                return evolved
+            }
+        }
+        return null
     }
 
     // --- Shops ---
@@ -5427,6 +6308,8 @@ class GameRenderer(
                 damage,
                 critical,
             )
+
+            if (p.weaponType.isRanged) maybeLilyScreech(enemy)
 
             // The weapon's special effect, applied on a connected special swing before the death
             // check so an effect kill flows into the ordinary death handling below.
@@ -5570,6 +6453,34 @@ class GameRenderer(
             persistProgress()
             return "Level set to $level."
         }
+        // `?feed <item> <n>?` TESTING AID: force-feeds the Mag n of an item instantly, no
+        // window, no inventory -- the real 3 feeds per 3:30 makes reaching an evolution take
+        // hours of wall-clock time neither tester has. Runs the exact evolution ladder a real
+        // feeding does. Items: mono/di/tri (mates), fluid, anti, sol, star.
+        Regex("""\?feed (\w+) (\d+)\?""").matchEntire(text.lowercase())?.let { match ->
+            val p = player ?: return "No character."
+            val tool = when (match.groupValues[1]) {
+                "mono" -> ToolType.MONOMATE
+                "di" -> ToolType.DIMATE
+                "tri" -> ToolType.TRIMATE
+                "fluid" -> ToolType.MONOFLUID
+                "anti" -> ToolType.ANTIDOTE
+                "sol" -> ToolType.SOL_ATOMIZER
+                "star" -> ToolType.STAR_ATOMIZER
+                else -> return "Unknown food. Try mono/di/tri/fluid/anti/sol/star."
+            }
+            val count = match.groupValues[2].toInt().coerceIn(1, 500)
+            var evolutions = ""
+            repeat(count) {
+                p.mag.fed(tool)?.let { p.mag = it }
+                checkMagEvolution(p)?.let { evolutions += " -> $it" }
+            }
+            refreshMagMesh()
+            persistProgress()
+            val mag = p.mag
+            return "Mag L${mag.level} ${mag.form}: DEF ${mag.def} POW ${mag.pow} " +
+                "DEX ${mag.dex} MIND ${mag.mind}$evolutions"
+        }
         // `?wield <name>?` equips the first carried weapon whose tier name matches -- the
         // fastest way to cycle the armory while testing, and it exercises the exact runtime
         // equip path the menu uses.
@@ -5705,10 +6616,12 @@ class GameRenderer(
                 // visual output.
                 // The menu pauses the world: the stick is ignored, and the enemy/room updates
                 // below are skipped, so reading it can't get you killed.
+                // Paralysis freezes the stick as surely as the menu does.
+                val movementLocked = gameMenu.isOpen || p.paralysisRemaining > 0
                 p.controller.update(
                     deltaTime,
-                    if (gameMenu.isOpen) .0 else joystick.x,
-                    if (gameMenu.isOpen) .0 else joystick.y,
+                    if (movementLocked) .0 else joystick.x,
+                    if (movementLocked) .0 else joystick.y,
                     inputManager.effectiveYaw,
                     p.combat.isAttacking,
                     flightVerticalControls.ascending,
@@ -5745,6 +6658,16 @@ class GameRenderer(
                         if (!gate.isOpen && section in director.completedSections) gate.open()
                     }
                 }
+                updateHealRings(p)
+                updatePlayerStatuses(p, deltaTime)
+                updateEnemyShots(deltaTime)
+                // PSO wakes a room when you walk into it: everything placed there comes for
+                // you, and loses interest once you've left.
+                roomWaveDirector?.currentSectionId?.let { room ->
+                    for (enemy in enemies) {
+                        enemy.ai?.roomAggro = enemy.section >= 0 && enemy.section == room
+                    }
+                }
                 updateBossRoom()
                 // The Dragon runs its own fight script -- same pause rules as the enemy pass.
                 if (p.hp > 0 && !gameMenu.isOpen) {
@@ -5768,6 +6691,14 @@ class GameRenderer(
                         if (enemy.isDead) null
                         else enemy.mesh.position.x to enemy.mesh.position.z
                     },
+                    // Doors read red while locked and green once open -- on a cave map that's
+                    // the difference between a route and a dead end.
+                    doors = fieldGates?.doors.orEmpty().map { door ->
+                        // The gate's own blocking span: the bar drawn on the map is exactly
+                        // the doorway it fills.
+                        MapDoor(door.ax, door.az, door.bx, door.bz, door.isOpen)
+                    },
+                    visitedRooms = roomWaveDirector?.visitedSections ?: emptySet(),
                 )
             } else {
                 targetInfoPanel?.clear()
@@ -6000,8 +6931,11 @@ class GameRenderer(
     /** "SavageWolf" -> "Savage Wolf", "DeRolLe" -> "De Rol Le" -- slugs are PascalCase with no
      * separators, so a space before each internal capital reads as a display name with no need
      * for a separate per-enemy display-name table. */
-    private fun enemyDisplayName(slug: String): String =
-        slug.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
+    private fun enemyDisplayName(slug: String): String = when (slug) {
+        // The converted assets split Bulclaw into body forms; the player just sees a Bulclaw.
+        "BulclawOpen", "BulclawClosed" -> "Bulclaw"
+        else -> slug.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
+    }
 
     private class Player(
         val characterClass: CharacterClass,
@@ -6126,6 +7060,19 @@ class GameRenderer(
         var knockedDownRemaining: Double = 0.0
         var respawnRemaining: Double = 0.0
 
+        /**
+         * Poison: the Lilies' venom, ticking damage until it wears off or an Antidote/Sol
+         * Atomizer cures it. It can't kill on its own -- PSO's poison always leaves 1 HP.
+         */
+        var poisonRemaining: Double = 0.0
+        var poisonTickRemaining: Double = 0.0
+
+        /**
+         * Paralysis: a Lily's screech at whoever shoots it from range. Locks movement while it
+         * runs. Androids are immune (see applyParalysis) exactly as the wiki says.
+         */
+        var paralysisRemaining: Double = 0.0
+
         /** The emote currently playing, and how long is left of it -- see playEmote. */
         var emoteMotion: NjMotion? = null
         var emoteRemaining: Double = 0.0
@@ -6148,7 +7095,7 @@ class GameRenderer(
         /** Foie's fireball: modest at level 1, per its page ("travels slowly at lower levels"). */
         private const val FOIE_SPEED_UNITS = 22.0
         private const val FOIE_RADIUS_UNITS = 0.55
-        private const val FOIE_LIFETIME_SECONDS = 1.4
+        private const val FOIE_LIFETIME_SECONDS = 2.2
 
         /** Where a round leaves the character, how fast it flies, and how far it carries. */
         private const val BULLET_MUZZLE_FORWARD_UNITS = 1.2
@@ -6172,7 +7119,7 @@ class GameRenderer(
          * TECH_FOCUS_RANGE_UNITS, plus FOCUS_MARGIN_UNITS) so anything the reticle can hold is
          * something the spell can actually touch.
          */
-        private const val ZONDE_RANGE_UNITS = 26.0
+        private const val ZONDE_RANGE_UNITS = 35.0
         private const val BARTA_RANGE_UNITS = 20.0
         private const val BARTA_HALF_WIDTH_UNITS = 2.2
         private const val RESTA_RING_SECONDS = 0.7
@@ -6189,8 +7136,8 @@ class GameRenderer(
         private const val TECH_FLASH_SECONDS = 0.5
 
         /** The new techniques' shapes, in PSO units, from the wiki's behaviour descriptions. */
-        private const val GIFOIE_RADIUS_UNITS = 8.0
-        private const val GIFOIE_SECONDS = 1.6
+        private const val GIFOIE_RADIUS_UNITS = 15.0
+        private const val GIFOIE_SECONDS = 2.2
         private const val GIFOIE_SPIN = 6.0
         private const val RAFOIE_RADIUS_UNITS = 6.0
         private const val GIBARTA_RANGE_UNITS = 12.0
@@ -6236,7 +7183,7 @@ class GameRenderer(
 
         private const val RABARTA_SHARD_COUNT = 24
         private const val GIFOIE_ARMS = 3
-        private const val GIFOIE_STEPS = 14
+        private const val GIFOIE_STEPS = 24
         private const val RAFOIE_EMBER_COUNT = 12
         private const val GRANTS_RAY_COUNT = 6
 
@@ -6263,6 +7210,9 @@ class GameRenderer(
 
         /** Focus-lock reach beyond the weapon's own, in PSO units. */
         private const val FOCUS_MARGIN_UNITS = 6.0
+
+        /** No class's lock stops at its weapon's edge -- the reticle sees this far minimum. */
+        private const val FOCUS_RANGE_FLOOR_UNITS = 26.0
 
         /** How close the player stands before an NPC offers to talk, and the prompt's height. */
         /**
@@ -6322,7 +7272,12 @@ class GameRenderer(
         private const val BOSS_ARENA_PENDING = "boss-arena-pending"
 
         /** The maps a field teleporter may actually leave for today. */
-        private val OPEN_MAPS = setOf("pioneer2", "forest01", "forest02", "bossArea1")
+        private val OPEN_MAPS = setOf(
+            "pioneer2", "forest01", "forest02", "bossArea1",
+            "cave01", "cave02", "cave03",
+            "mines01", "mines02",
+            "ruins01", "ruins02", "ruins03",
+        )
 
         /**
          * PSO Episode 1's floor numbering, as the Teleporter objects' destination Floor ID
@@ -6333,8 +7288,8 @@ class GameRenderer(
             1 -> "forest01"
             2 -> "forest02"
             3 -> "cave01"; 4 -> "cave02"; 5 -> "cave03"
-            6 -> "mine01"; 7 -> "mine02"
-            8 -> "ancient01"; 9 -> "ancient02"; 10 -> "ancient03"
+            6 -> "mines01"; 7 -> "mines02"
+            8 -> "ruins01"; 9 -> "ruins02"; 10 -> "ruins03"
             else -> "pioneer2"
         }
 
@@ -6361,7 +7316,7 @@ class GameRenderer(
         private const val DOOR_PASSAGE_RADIUS = 26.0
 
         /** How far out a caster's lock reaches -- their spells engage well past the cane. */
-        private const val TECH_FOCUS_RANGE_UNITS = 20.0
+        private const val TECH_FOCUS_RANGE_UNITS = 35.0
 
         /** Centre-of-mass estimate: radius-scaled with a floor and a cap, in PSO units. */
         private const val CENTER_MASS_RADIUS_FACTOR = 1.4
@@ -6518,6 +7473,56 @@ class GameRenderer(
         private const val DRAGON_PART_OVERRIDE_SECONDS = 6.0
         private const val DRAGON_PART_TAP_RANGE_PX = 100.0
 
+        /** How close the player must come to a Caves heal ring for it to fire. */
+        private const val HEAL_RING_RADIUS_UNITS = 3.0
+
+        /** Slide distance for a Caves door whose model can't be measured. */
+        private const val CAVE_DOOR_SLIDE_FALLBACK = 30.0
+
+        // Enemy fire: how long a shot lives, how close it must pass, and the laser's stretch.
+        private const val ENEMY_SHOT_LIFETIME = 4.0
+        private const val ENEMY_SHOT_HIT_UNITS = 1.6
+        private const val ENEMY_LASER_STRETCH = 3.0
+
+        /** The Nano Dragon's nano laser: a fast bolt that crosses a whole cave room. */
+        private const val NANO_LASER_SPEED_UNITS = 55.0
+        private const val NANO_LASER_DAMAGE = 22
+        private const val NANO_LASER_COLOR = 0x8a5cff
+
+        /** The mines' and ruins' ranged species, in the same terms as the nano laser. */
+        private const val GARANZ_MISSILE_SPEED_UNITS = 30.0
+        private const val GARANZ_MISSILE_DAMAGE = 30
+        private const val GARANZ_MISSILE_COLOR = 0xffa040
+        private const val CANADINE_ZAP_SPEED_UNITS = 40.0
+        private const val CANADINE_ZAP_DAMAGE = 12
+        private const val CANADINE_ZAP_COLOR = 0xffe95c
+        private const val SORCERER_ORB_SPEED_UNITS = 34.0
+        private const val SORCERER_ORB_DAMAGE = 25
+        private const val SORCERER_ORB_COLOR = 0x66aaff
+        private const val BELRA_ARM_SPEED_UNITS = 45.0
+        private const val BELRA_ARM_DAMAGE = 35
+        private const val BELRA_ARM_COLOR = 0xffffff
+        private const val GUNNER_LASER_SPEED_UNITS = 60.0
+        private const val GUNNER_LASER_DAMAGE = 20
+        private const val GUNNER_LASER_COLOR = 0x4de8ff
+
+        /** A Lily's venom: slower, arcing spit that poisons where it lands. */
+        private const val LILY_SPIT_SPEED_UNITS = 26.0
+        private const val LILY_SPIT_DAMAGE = 12
+        private const val LILY_SPIT_COLOR = 0x9cff5c
+
+        /** Venom's clock: how long it runs, how often it bites, and for how much. */
+        private const val POISON_SECONDS = 12.0
+        private const val POISON_TICK_SECONDS = 1.5
+        private const val POISON_TICK_DAMAGE = 4
+
+        /** How often a Lily answers a ranged hit with its paralysing screech. */
+        private const val LILY_SCREECH_CHANCE = 0.35
+
+        /** The Lily's dying act: how far its burst reaches and what it costs to be there. */
+        private const val LILY_BURST_RADIUS_UNITS = 6.0
+        private const val LILY_BURST_DAMAGE = 30
+
         /** The Telepipe beam, at a fraction of the city pads' size. */
         private const val TELEPIPE_SCALE = 0.55
 
@@ -6533,7 +7538,39 @@ class GameRenderer(
         private const val FX_SHEET_CELL = 7.0
 
         /** The golden cast ring: footprint in PSO units and how long the stamp plays. */
-        private const val CAST_RING_UNITS = 3.4
-        private const val CAST_RING_SECONDS = 0.6
+        private const val CAST_RING_UNITS = 4.4
+        private const val CAST_RING_SECONDS = 0.8
+
+        /** The rising rune glyphs beside a caster, and their pale-blue tint. */
+        private const val CAST_GLYPH_SECONDS = 0.8
+        private const val CAST_GLYPH_COLOR = 0x9db8ff
+
+        private const val FOIE_BURST_SECONDS = 0.45
+        private const val GRANTS_SEAL_SECONDS = 0.9
+
+        /** ?fxslow=1's stretch factor -- see fxSlowMotion. */
+        private const val FX_SLOW_FACTOR = 20.0
+
+        /**
+         * The Section ID split the Mag third-evolution tables run on: these five against the
+         * other five (Greenill/Bluefull/Pinkal/Oran/Whitill).
+         */
+        private val MAG_SECTION_GROUP_A = setOf(
+            SectionId.Viridia, SectionId.Skyly, SectionId.Purplenum,
+            SectionId.Redria, SectionId.Yellowboze,
+        )
+
+        // The reference-scale spell furniture: ice formations, blast domes, ground lightning,
+        // light pillars, debuff markers.
+        private const val ICE_CRYSTAL_COLOR = 0xbfe8ff
+        private const val ICE_CRYSTAL_SECONDS = 0.8
+        private const val DOME_SECONDS = 0.5
+        private const val CRAWL_SECONDS = 0.32
+        private const val PILLAR_HEIGHT_UNITS = 22.0
+        private const val PILLAR_RADIUS_UNITS = 2.4
+        private const val PILLAR_SECONDS = 0.65
+        private const val DEBUFF_MARKER_UNITS = 1.6
+        private const val DEBUFF_MARKER_SECONDS = 1.4
+        private const val RESTA_GLINT_COUNT = 16
     }
 }

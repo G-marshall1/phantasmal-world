@@ -85,6 +85,12 @@ val PIONEER2_NPCS: List<Pioneer2Npc> = listOf(
         PlayerAnimations.Idles.BREATHING,
         displayName = "Tekker", role = NpcRole.ARMS_SHOP,
         dialog = "Weapons, friend. Buying or selling, nobody knows their worth better than I do."),
+    // The shop district's own tool counter, like the real game -- the Nurse still stocks the
+    // same list at the medical center, but this is where players go looking for it.
+    Pioneer2Npc("Tool Shop Clerk", "GovStaff2", -95.0, 2.6, 232.0, 240.0,
+        PlayerAnimations.Idles.BREATHING,
+        displayName = "Tool Shop", role = NpcRole.TOOL_SHOP,
+        dialog = "Mates, fluids, Telepipes -- stocked and priced fair. What'll it be?"),
     Pioneer2Npc("Female Tall", "CitizenWoman7", -181.004, 0.0, 196.004, 112.495,
         PlayerAnimations.Idles.HAND_ON_HIP,
         displayName = "Citizen", role = NpcRole.CHAT,

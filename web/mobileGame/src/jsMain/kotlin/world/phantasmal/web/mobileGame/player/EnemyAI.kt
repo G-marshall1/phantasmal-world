@@ -75,12 +75,33 @@ class EnemyAI(
      * thing.
      */
     private val isStationary: Boolean = false,
+    /**
+     * A rooted species that still fights: a Poison Lily never leaves its patch but bites
+     * anything that steps into reach. Plain [isStationary] (the Monest) neither walks nor
+     * strikes.
+     */
+    private val strikesWhileRooted: Boolean = false,
     /** Hover height for flying species, in PSO units -- a Mothmant never touches the ground. */
     hoverUnits: Double = 0.0,
     /** A hive's deploy-and-collapse clips. Null for everything that isn't one. */
     private val hiveClips: world.phantasmal.web.mobileGame.world.HiveClips? = null,
     /** How close the player must come before a hanging hive drops, in PSO units. */
     private val hiveDeployRangeUnits: Double = 18.0,
+    /**
+     * A ranged attacker's reach, in PSO units. Zero means melee only. Beyond melee but inside
+     * this, the species fires instead of closing -- a Nano Dragon's nano laser carries across a
+     * whole cave room, a Poison Lily's venom spit rather less far.
+     */
+    private val rangedRangeUnits: Double = 0.0,
+    /** The clip played when firing. Falls back to the melee swing. */
+    private val rangedMotion: NjMotion? = null,
+    /** Fires the actual shot -- the host spawns the projectile and resolves the hit. */
+    private val onRangedAttack: (() -> Unit)? = null,
+    /**
+     * How close is too close, in PSO units: inside this the species backs away rather than
+     * trading blows. The Nano Dragon breaks off and resumes shooting from a safe distance.
+     */
+    private val fleeRangeUnits: Double = 0.0,
 ) {
     private val radius = bSphereRadius * RADIUS_FACTOR
     private val verticalTolerance = bSphereRadius * VERTICAL_TOLERANCE_FACTOR
@@ -111,6 +132,17 @@ class EnemyAI(
     private val bodyRadius = hitboxUnits * unitScale
 
     private var attackCooldownRemaining = 0.0
+
+    private val rangedRange = rangedRangeUnits * unitScale
+    private val fleeRange = fleeRangeUnits * unitScale
+    private var rangedCooldownRemaining = RANGED_FIRST_DELAY
+
+    /**
+     * True while the player is in this enemy's own room. PSO wakes a room's monsters when you
+     * walk in and loses interest when you leave, rather than each one waiting for you to cross
+     * its personal radius -- set per frame by the host from the spawn table's section ids.
+     */
+    var roomAggro: Boolean = false
 
     /**
      * Counts down the whole swing clip. While positive the enemy is committed: it doesn't turn,
@@ -290,13 +322,28 @@ class EnemyAI(
      */
     fun separate(deltaX: Double, deltaZ: Double) {
         if (isStationary) return
+        moveBy(deltaX, deltaZ)
+    }
 
+    /** Moves the body, then puts it back on the ground and out of any wall it entered. */
+    private fun moveBy(deltaX: Double, deltaZ: Double) {
         mesh.position.x += deltaX
         mesh.position.z += deltaZ
         wallCollider.resolve(mesh.position, radius, verticalTolerance)
         findGroundHeight(walkable, mesh.position.x, mesh.position.z)?.let {
             mesh.position.y = it + hoverHeight
         }
+    }
+
+    /** Plays the firing clip and lets the host put the shot in the world. */
+    private fun fireRanged() {
+        val motion = rangedMotion ?: attackMotion
+        val length = (motion.frameCount - 1) / PSO_FRAME_RATE_DOUBLE / ATTACK_ANIM_SCALE
+        attackAnimRemaining = length
+        // No melee contact: the projectile carries the damage.
+        attackContactRemaining = 0.0
+        playClip(motion, oneShot = true, timeScale = ATTACK_ANIM_SCALE)
+        onRangedAttack?.invoke()
     }
 
     /**
@@ -397,13 +444,51 @@ class EnemyAI(
             return landed
         }
 
-        if (distance > MIN_DISTANCE && !isStationary) {
+        if (distance > MIN_DISTANCE && (!isStationary || strikesWhileRooted)) {
             mesh.rotation.y = atan2(toPlayer.x, toPlayer.z)
         }
 
+        val strikeReach = attackRange * (if (inMeleeStance) MELEE_EXIT_MARGIN else 1.0)
+
+        rangedCooldownRemaining -= deltaTime
+
+        // A ranged species opens fire the moment the player is past its melee reach but still
+        // inside its own -- and a Nano Dragon that has been closed down backs off to get its
+        // distance again rather than standing there being hit.
+        val engaged = roomAggro || distance <= aggroRadius
+        val wantsToFlee = fleeRange > 0 && distance < fleeRange && engaged
+        val canShoot = rangedRange > 0 && engaged && distance > strikeReach && distance <= rangedRange
+
+        if (engaged && (canShoot || wantsToFlee) && !isStationary) {
+            mesh.rotation.y = atan2(toPlayer.x, toPlayer.z)
+        }
+
+        if (wantsToFlee && !isStationary) {
+            // Backing away, still facing the player.
+            val step = speed * FLEE_SPEED_FACTOR * deltaTime
+            if (distance > MIN_DISTANCE) {
+                moveBy(-toPlayer.x / distance * step, -toPlayer.z / distance * step)
+            }
+            if (rangedCooldownRemaining <= 0) {
+                rangedCooldownRemaining = RANGED_COOLDOWN
+                fireRanged()
+            } else {
+                playClip(runMotion ?: walkMotion, timeScale = CHASE_ANIM_SCALE)
+            }
+            return false
+        }
+
+        if (canShoot && rangedCooldownRemaining <= 0) {
+            rangedCooldownRemaining = RANGED_COOLDOWN
+            fireRanged()
+            return false
+        }
+
         when {
-            // A hive stays where it was placed: no chase, no strike, just its idle loop.
-            isStationary -> {
+            // A hive stays where it was placed: no chase, no strike, just its idle loop. A
+            // rooted STRIKER (a Lily) also never moves, but falls through to the strike branch
+            // when the player steps into its reach.
+            isStationary && !(strikesWhileRooted && distance <= strikeReach) -> {
                 playClip(waitMotion ?: walkMotion, timeScale = IDLE_ANIM_SCALE)
             }
 
@@ -412,7 +497,7 @@ class EnemyAI(
             // Walking backwards out of a Hildebear's reach used to sit exactly on the boundary,
             // flipping between the chase clip and the ready clip every frame -- each switch
             // restarting the animation from frame zero, which is what made it judder in place.
-            distance <= attackRange * (if (inMeleeStance) MELEE_EXIT_MARGIN else 1.0) -> {
+            distance <= strikeReach -> {
                 inMeleeStance = true
                 if (attackCooldownRemaining <= 0) {
                     attackCooldownRemaining = ATTACK_COOLDOWN
@@ -438,7 +523,9 @@ class EnemyAI(
                 }
             }
 
-            distance <= aggroRadius -> {
+            // Room aggro: everything in the player's own room comes for them, whatever the
+            // distance, and loses interest once they leave it.
+            distance <= aggroRadius || roomAggro -> {
                 inMeleeStance = false
                 // First time the player comes within range, play the notice before giving chase.
                 if (!hasNoticedPlayer) {
@@ -633,6 +720,13 @@ class EnemyAI(
 
         /** Breathing room after a reaction before the enemy can be made to flinch again. */
         private const val FLINCH_RECOVERY = 0.4
+
+        /** Ranged fire: the pause between shots, and the grace before the first one. */
+        private const val RANGED_COOLDOWN = 3.0
+        private const val RANGED_FIRST_DELAY = 1.2
+
+        /** How fast a fleeing species backs off, against its own chase speed. */
+        private const val FLEE_SPEED_FACTOR = 0.9
 
         /** Health at which a hive is knocked off its feet and works from the ground. */
         private const val HIVE_COLLAPSE_FRACTION = 0.5

@@ -147,4 +147,79 @@ class MagTests {
         assertEquals("Kalki", firstEvolutionOf(CharacterClass.RAmar))
         assertEquals("Vritra", firstEvolutionOf(CharacterClass.FOnewearl))
     }
+
+    /** Feeding never changes the form by itself -- evolution is the caller's explicit step. */
+    @Test
+    fun feedingCarriesTheFormForward() {
+        var mag = Mag(form = "Varuna")
+        repeat(5) { mag = mag.fed(ToolType.MONOMATE)!! }
+        assertEquals("Varuna", mag.form)
+        assertEquals("Rudra", mag.withForm("Rudra").form)
+        assertEquals("Rudra", mag.withForm("Rudra").afterDeath().form)
+    }
+
+    /** The wiki's whole level-35 table: parent form x leading stat, POW winning ties. */
+    @Test
+    fun theSecondEvolutionFollowsTheWikiTable() {
+        fun mag(form: String, pow: Int, dex: Int, mind: Int) = Mag(
+            powExp = pow * Mag.EXP_PER_LEVEL,
+            dexExp = dex * Mag.EXP_PER_LEVEL,
+            mindExp = mind * Mag.EXP_PER_LEVEL,
+            form = form,
+        )
+
+        assertEquals("Rudra", mag("Varuna", 20, 10, 5).secondEvolutionForm())
+        assertEquals("Marutah", mag("Varuna", 10, 20, 5).secondEvolutionForm())
+        assertEquals("Vayu", mag("Varuna", 5, 10, 20).secondEvolutionForm())
+
+        assertEquals("Surya", mag("Kalki", 20, 10, 5).secondEvolutionForm())
+        assertEquals("Mitra", mag("Kalki", 10, 20, 5).secondEvolutionForm())
+        assertEquals("Tapas", mag("Kalki", 5, 10, 20).secondEvolutionForm())
+
+        assertEquals("Sumba", mag("Vritra", 20, 10, 5).secondEvolutionForm())
+        assertEquals("Ashvinau", mag("Vritra", 10, 20, 5).secondEvolutionForm())
+        assertEquals("Namuci", mag("Vritra", 5, 10, 20).secondEvolutionForm())
+
+        // Ties: POW beats DEX beats MIND.
+        assertEquals("Rudra", mag("Varuna", 15, 15, 15).secondEvolutionForm())
+        assertEquals("Marutah", mag("Varuna", 10, 15, 15).secondEvolutionForm())
+
+        // The base form and the second forms have no second evolution of their own.
+        assertEquals(null, mag(Mag.BASE_FORM, 20, 10, 5).secondEvolutionForm())
+        assertEquals(null, mag("Rudra", 20, 10, 5).secondEvolutionForm())
+    }
+
+    /** Spot checks across the wiki's level-50 matrix: class x Section-ID group x ordering. */
+    @Test
+    fun theThirdEvolutionFollowsTheWikiMatrix() {
+        fun mag(pow: Int, dex: Int, mind: Int, def: Int = 5) = Mag(
+            defExp = def * Mag.EXP_PER_LEVEL,
+            powExp = pow * Mag.EXP_PER_LEVEL,
+            dexExp = dex * Mag.EXP_PER_LEVEL,
+            mindExp = mind * Mag.EXP_PER_LEVEL,
+            form = "Rudra",
+        )
+        val hunter = Profession.HUNTER
+        val ranger = Profession.RANGER
+        val force = Profession.FORCE
+
+        // Hunter, group B (Greenill side): POW-led with MIND over DEX is Apsaras.
+        assertEquals("Apsaras", mag(30, 5, 20).thirdEvolutionForm(hunter, false, sectionGroupA = false))
+        // Hunter, group A (Viridia side): the same ordering is Bhirava.
+        assertEquals("Bhirava", mag(30, 5, 20).thirdEvolutionForm(hunter, false, sectionGroupA = true))
+        // Hunter, group A, pure POW feeding (DEX trickle, no MIND) lands on Varaha.
+        assertEquals("Varaha", mag(40, 8, 0).thirdEvolutionForm(hunter, false, sectionGroupA = true))
+
+        // Ranger, group B: MIND > DEX > POW is Durga.
+        assertEquals("Durga", mag(3, 10, 40).thirdEvolutionForm(ranger, false, sectionGroupA = false))
+
+        // Force with 45+ DEF: Bana for anyone, Andhaka only for a POW-led female character.
+        assertEquals("Bana", mag(10, 20, 20, def = 45).thirdEvolutionForm(force, false, sectionGroupA = true))
+        assertEquals("Andhaka", mag(30, 10, 10, def = 45).thirdEvolutionForm(force, true, sectionGroupA = true))
+        // The same POW-led Mag on a male Force falls through to the ID table (group A: Ravana).
+        assertEquals("Ravana", mag(30, 10, 15, def = 45).thirdEvolutionForm(force, false, sectionGroupA = true))
+
+        // Not a second form: no third evolution.
+        assertEquals(null, Mag(form = "Varuna").thirdEvolutionForm(hunter, false, sectionGroupA = true))
+    }
 }

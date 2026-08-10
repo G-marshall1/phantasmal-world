@@ -39,6 +39,15 @@ class GslObjectSpec(
      * next to the models inside the bml.
      */
     val pvmFromGsl: Boolean = false,
+    /**
+     * The "locked" texture variant the game ships beside a mechanism's model: the Caves' doors
+     * and floor panels carry a red version of their status light in a separate `...r.pvm`
+     * (always at GSL level), which the real game swaps in while the thing is still locked.
+     * Emitting it as a second model ("<slug>Locked") lets the runtime show one or the other.
+     */
+    val lockedPvmEntry: String? = null,
+    /** Which texture of the model's own set the locked variant replaces. */
+    val lockedTextureIndex: Int = 0,
 )
 
 /**
@@ -293,6 +302,190 @@ val GSL_OBJECT_SPECS: List<GslObjectSpec> = listOf(
         njEntry = "taiki_fe_obj_doa_oya.nj",
         pvmEntry = "fe_obj_door.pvm",
         njmEntry = "fe_obj_doa_oya.njm",
+        pvmFromGsl = true,
+    ),
+
+    // ---- The Caves' own furniture. The three door models the cave layouts place (a plain
+    //      door, the four-button door and the switch door all draw from the same set), plus
+    //      the floor panel a switch door reads and the healing ring. Their textures sit
+    //      inside their own bml, unlike the Forest's shared packs. ----
+    GslObjectSpec(
+        slug = "CaveDoor01",
+        archive = "gsl_cave01.gsl",
+        bmlEntry = "bm_fs_obj_do_doa01.bml",
+        njEntry = "fs_obj_do_doa01.nj",
+        pvmEntry = "fs_obj_do_doa01.pvm",
+        lockedPvmEntry = "fs_obj_do_doa01r.pvm",
+        lockedTextureIndex = 1,
+    ),
+    GslObjectSpec(
+        slug = "CaveDoor02",
+        archive = "gsl_cave01.gsl",
+        bmlEntry = "bm_fs_obj_do_doa02.bml",
+        njEntry = "fs_obj_do_doa02.nj",
+        pvmEntry = "fs_obj_do_doa02.pvm",
+        lockedPvmEntry = "fs_obj_do_doa02r.pvm",
+        lockedTextureIndex = 1,
+    ),
+    GslObjectSpec(
+        slug = "CaveDoor03",
+        archive = "gsl_cave01.gsl",
+        bmlEntry = "bm_fs_obj_do_doa03.bml",
+        njEntry = "fs_obj_do_doa03.nj",
+        pvmEntry = "fs_obj_do_doa03.pvm",
+        // No red twin in the data: this model ships without a locked variant (psov2's own
+        // loader doesn't push one either), so it stays a plain door.
+    ),
+    GslObjectSpec(
+        slug = "CaveFloorPanel",
+        archive = "gsl_cave01.gsl",
+        bmlEntry = "bm_fs_obj_do_doa_panel.bml",
+        njEntry = "fs_obj_do_doa_panel.nj",
+        pvmEntry = "fs_obj_do_doa_panel.pvm",
+        pvmFromGsl = true,
+        lockedPvmEntry = "fs_obj_do_doa_panelr.pvm",
+        lockedTextureIndex = 0,
+    ),
+    GslObjectSpec(
+        slug = "CaveHealRing",
+        archive = "gsl_cave01.gsl",
+        bmlEntry = "bm_fe_obj_kaifuku_moto.bml",
+        njEntry = "fe_obj_kaifuku_moto.nj",
+        pvmEntry = "fe_obj_kaifuku_moto.pvm",
+        pvmFromGsl = true,
+    ),
+
+    // ---- The Mines' mechanisms. Unlike the caves' one-texture status light, every red
+    //      variant here is a complete texture set at GSL level, so the locked twin is emitted
+    //      as its own spec sharing the model rather than via lockedPvmEntry's index swap. ----
+    GslObjectSpec(
+        slug = "MineDoor01",
+        archive = "gsl_machine01.gsl",
+        bmlEntry = "bm_fs_obj_ki_doa.bml",
+        njEntry = "fs_obj_ki_doa.nj",
+        pvmEntry = "fs_obj_ki_doa.pvm",
+    ),
+    GslObjectSpec(
+        slug = "MineDoor01Locked",
+        archive = "gsl_machine01.gsl",
+        bmlEntry = "bm_fs_obj_ki_doa.bml",
+        njEntry = "fs_obj_ki_doa.nj",
+        pvmEntry = "fs_obj_ki_doa_r.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "MineDoor02",
+        archive = "gsl_machine01.gsl",
+        bmlEntry = "bm_fs_obj_ki_doa2.bml",
+        njEntry = "fs_obj_ki_doa2.nj",
+        pvmEntry = "fs_obj_ki_doa2.pvm",
+    ),
+    GslObjectSpec(
+        slug = "MineDoor02Locked",
+        archive = "gsl_machine01.gsl",
+        bmlEntry = "bm_fs_obj_ki_doa2.bml",
+        njEntry = "fs_obj_ki_doa2.nj",
+        pvmEntry = "fs_obj_ki_doa2_r.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "MineFloorPanel",
+        archive = "gsl_machine01.gsl",
+        bmlEntry = "bm_fs_obj_ki_doa_panel.bml",
+        njEntry = "fs_obj_ki_doa_panel.nj",
+        pvmEntry = "fs_obj_ki_doa_panel.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "MineFloorPanelLocked",
+        archive = "gsl_machine01.gsl",
+        bmlEntry = "bm_fs_obj_ki_doa_panel.bml",
+        njEntry = "fs_obj_ki_doa_panel.nj",
+        pvmEntry = "fs_obj_ki_doa_panel_r.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "MineHealRing",
+        archive = "gsl_machine01.gsl",
+        bmlEntry = "bm_fe_obj_kaifuku_moto.bml",
+        njEntry = "fe_obj_kaifuku_moto.nj",
+        pvmEntry = "fe_obj_kaifuku_moto.pvm",
+        pvmFromGsl = true,
+    ),
+
+    // ---- The Ruins'. Each area carries its own door model in its own GSL: door01l for Ruins 1,
+    //      door04l for Ruins 2, door03l for Ruins 3. The "l" set is the locked look, the "g"
+    //      set the unlocked green -- both complete, both at GSL level. ----
+    GslObjectSpec(
+        slug = "RuinsDoor01",
+        archive = "gsl_ancient01.gsl",
+        bmlEntry = "bm_fe_obj_o_door01l.bml",
+        njEntry = "fe_obj_o_door01l.nj",
+        pvmEntry = "fe_obj_o_door01g.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsDoor01Locked",
+        archive = "gsl_ancient01.gsl",
+        bmlEntry = "bm_fe_obj_o_door01l.bml",
+        njEntry = "fe_obj_o_door01l.nj",
+        pvmEntry = "fe_obj_o_door01l.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsDoor02",
+        archive = "gsl_ancient02.gsl",
+        bmlEntry = "bm_fe_obj_o_door04l.bml",
+        njEntry = "fe_obj_o_door04l.nj",
+        pvmEntry = "fe_obj_o_door04g.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsDoor02Locked",
+        archive = "gsl_ancient02.gsl",
+        bmlEntry = "bm_fe_obj_o_door04l.bml",
+        njEntry = "fe_obj_o_door04l.nj",
+        pvmEntry = "fe_obj_o_door04l.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsDoor03",
+        archive = "gsl_ancient03.gsl",
+        bmlEntry = "bm_fe_obj_o_door03l.bml",
+        njEntry = "fe_obj_o_door03l.nj",
+        pvmEntry = "fe_obj_o_door03g.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsDoor03Locked",
+        archive = "gsl_ancient03.gsl",
+        bmlEntry = "bm_fe_obj_o_door03l.bml",
+        njEntry = "fe_obj_o_door03l.nj",
+        pvmEntry = "fe_obj_o_door03l.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsFloorPanel",
+        archive = "gsl_ancient01.gsl",
+        bmlEntry = "bm_fs_obj_o_doorpanel.bml",
+        njEntry = "fs_obj_o_doorpanel.nj",
+        pvmEntry = "fs_obj_o_doorpanelg.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsFloorPanelLocked",
+        archive = "gsl_ancient01.gsl",
+        bmlEntry = "bm_fs_obj_o_doorpanel.bml",
+        njEntry = "fs_obj_o_doorpanel.nj",
+        pvmEntry = "fs_obj_o_doorpanel.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsHealRing",
+        archive = "gsl_ancient01.gsl",
+        bmlEntry = "bm_fe_obj_kaifuku_moto.bml",
+        njEntry = "fe_obj_kaifuku_moto.nj",
+        pvmEntry = "fe_obj_kaifuku_moto.pvm",
         pvmFromGsl = true,
     ),
     GslObjectSpec(

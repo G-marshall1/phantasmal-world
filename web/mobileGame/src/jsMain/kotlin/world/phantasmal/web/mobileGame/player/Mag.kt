@@ -22,6 +22,12 @@ class Mag(
     val synchro: Int = STARTER_SYNCHRO,
     /** 0-200. Sets the level of the Resta/Shifta/Deband a trigger casts. */
     val iq: Int = 0,
+    /**
+     * The evolution this Mag currently wears -- its model slug. Persistent state, not derived:
+     * the second evolution is decided by which stat led *at the moment of evolving*, and the
+     * lead can change afterwards without the form reverting.
+     */
+    val form: String = BASE_FORM,
 ) {
     /** Every 100 feed experience in one stat is one visible point of it (wiki). */
     val def: Int get() = defExp / EXP_PER_LEVEL
@@ -65,7 +71,108 @@ class Mag(
 
     /** A death costs 5 synchro, never dropping below zero. */
     fun afterDeath(): Mag =
-        Mag(defExp, powExp, dexExp, mindExp, (synchro - DEATH_SYNCHRO_PENALTY).coerceAtLeast(0), iq)
+        Mag(defExp, powExp, dexExp, mindExp, (synchro - DEATH_SYNCHRO_PENALTY).coerceAtLeast(0), iq, form)
+
+    /** This Mag in a new evolution. */
+    fun withForm(newForm: String): Mag =
+        Mag(defExp, powExp, dexExp, mindExp, synchro, iq, newForm)
+
+    /**
+     * The wiki's complete level-50 table: the third form is decided by profession, the Section
+     * ID's group (Viridia/Skyly/Purplenum/Redria/Yellowboze against the other five), the exact
+     * ordering of POW/DEX/MIND -- and for Forces sitting on 45+ DEF, the two special forms
+     * that trump the ID tables, one of them female-only. Null when this Mag isn't a
+     * second-evolution form or no row matches.
+     */
+    fun thirdEvolutionForm(
+        profession: Profession,
+        femaleCharacter: Boolean,
+        sectionGroupA: Boolean,
+    ): String? {
+        if (form !in SECOND_FORMS) return null
+        val p = pow
+        val d = dex
+        val m = mind
+
+        return when (profession) {
+            Profession.FORCE -> when {
+                def >= 45 && femaleCharacter && p > d && p > m -> "Andhaka"
+                def >= 45 && (d >= p || m >= p) -> "Bana"
+                !sectionGroupA -> when {
+                    d > m && m >= p -> "Bhirava"
+                    d > p && p > m -> "Garuda"
+                    m >= d && d > p -> "Ila"
+                    (m >= p && p >= d) || (p == d && d > m) -> "Kumara"
+                    p > d && d >= m -> "Marica"
+                    p > m && m > d -> "Naga"
+                    else -> null
+                }
+                else -> when {
+                    m >= d && d > p -> "Kabanda"
+                    (m >= p && p >= d) || (p == d && d > m) -> "Naga"
+                    p > d && d >= m -> "Naraka"
+                    p > m && m > d -> "Ravana"
+                    d > p && p > m -> "Ribhava"
+                    d > m && m >= p -> "Sita"
+                    else -> null
+                }
+            }
+
+            Profession.HUNTER ->
+                if (!sectionGroupA) when {
+                    p >= m && m > d -> "Apsaras"
+                    m > p && p >= d -> "Bana"
+                    d > p && p > m -> "Garuda"
+                    (p >= d && d >= m) || (d == m && m > p) -> "Kama"
+                    m > d && d > p -> "Soma"
+                    d > m && m >= p -> "Yaksa"
+                    else -> null
+                } else when {
+                    p >= m && m > d -> "Bhirava"
+                    (p >= d && d >= m) || (d == m && m > p) -> "Varaha"
+                    d > p && p > m -> "Ila"
+                    d > m && m >= p -> "Nandin"
+                    m > p && p >= d -> "Kabanda"
+                    m > d && d > p -> "Ushasu"
+                    else -> null
+                }
+
+            Profession.RANGER ->
+                if (!sectionGroupA) when {
+                    m > d && d > p -> "Durga"
+                    m > p && p >= d -> "Kabanda"
+                    (p > m && m > d) || (d >= p && p > m) -> "Kaitabha"
+                    p > d && d >= m -> "Madhu"
+                    (d >= m && m >= p) || (p == m && m > d) -> "Varaha"
+                    else -> null
+                } else when {
+                    m > d && d > p -> "Apsaras"
+                    (p > m && m > d) || (d >= p && p > m) -> "Bhirava"
+                    (p > d && d >= m) || (d >= m && m >= p) || (p == m && m > d) -> "Kama"
+                    m > p && p >= d -> "Varaha"
+                    else -> null
+                }
+        }
+    }
+
+    /**
+     * The form the wiki's level-35 table evolves this Mag into: decided by its parent form and
+     * whichever of POW/DEX/MIND leads, POW winning ties over DEX over MIND. Null when this Mag
+     * isn't a first-evolution form.
+     */
+    fun secondEvolutionForm(): String? {
+        fun byStat(powForm: String, dexForm: String, mindForm: String): String = when {
+            pow >= dex && pow >= mind -> powForm
+            dex >= mind -> dexForm
+            else -> mindForm
+        }
+        return when (form) {
+            "Varuna" -> byStat("Rudra", "Marutah", "Vayu")
+            "Kalki" -> byStat("Surya", "Mitra", "Tapas")
+            "Vritra" -> byStat("Sumba", "Ashvinau", "Namuci")
+            else -> null
+        }
+    }
 
     /**
      * One feeding, per Table 0 of the wiki's Mag feeding tables -- the basic Mag's own chart:
@@ -75,6 +182,9 @@ class Mag(
      */
     fun fed(tool: ToolType): Mag? {
         val food = MAG_FEED_TABLE[tool] ?: return null
+        // A Mag stops growing at level 200 TOTAL -- the per-stat caps alone would let the sum
+        // run past it (a live feed test reached 205).
+        if (level >= MAX_LEVEL) return this
         return Mag(
             defExp = (defExp + food.def).coerceAtMost(MAX_STAT * EXP_PER_LEVEL),
             powExp = (powExp + food.pow).coerceAtMost(MAX_STAT * EXP_PER_LEVEL),
@@ -82,11 +192,30 @@ class Mag(
             mindExp = (mindExp + food.mind).coerceAtMost(MAX_STAT * EXP_PER_LEVEL),
             synchro = (synchro + food.synchro).coerceAtMost(MAX_SYNCHRO),
             iq = (iq + food.iq).coerceAtMost(MAX_IQ),
+            form = form,
         )
     }
 
     companion object {
         const val EXP_PER_LEVEL = 100
+
+        /** The unevolved starter's model slug. */
+        const val BASE_FORM = "Mag"
+
+        /** The class-decided level-10 forms -- the ones a level-35 feeding can evolve again. */
+        val FIRST_FORMS: Set<String> = setOf("Varuna", "Kalki", "Vritra")
+
+        /** The nine stat-decided level-35 forms -- the ones a level-50 feeding can evolve. */
+        val SECOND_FORMS: Set<String> = setOf(
+            "Rudra", "Marutah", "Vayu", "Surya", "Mitra", "Tapas", "Sumba", "Ashvinau", "Namuci",
+        )
+
+        /** The wiki's second evolution threshold. */
+        const val SECOND_EVOLUTION_LEVEL = 35
+
+        /** Third evolutions happen at 50 and every 5 levels after -- the wiki's own cadence. */
+        const val THIRD_EVOLUTION_LEVEL = 50
+        const val THIRD_EVOLUTION_STEP = 5
 
         /** Three items per 3:30 window, per the wiki; unspent feeds don't carry over. */
         const val FEEDS_PER_WINDOW = 3

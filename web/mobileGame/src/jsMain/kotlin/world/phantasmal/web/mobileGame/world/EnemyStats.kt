@@ -38,6 +38,15 @@ class EnemyStats(
      * Mothmants it produces rather than the hive itself -- note its ATP of 0.
      */
     val isStationary: Boolean = false,
+    /** Rooted but still biting: the Lilies. Stationary, yet strikes anything in reach. */
+    val strikesWhileRooted: Boolean = false,
+    /**
+     * How far this species can shoot, in PSO units. Zero is melee-only. A Nano Dragon's laser
+     * reaches across a cave room; a Lily's venom spit rather less.
+     */
+    val rangedRangeUnits: Double = 0.0,
+    /** How close is too close before it backs away, in PSO units. Zero never retreats. */
+    val fleeRangeUnits: Double = 0.0,
     /** How far above the ground this species flies, in PSO units. Zero for everything walking. */
     val hoverUnits: Double = 0.0,
     /**
@@ -142,6 +151,141 @@ val FOREST_ENEMY_STATS: Map<String, EnemyStats> = mapOf(
         hitboxRadius = 1.6, attackRange = 1.8, experience = 100, dropRate = 100,
         resistances = Resistances(ice = 70, thunder = 30, dark = 38, light = 50, special = 20),
     ),
+
+    // The Caves. Combat numbers come from the generated battle-param table (see enemyStats'
+    // merge); these entries carry the geometry: cylinder sizes, reach, and the Lilies' rooted
+    // fighting style. Figures are this project's own, sized against each model.
+    "EvilShark" to EnemyStats(
+        hp = 80, atp = 30, dfp = 0, ata = 40, evp = 0, lck = 8,
+        hitboxRadius = 1.2, attackRange = 1.5, experience = 10, dropRate = 30,
+    ),
+    "PalShark" to EnemyStats(
+        hp = 100, atp = 35, dfp = 0, ata = 45, evp = 0, lck = 8,
+        hitboxRadius = 1.2, attackRange = 1.5, experience = 12, dropRate = 35,
+    ),
+    "GuilShark" to EnemyStats(
+        hp = 130, atp = 45, dfp = 0, ata = 50, evp = 0, lck = 8,
+        hitboxRadius = 1.3, attackRange = 1.7, experience = 16, dropRate = 40,
+    ),
+    "PoisonLily" to EnemyStats(
+        hp = 100, atp = 35, dfp = 0, ata = 45, evp = 0, lck = 8,
+        hitboxRadius = 1.5, attackRange = 2.4, experience = 10, dropRate = 30,
+        isStationary = true, strikesWhileRooted = true,
+        // Venom spit: its real threat, since the peck is feeble and short.
+        rangedRangeUnits = 22.0,
+    ),
+    "NarLily" to EnemyStats(
+        hp = 150, atp = 60, dfp = 0, ata = 60, evp = 0, lck = 12,
+        hitboxRadius = 1.5, attackRange = 2.4, experience = 30, dropRate = 100,
+        isStationary = true, strikesWhileRooted = true,
+        rangedRangeUnits = 22.0,
+    ),
+    "GrassAssasin" to EnemyStats(
+        hp = 180, atp = 55, dfp = 0, ata = 50, evp = 0, lck = 8,
+        hitboxRadius = 2.2, attackRange = 2.6, experience = 20, dropRate = 45,
+    ),
+    "NanoDragoon" to EnemyStats(
+        hp = 120, atp = 45, dfp = 0, ata = 50, evp = 0, lck = 8,
+        hitboxRadius = 1.4, attackRange = 2.2, experience = 15, dropRate = 40,
+        // The nano laser carries the length of a room, and the thing breaks off and backs
+        // away when a melee fighter closes -- the wiki's own description of the fight.
+        rangedRangeUnits = 45.0, fleeRangeUnits = 9.0,
+    ),
+    "PofuillySlimeBlue" to EnemyStats(
+        hp = 90, atp = 35, dfp = 0, ata = 40, evp = 0, lck = 8,
+        hitboxRadius = 1.4, attackRange = 1.6, experience = 12, dropRate = 30,
+    ),
+    "PouillySlimeRed" to EnemyStats(
+        hp = 130, atp = 55, dfp = 0, ata = 50, evp = 0, lck = 12,
+        hitboxRadius = 1.4, attackRange = 1.6, experience = 26, dropRate = 60,
+    ),
+    "PanArms" to EnemyStats(
+        hp = 300, atp = 60, dfp = 10, ata = 55, evp = 0, lck = 8,
+        hitboxRadius = 1.8, attackRange = 2.2, experience = 40, dropRate = 60,
+    ),
+
+    // The Mines. Combat numbers ride in from the battle params like the caves'; these carry
+    // the bodies and the fighting styles.
+    "Dubchic" to EnemyStats(
+        hp = 150, atp = 55, dfp = 10, ata = 55, evp = 0, lck = 5,
+        hitboxRadius = 1.2, attackRange = 1.6, experience = 3, dropRate = 30,
+    ),
+    "Gilchic" to EnemyStats(
+        hp = 130, atp = 56, dfp = 9, ata = 60, evp = 0, lck = 8,
+        hitboxRadius = 1.2, attackRange = 1.6, experience = 18, dropRate = 30,
+    ),
+    // A walking missile battery: slow, armored, and it fires from across the room.
+    "Garanz" to EnemyStats(
+        hp = 410, atp = 70, dfp = 21, ata = 55, evp = 0, lck = 10,
+        hitboxRadius = 2.0, attackRange = 2.4, experience = 22, dropRate = 80,
+        rangedRangeUnits = 45.0,
+    ),
+    // The flying Canadines: they hover at head height and zap from the air.
+    "Canadine" to EnemyStats(
+        hp = 77, atp = 40, dfp = 7, ata = 60, evp = 0, lck = 5,
+        hitboxRadius = 0.9, attackRange = 1.4, experience = 16, dropRate = 25,
+        hoverUnits = 3.4, rangedRangeUnits = 14.0,
+    ),
+    "Canane" to EnemyStats(
+        hp = 200, atp = 42, dfp = 7, ata = 65, evp = 0, lck = 5,
+        hitboxRadius = 1.0, attackRange = 1.4, experience = 17, dropRate = 60,
+        hoverUnits = 3.4, rangedRangeUnits = 14.0,
+    ),
+    "SinowBeat" to EnemyStats(
+        hp = 220, atp = 52, dfp = 12, ata = 55, evp = 0, lck = 10,
+        hitboxRadius = 1.3, attackRange = 2.0, experience = 20, dropRate = 60,
+    ),
+    "SinowGold" to EnemyStats(
+        hp = 180, atp = 47, dfp = 12, ata = 65, evp = 0, lck = 0,
+        hitboxRadius = 1.3, attackRange = 2.0, experience = 20, dropRate = 60,
+    ),
+
+    // The Ruins.
+    "Dimenian" to EnemyStats(
+        hp = 270, atp = 70, dfp = 17, ata = 62, evp = 0, lck = 8,
+        hitboxRadius = 1.2, attackRange = 1.6, experience = 22, dropRate = 30,
+    ),
+    "LaDimenian" to EnemyStats(
+        hp = 300, atp = 77, dfp = 18, ata = 65, evp = 0, lck = 8,
+        hitboxRadius = 1.2, attackRange = 1.6, experience = 24, dropRate = 35,
+    ),
+    "SoDimenian" to EnemyStats(
+        hp = 330, atp = 85, dfp = 20, ata = 75, evp = 0, lck = 10,
+        hitboxRadius = 1.2, attackRange = 1.6, experience = 26, dropRate = 40,
+    ),
+    "Delsaber" to EnemyStats(
+        hp = 400, atp = 85, dfp = 20, ata = 72, evp = 0, lck = 10,
+        hitboxRadius = 1.4, attackRange = 2.2, experience = 25, dropRate = 70,
+    ),
+    // Floats, and throws its attacks from well outside arm's reach.
+    "ChaosSorcerer" to EnemyStats(
+        hp = 300, atp = 65, dfp = 6, ata = 65, evp = 0, lck = 0,
+        hitboxRadius = 1.2, attackRange = 2.0, experience = 24, dropRate = 80,
+        hoverUnits = 2.4, rangedRangeUnits = 30.0,
+    ),
+    // A tower of a thing: slow, huge, and its arm strikes carry across half a room.
+    "DarkBelra" to EnemyStats(
+        hp = 500, atp = 107, dfp = 25, ata = 55, evp = 0, lck = 8,
+        hitboxRadius = 2.2, attackRange = 3.0, experience = 28, dropRate = 80,
+        rangedRangeUnits = 25.0,
+    ),
+    "DarkGunner" to EnemyStats(
+        hp = 220, atp = 52, dfp = 20, ata = 80, evp = 0, lck = 5,
+        hitboxRadius = 1.6, attackRange = 2.0, experience = 20, dropRate = 45,
+        rangedRangeUnits = 35.0,
+    ),
+    "ChaosBringer" to EnemyStats(
+        hp = 450, atp = 100, dfp = 18, ata = 70, evp = 0, lck = 5,
+        hitboxRadius = 1.8, attackRange = 2.6, experience = 30, dropRate = 90,
+    ),
+    "BulclawOpen" to EnemyStats(
+        hp = 200, atp = 77, dfp = 12, ata = 60, evp = 0, lck = 6,
+        hitboxRadius = 1.6, attackRange = 2.0, experience = 24, dropRate = 60,
+    ),
+    "Claw" to EnemyStats(
+        hp = 150, atp = 55, dfp = 12, ata = 60, evp = 0, lck = 4,
+        hitboxRadius = 0.9, attackRange = 1.2, experience = 6, dropRate = 25,
+    ),
 )
 
 /**
@@ -214,6 +358,9 @@ fun enemyStats(slug: String): EnemyStats = mergedStatsCache.getOrPut(slug) {
         hitboxRadius = hand.hitboxRadius,
         attackRange = hand.attackRange,
         isStationary = hand.isStationary,
+        strikesWhileRooted = hand.strikesWhileRooted,
+        rangedRangeUnits = hand.rangedRangeUnits,
+        fleeRangeUnits = hand.fleeRangeUnits,
         hoverUnits = hand.hoverUnits,
         modelScale = hand.modelScale,
         experience = row.exp,
