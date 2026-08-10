@@ -265,6 +265,9 @@ open external class WebGLRenderer(
 
     fun setPixelRatio(value: Double)
 
+    var toneMapping: ToneMapping
+    var toneMappingExposure: Double
+
     fun setClearColor(color: Color, alpha: Double = definedExternally)
 
     fun clearColor()
@@ -662,6 +665,11 @@ external interface Blending
 external object NoBlending : Blending
 external object NormalBlending : Blending
 external object AdditiveBlending : Blending
+
+external object NoToneMapping : ToneMapping
+external object ACESFilmicToneMapping : ToneMapping
+
+external interface ToneMapping
 external object SubtractiveBlending : Blending
 external object MultiplyBlending : Blending
 external object CustomBlending : Blending
@@ -740,6 +748,45 @@ external class SpriteMaterial(
     var rotation: Double
     var opacity: Double
 }
+
+/**
+ * A GPU particle cloud: every vertex of its geometry renders as one camera-facing point.
+ * One draw call however many particles, which is what makes dense spell effects viable on a
+ * phone -- a hundred Sprites would be a hundred draw calls.
+ */
+external class Points(
+    geometry: BufferGeometry = definedExternally,
+    material: PointsMaterial = definedExternally,
+) : Object3D {
+    var geometry: BufferGeometry
+    var material: PointsMaterial
+}
+
+external class PointsMaterial(
+    parameters: dynamic = definedExternally,
+) : Material {
+    var map: Texture?
+    var size: Double
+    var sizeAttenuation: Boolean
+    var opacity: Double
+    var color: Color
+}
+
+external class RingGeometry(
+    innerRadius: Double = definedExternally,
+    outerRadius: Double = definedExternally,
+    thetaSegments: Int = definedExternally,
+) : BufferGeometry
+
+external class IcosahedronGeometry(
+    radius: Double = definedExternally,
+    detail: Int = definedExternally,
+) : BufferGeometry
+
+external class OctahedronGeometry(
+    radius: Double = definedExternally,
+    detail: Int = definedExternally,
+) : BufferGeometry
 
 /** A camera-facing billboard quad -- what particle effects are made of. */
 external class Sprite(material: SpriteMaterial = definedExternally) : Object3D {

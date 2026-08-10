@@ -9,6 +9,7 @@ import org.w3c.dom.url.URLSearchParams
 import world.phantasmal.core.disposable.TrackedDisposable
 import world.phantasmal.web.core.loading.AssetLoader
 import world.phantasmal.web.core.rendering.DisposableThreeRenderer
+import world.phantasmal.web.externals.three.ACESFilmicToneMapping
 import world.phantasmal.web.externals.three.WebGLRenderer
 import world.phantasmal.web.mobileGame.debug.runAnimatedItemViewer
 import world.phantasmal.web.mobileGame.debug.runItemViewer
@@ -193,7 +194,12 @@ private fun createThreeRenderer(canvas: HTMLCanvasElement): DisposableThreeRende
 
         init {
             renderer.debug.checkShaderErrors = false
-            renderer.setPixelRatio(window.devicePixelRatio)
+            // Capped at 2: past that a phone renders pixels nobody can see, at real GPU cost.
+            renderer.setPixelRatio(kotlin.math.min(window.devicePixelRatio, 2.0))
+            // Filmic tone mapping lets the additive spell effects burn bright without
+            // clipping to flat white -- the difference between "glow" and "blob".
+            renderer.toneMapping = ACESFilmicToneMapping
+            renderer.toneMappingExposure = 1.25
         }
 
         override fun dispose() {

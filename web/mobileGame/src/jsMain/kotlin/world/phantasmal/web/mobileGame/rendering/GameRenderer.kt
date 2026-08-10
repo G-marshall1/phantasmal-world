@@ -3873,6 +3873,7 @@ class GameRenderer(
             // the whole scale factor -- the Mag shrank to a speck inside the player, and NPC
             // speaking range was a fraction of what it read as.
             worldUnit = psoUnit(bSphereRadius)
+            techniqueFx = TechniqueFx(context.scene, worldUnit) { name -> effectTexture(name) }
 
             // Field/dungeon maps only -- hub/lobby/boss-arena/VS-arena stages (STAGE_SLUGS)
             // are meant to be player + friendly-NPC only, matching the real game; monsters
@@ -5759,6 +5760,18 @@ class GameRenderer(
     /** Restores a save's progression onto the freshly spawned player. */
     private fun restoreProgress(p: Player) {
         save?.let { s ->
+            restoreFromSave(p, s)
+        }
+        // A Force starts knowing the roster at level 1 -- a brand-new character no less than
+        // a legacy save from before disks existed. Disks only ever raise from here. Everyone
+        // else learns from what drops; androids never.
+        if (p.techLevels.isEmpty() && professionOf(p.characterClass) == Profession.FORCE) {
+            for (technique in Technique.entries) p.techLevels[technique] = 1
+        }
+    }
+
+    private fun restoreFromSave(p: Player, s: CharacterSave) {
+        run {
             p.totalExp = s.totalExp
             p.level = levelForTotalExp(s.totalExp)
             p.meseta = s.meseta
@@ -5801,14 +5814,6 @@ class GameRenderer(
                 val technique = Technique.entries.find { it.name == parts.getOrNull(0) }
                 val level = parts.getOrNull(1)?.toIntOrNull()
                 if (technique != null && level != null) p.techDisks.add(technique to level)
-            }
-            // Legacy saves predate learned techniques: a Force there has been casting the whole
-            // roster at level 1, so that's exactly what they keep. Everyone else starts blank
-            // and learns from disks, androids never.
-            if (s.techLevels.isEmpty() &&
-                professionOf(p.characterClass) == Profession.FORCE
-            ) {
-                for (technique in Technique.entries) p.techLevels[technique] = 1
             }
             p.materialMind = s.materialMind
             p.materialHp = s.materialHp
@@ -6081,6 +6086,12 @@ class GameRenderer(
     )
 
     private val techProjectiles = mutableListOf<TechProjectile>()
+
+    /** The blueprint-driven effect engine -- see TechniqueFx. Built once worldUnit is known. */
+    private var techniqueFx: TechniqueFx? = null
+
+    /** Projectiles that shed a particle trail as they fly, by kind ("foie"/"megid"). */
+    private val projectileTrails = HashMap<Sprite, String>()
 
     /** Megid in flight: rolls its kill on contact rather than dealing damage. */
     private val megidShots = mutableListOf<TechProjectile>()
@@ -6839,6 +6850,8 @@ class GameRenderer(
                     p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit,
                     p.mesh.position.z + dirZ * worldUnit,
                 )
+                techniqueFx?.foieCore()?.let { orb.add(it) }
+                projectileTrails[orb] = "foie"
                 context.scene.add(orb)
                 techProjectiles.add(
                     TechProjectile(orb, frames, dirX, dirZ, power, FOIE_LIFETIME_SECONDS)
@@ -6878,6 +6891,7 @@ class GameRenderer(
                         }
 
                     if (nearestBox != null) {
+                        techniqueFx?.zonde(nearestBox.x, nearestBox.y, nearestBox.z)
                         val bolt = effectSprite("zonde_bolt", 3.4, 11.0, colorHex = ZONDE_COLOR)
                         bolt.position.set(
                             nearestBox.x,
@@ -6892,6 +6906,9 @@ class GameRenderer(
                     // technic_pt.xvm's lightning bolt, dropped from above the target, with the
                     // effect sheet's starburst at the strike point.
                     val strikeY = centerMassHeight(target)
+                    techniqueFx?.zonde(
+                        target.mesh.position.x, target.mesh.position.y, target.mesh.position.z,
+                    )
                     val bolt = effectSprite("zonde_bolt", 3.4, 11.0, colorHex = ZONDE_COLOR)
                     bolt.position.set(
                         target.mesh.position.x,
@@ -6943,6 +6960,16 @@ class GameRenderer(
             }
 
             Technique.BARTA -> {
+                techniqueFx?.let { fx ->
+                    for (step in 1..4) {
+                        val along = step * BARTA_RANGE_UNITS / 4.0 * worldUnit
+                        fx.bartaSpike(
+                            p.mesh.position.x + dirX * along,
+                            p.mesh.position.y,
+                            p.mesh.position.z + dirZ * along,
+                        )
+                    }
+                }
                 // The freezing line: everything within the wave's length and half-width ahead
                 // takes the hit; the wave itself is barta_lv1hontai's own recipe -- forty small
                 // shards erupting one after another down the line (spawnIceWake).
@@ -6982,6 +7009,7 @@ class GameRenderer(
                 val heal = restaHeal(power, mst)
                 p.hp = (p.hp + heal).coerceAtMost(p.maxHp)
                 playerStatusPanel.setHealth(p.hp, p.maxHp)
+                techniqueFx?.supportPulse(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, 0x00ff7f)
                 supportRing(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, "resta_ring", RESTA_COLOR)
                 spawnHealLights(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, RESTA_COLOR)
                 // The reference's green glitter falling around the healed from above.
@@ -7018,6 +7046,7 @@ class GameRenderer(
                 // Three arms of fire spiralling outward for the spell's whole turn: a train of
                 // short-lived flames whose orbit radius grows with time, so the eye sees fire
                 // travelling AND spreading.
+                techniqueFx?.gifoie(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z)
                 val flameFrames = (0 until 16).map { effectTexture("foie_flame_$it") }
                 for (arm in 0 until GIFOIE_ARMS) {
                     for (step in 0 until GIFOIE_STEPS) {
@@ -7051,6 +7080,7 @@ class GameRenderer(
                     for (enemy in enemiesWithin(tx, tz, RAFOIE_RADIUS_UNITS)) {
                         hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.fire))
                     }
+                    techniqueFx?.rafoie(tx, centerMassHeight(target), tz)
                     spawnFoieImpact(tx, centerMassHeight(target), tz)
                     // The whole blast zone swells as one molten dome -- the reference's giant
                     // orange sphere -- with the starburst inside it.
@@ -7080,6 +7110,9 @@ class GameRenderer(
             }
 
             Technique.GIBARTA -> {
+                techniqueFx?.gibarta(
+                    p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, dirX, dirZ,
+                )
                 // A freezing breath: wider and shorter than Barta's line, and it can freeze.
                 for (enemy in enemies.filter { !it.isDead }) {
                     val dx = enemy.mesh.position.x - p.mesh.position.x
@@ -7122,6 +7155,7 @@ class GameRenderer(
             }
 
             Technique.RABARTA -> {
+                techniqueFx?.rabarta(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z)
                 // Ice bursting in a circle around the caster, freezing what it catches.
                 for (enemy in enemiesWithin(p.mesh.position.x, p.mesh.position.z, RABARTA_RADIUS_UNITS)) {
                     hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.ice))
@@ -7166,6 +7200,7 @@ class GameRenderer(
                 var fromX = p.mesh.position.x
                 var fromY = p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit
                 var fromZ = p.mesh.position.z
+                val chainPoints = mutableListOf(doubleArrayOf(fromX, fromY, fromZ))
                 while (current != null && links < GIZONDE_MAX_TARGETS) {
                     struck.add(current)
                     links++
@@ -7173,6 +7208,7 @@ class GameRenderer(
                     val toY = centerMassHeight(current)
                     val toZ = current.mesh.position.z
                     boltBetween(fromX, fromY, fromZ, toX, toY, toZ)
+                    chainPoints.add(doubleArrayOf(toX, toY, toZ))
                     spawnLightningCrawl(
                         toX, current.mesh.position.y, toZ,
                         count = 2, spreadWorld = 6.0 * worldUnit,
@@ -7197,9 +7233,12 @@ class GameRenderer(
                         }
                 }
                 if (links == 0) showToast("Nothing in reach")
+                if (chainPoints.size > 1) techniqueFx?.gizonde(chainPoints)
+
             }
 
             Technique.RAZONDE -> {
+                techniqueFx?.razonde(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z)
                 // The storm around the caster -- the one lightning technique that needs no target.
                 // The whole zone becomes the reference's crawling lightning field.
                 spawnLightningCrawl(
@@ -7247,6 +7286,9 @@ class GameRenderer(
                     showToast("Grants needs a target")
                 } else {
                     hurtEnemy(target, techniqueDamage(power, mst, target.resistances.light))
+                    techniqueFx?.grants(
+                        target.mesh.position.x, target.mesh.position.y, target.mesh.position.z,
+                    )
                     // The reference's column of light dropped on the judged.
                     spawnLightPillar(
                         target.mesh.position.x, target.mesh.position.y, target.mesh.position.z,
@@ -7312,6 +7354,8 @@ class GameRenderer(
                     p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit,
                     p.mesh.position.z + dirZ * worldUnit,
                 )
+                techniqueFx?.megidCore()?.let { orb.add(it) }
+                projectileTrails[orb] = "megid"
                 context.scene.add(orb)
                 megidShots.add(
                     TechProjectile(orb, emptyList(), dirX, dirZ, power, FOIE_LIFETIME_SECONDS)
@@ -7321,6 +7365,7 @@ class GameRenderer(
             Technique.SHIFTA -> {
                 p.shiftaBoost = supportBoostFraction(techLevel)
                 p.shiftaRemaining = supportDurationSeconds(techLevel)
+                techniqueFx?.supportPulse(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, 0xffa500)
                 supportRing(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, "ring_red", SHIFTA_COLOR)
                 supportSwirl(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, SHIFTA_COLOR)
                 showToast("ATP up ${(p.shiftaBoost * 100).toInt()}%")
@@ -7329,6 +7374,7 @@ class GameRenderer(
             Technique.DEBAND -> {
                 p.debandBoost = supportBoostFraction(techLevel)
                 p.debandRemaining = supportDurationSeconds(techLevel)
+                techniqueFx?.supportPulse(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, 0x6495ed)
                 supportRing(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, "ring_blue", DEBAND_COLOR)
                 supportSwirl(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, DEBAND_COLOR)
                 showToast("DFP up ${(p.debandBoost * 100).toInt()}%")
@@ -7375,6 +7421,7 @@ class GameRenderer(
                 p.poisonRemaining = 0.0
                 p.paralysisRemaining = 0.0
                 p.confusedRemaining = 0.0
+                techniqueFx?.supportPulse(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, 0x87ceeb)
                 supportRing(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, "resta_ring", RESTA_COLOR)
                 spawnHealLights(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, RESTA_COLOR)
             }
@@ -7800,6 +7847,11 @@ class GameRenderer(
                 proj.frames[(proj.age * FOIE_FRAME_RATE).toInt() % proj.frames.size]
             proj.sprite.position.x += proj.dirX * FOIE_SPEED_UNITS * worldUnit * deltaTime
             proj.sprite.position.z += proj.dirZ * FOIE_SPEED_UNITS * worldUnit * deltaTime
+            projectileTrails[proj.sprite]?.let { kind ->
+                val sp = proj.sprite.position
+                if (kind == "foie") techniqueFx?.foieTrail(sp.x, sp.y, sp.z)
+                else techniqueFx?.megidTrail(sp.x, sp.y, sp.z)
+            }
 
             // The flame it drags: a short-lived ember shed behind every frame of flight.
             spawnParticle(
@@ -7848,6 +7900,11 @@ class GameRenderer(
             val step = FOIE_SPEED_UNITS * worldUnit * deltaTime
             shot.sprite.position.x += shot.dirX * step
             shot.sprite.position.z += shot.dirZ * step
+            projectileTrails[shot.sprite]?.let { kind ->
+                val sp = shot.sprite.position
+                if (kind == "foie") techniqueFx?.foieTrail(sp.x, sp.y, sp.z)
+                else techniqueFx?.megidTrail(sp.x, sp.y, sp.z)
+            }
 
             // The curse's wake: violet residue hanging in the air where it passed.
             spawnParticle(
@@ -8498,6 +8555,7 @@ class GameRenderer(
                 }
                 updateHealRings(p)
                 questVm?.update(p.mesh.position.x, p.mesh.position.z)
+                techniqueFx?.update(deltaTime)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
