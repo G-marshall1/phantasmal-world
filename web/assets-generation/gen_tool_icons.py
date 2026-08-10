@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""Draws the per-tool 16x16 icon strip (pso-tool-icons.png).
+"""Builds the per-tool icon strip (pso-tool-icons.png), one cell per ToolType in
+Kotlin declaration order plus a technique disk and a trade-trophy cell at the end.
 
-PSO itself never shipped per-item icons (its menus list items by name; the UI sheet
-carries only category glyphs), so these are original pixel glyphs in the sheet's
-16x16 style, one cell per ToolType in Kotlin declaration order, plus a technique
-disk and a trade-trophy cell at the end.
+Cells prefer the game's real item-reader plates (the hex icons the wiki hosts,
+mirrored under wiki-item-icons/) -- the same art PSO's own item reader shows.
+The wiki carries no plates for the materials, grinders, disks or trade trophies,
+so those cells fall back to pixel glyphs drawn in the HUD sheet's style.
+
+Strip cells are 64px for the plates' sake; the runtime's toolIconStyle scales by
+CSS background-size, so the Kotlin side needs no knowledge of the source size.
 """
+import os
 from PIL import Image, ImageDraw
 
 CELL = 16
+OUT_CELL = 64
+WIKI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wiki-item-icons")
 
 
 def rgba(c):
@@ -149,35 +156,56 @@ def wing(d):
 
 MATE = (95, 210, 110)
 FLUID = (85, 150, 250)
+
+# (wiki plate slug or None, drawn fallback) per cell, in ToolType declaration order,
+# then the technique disk and trade-trophy cells.
 CELLS = [
-    lambda d: canister(d, MATE, 1), lambda d: canister(d, MATE, 2), lambda d: canister(d, MATE, 3),
-    lambda d: flask(d, FLUID, 1), lambda d: flask(d, FLUID, 2), lambda d: flask(d, FLUID, 3),
-    lambda d: cure_vial(d, (60, 190, 150)),           # Antidote
-    lambda d: cure_vial(d, (230, 175, 60)),           # Antiparalysis
-    sun, crescent, star, telepipe, doll,
-    lambda d: gem(d, (225, 70, 70)),                  # Power
-    lambda d: gem(d, (165, 85, 230)),                 # Mind
-    lambda d: gem(d, (70, 200, 100)),                 # HP
-    lambda d: gem(d, (60, 205, 190)),                 # Evade
-    lambda d: gem(d, (70, 115, 230)),                 # Def
-    lambda d: gem(d, (235, 205, 60)),                 # Luck
-    lambda d: gem(d, (70, 190, 235)),                 # TP
-    lambda d: gear(d, 1), lambda d: gear(d, 2), lambda d: gear(d, 3),
-    disk, wing,
+    ("monomate", None), ("dimate", None), ("trimate", None),
+    ("monofluid", None), ("difluid", None), ("trifluid", None),
+    ("antidote", None), ("antiparalysis", None),
+    ("sol", None), ("moon", None), ("star", None),
+    ("telepipe", None), ("scapedoll", None),
+    (None, lambda d: gem(d, (225, 70, 70))),          # Power
+    (None, lambda d: gem(d, (165, 85, 230))),         # Mind
+    (None, lambda d: gem(d, (70, 200, 100))),         # HP
+    (None, lambda d: gem(d, (60, 205, 190))),         # Evade
+    (None, lambda d: gem(d, (70, 115, 230))),         # Def
+    (None, lambda d: gem(d, (235, 205, 60))),         # Luck
+    (None, lambda d: gem(d, (70, 190, 235))),         # TP
+    (None, lambda d: gear(d, 1)), (None, lambda d: gear(d, 2)), (None, lambda d: gear(d, 3)),
+    (None, disk), (None, wing),
 ]
 
-strip = Image.new("RGBA", (CELL * len(CELLS), CELL), (0, 0, 0, 0))
-for i, fn in enumerate(CELLS):
+
+def plate_cell(slug):
+    """A wiki item-reader plate, alpha-trimmed and centred in an OUT_CELL square."""
+    img = Image.open(os.path.join(WIKI_DIR, f"{slug}.png")).convert("RGBA")
+    img = img.crop(img.getbbox())
+    scale = (OUT_CELL - 2) / max(img.size)
+    img = img.resize((max(1, round(img.width * scale)), max(1, round(img.height * scale))), Image.LANCZOS)
+    cell = Image.new("RGBA", (OUT_CELL, OUT_CELL), (0, 0, 0, 0))
+    cell.alpha_composite(img, ((OUT_CELL - img.width) // 2, (OUT_CELL - img.height) // 2))
+    return cell
+
+
+def drawn_cell(fn):
+    """A 16px drawn glyph, upscaled nearest so it keeps its pixel-art edge."""
     cell = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
     fn(ImageDraw.Draw(cell))
-    strip.alpha_composite(cell, (i * CELL, 0))
+    return cell.resize((OUT_CELL, OUT_CELL), Image.NEAREST)
+
+
+strip = Image.new("RGBA", (OUT_CELL * len(CELLS), OUT_CELL), (0, 0, 0, 0))
+for i, (slug, fn) in enumerate(CELLS):
+    cell = plate_cell(slug) if slug else drawn_cell(fn)
+    strip.alpha_composite(cell, (i * OUT_CELL, 0))
 
 OUT = "web/mobileGame/src/jsMain/resources/assets/hud/pso-tool-icons.png"
 strip.save(OUT)
 print("cells:", len(CELLS), "->", OUT)
 
-# Preview at 6x on the HUD's dark ground for visual inspection.
-prev = Image.new("RGBA", (strip.width, CELL), (24, 28, 38, 255))
+# Preview at 24px cells on the HUD's dark ground for visual inspection.
+prev = Image.new("RGBA", (strip.width, OUT_CELL), (24, 28, 38, 255))
 prev.alpha_composite(strip)
-prev = prev.resize((strip.width * 6, CELL * 6), Image.NEAREST)
+prev = prev.resize((len(CELLS) * 48, 48), Image.LANCZOS)
 prev.save("preview_tool_icons.png")

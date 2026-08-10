@@ -446,13 +446,13 @@ private fun generateAreaSpawns(sourceDir: File, outputDir: File) {
  * is read through (see :web:mobileGame's Psov2AreaGeometry, which walks these same 60-byte records
  * to place each section's meshes), read here only for the transform.
  */
-private class SectionTransform(val x: Float, val y: Float, val z: Float, val yaw: Double) {
+internal class SectionTransform(val x: Float, val y: Float, val z: Float, val yaw: Double) {
     /** Section-local (lx, lz) to world, by the same R_y the geometry loader composes. */
     fun worldX(lx: Float, lz: Float): Double = x + lx * cos(yaw) + lz * sin(yaw)
     fun worldZ(lx: Float, lz: Float): Double = z - lx * sin(yaw) + lz * cos(yaw)
 }
 
-private fun readSectionTable(file: File): Map<Int, SectionTransform> {
+internal fun readSectionTable(file: File): Map<Int, SectionTransform> {
     val b = littleEndian(file.readBytes())
     val tableOffset = b.getInt(b.capacity() - 16)
     val count = b.getInt(tableOffset)

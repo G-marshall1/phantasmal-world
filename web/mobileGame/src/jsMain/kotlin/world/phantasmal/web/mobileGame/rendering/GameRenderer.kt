@@ -3719,8 +3719,18 @@ class GameRenderer(
             // thin decorative details (counter trim, railings) that a single raycast can land on and
             // mistake for solid floor -- see findNearestStableGroundHeight's doc comment. Field/
             // dungeon Room-format maps haven't shown either problem, so they keep the plain search.
+            // An active quest's own Player Set (object type 0) marks where its field floors
+            // start the player -- the same world-baked point the real quest uses. The city
+            // keeps its usual spawn: floor 0's sets describe the multiplayer lobby spots.
+            val questSpawn = questDef?.let { def ->
+                QUEST_FLOOR_FOR_MAP[mapSlug]?.takeIf { it > 0 }?.let { floor ->
+                    def.objects.firstOrNull { it.area == floor && it.typeId == 0 }
+                }
+            }
             val (originX, originZ) =
-                spawnOverride ?: STAGE_SPAWN_ORIGINS[mapSlug] ?: (.0 to .0)
+                spawnOverride
+                    ?: questSpawn?.let { it.x to it.z }
+                    ?: STAGE_SPAWN_ORIGINS[mapSlug] ?: (.0 to .0)
             val isStage = mapSlug in STAGE_SLUGS
             val (spawnX, groundY, spawnZ) = if (spawnYOverride != null) {
                 Triple(originX, spawnYOverride, originZ)
@@ -3736,7 +3746,9 @@ class GameRenderer(
             // Boss arenas: arrive facing the field's centre (the boss waits there) unless a
             // debug facing already chose otherwise. Computed from the spawn so moving the
             // arrival point around the rim keeps the camera opening onto the fight.
-            (facingOverride ?: if (bossEncounter != null) atan2(-spawnX, -spawnZ) else null)
+            (facingOverride
+                ?: questSpawn?.yaw
+                ?: if (bossEncounter != null) atan2(-spawnX, -spawnZ) else null)
                 ?.let { mesh.rotation.y = it }
             cameraYawOverride?.let {
                 (inputManager as? ThirdPersonCameraController)?.debugSetYawOffset(it)

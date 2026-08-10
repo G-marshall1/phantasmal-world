@@ -9,6 +9,8 @@ import world.phantasmal.psolib.buffer.Buffer
 import world.phantasmal.psolib.cursor.cursor
 import world.phantasmal.psolib.fileFormats.quest.Quest
 import world.phantasmal.psolib.fileFormats.quest.parseQstToQuest
+import world.phantasmal.web.assetsGeneration.psov2.SectionTransform
+import world.phantasmal.web.assetsGeneration.psov2.readSectionTable
 
 /**
  * Converts real .qst quest files (the Tethealla BB set in psolib's test resources -- the
@@ -24,6 +26,15 @@ fun main(args: Array<String>) {
     val questDir = File(
         repoRoot,
         "psolib/src/commonTest/resources/tethealla_v0.143_quests",
+    )
+    // The psov2 data set, for the maps' terrain .rels: quest placements are section-relative
+    // and must be baked to world space against the terrain the game actually renders -- the
+    // exact same tables generateAreaSpawns bakes the free-roam layouts with. Left raw, every
+    // enemy, crate, door and the player's own start point collapse into a heap at the origin,
+    // which is the "whole map in pieces" a quest visit to Forest 1 produced.
+    val psov2Dir = File(
+        args.getOrNull(1)
+            ?: "${System.getProperty("user.home")}/Downloads/psov2-master/public/dat",
     )
     val outDir = File(repoRoot, "web/mobileGame/src/jsMain/resources/assets/quests")
     outDir.mkdirs()
@@ -54,7 +65,7 @@ fun main(args: Array<String>) {
             Buffer.fromByteArray(file.readBytes()).cursor(), lenient = true,
         ).unwrap()
         val quest = questData.quest
-        File(outDir, "$slug.json").writeText(questJson(quest))
+        File(outDir, "$slug.json").writeText(questJson(quest, sectionTables(quest, psov2Dir)))
         index.append("""  {"slug":${json(slug)},"name":${json(quest.name)},"short":${json(quest.shortDescription)}},""").append('\n')
         println("Converted $relative -> $slug.json (${quest.name})")
     }
@@ -62,7 +73,60 @@ fun main(args: Array<String>) {
     File(outDir, "index.json").writeText(index.toString().replace(",\n]", "\n]"))
 }
 
-private fun questJson(quest: Quest): String = buildString {
+/** The field floors' runtime slugs, mirroring :web:mobileGame's QUEST_FLOOR_FOR_MAP. */
+private val FLOOR_SLUGS = mapOf(
+    1 to "forest01", 2 to "forest02",
+    3 to "cave01", 4 to "cave02", 5 to "cave03",
+    6 to "mines01", 7 to "mines02",
+    8 to "ruins01", 9 to "ruins02", 10 to "ruins03",
+)
+
+/**
+ * The terrain .rel whose section table a floor's placements are relative to, for the geometry
+ * variant the quest designates. Mirrors AreaSpawnSpecs' file naming: the forests share one
+ * terrain across variants; caves/mines/ruins are one terrain per variant ("machine"/"ancient"
+ * being psov2's own names for the mines and ruins).
+ */
+private fun sectionRelFor(slug: String, variant: Int): String? {
+    val vv = variant.toString().padStart(2, '0')
+    return when {
+        slug == "forest01" -> "map_forest01d.rel"
+        slug == "forest02" -> "map_forest02d.rel"
+        slug.startsWith("cave") -> "map_${slug}_${vv}d.rel"
+        slug == "mines01" -> "map_machine01_${vv}d.rel"
+        slug == "mines02" -> "map_machine02_${vv}d.rel"
+        slug.startsWith("ruins") -> "map_ancient${slug.removePrefix("ruins")}_${vv}d.rel"
+        else -> null
+    }
+}
+
+/**
+ * Floor -> section table, for every field floor this quest's bb_map_designate ops pin. The
+ * variant read here is the same one the runtime's questGeometrySlug resolves, so the table the
+ * coordinates are baked with is the terrain the game will actually load. Pioneer 2 (floor 0)
+ * and the boss arenas carry no table and stay raw -- both are single-section stages at the
+ * origin, where raw already is world space.
+ */
+private fun sectionTables(quest: Quest, psov2Dir: File): Map<Int, Map<Int, SectionTransform>> =
+    buildMap {
+        for (segment in quest.bytecodeIr.segments.filterIsInstance<InstructionSegment>()) {
+            for (instruction in segment.instructions) {
+                if (instruction.opcode.mnemonic != "bb_map_designate") continue
+                val floor = (instruction.args.getOrNull(0) as? IntArg)?.value ?: continue
+                val variant = (instruction.args.getOrNull(2) as? IntArg)?.value ?: 0
+                val slug = FLOOR_SLUGS[floor] ?: continue
+                val rel = sectionRelFor(slug, variant) ?: continue
+                val file = File(psov2Dir, rel)
+                if (!file.exists()) {
+                    println("  WARN: $rel missing; floor $floor stays section-relative.")
+                    continue
+                }
+                put(floor, readSectionTable(file))
+            }
+        }
+    }
+
+private fun questJson(quest: Quest, tables: Map<Int, Map<Int, SectionTransform>>): String = buildString {
     append("{\n")
     append("\"name\":${json(quest.name)},\n")
     append("\"short\":${json(quest.shortDescription)},\n")
@@ -70,9 +134,14 @@ private fun questJson(quest: Quest): String = buildString {
 
     append("\"npcs\":[\n")
     appendList(quest.npcs.map { npc ->
+        val origin = tables[npc.areaId]?.get(npc.sectionId.toInt())
+        val x = origin?.worldX(npc.position.x, npc.position.z) ?: npc.position.x.toDouble()
+        val y = origin?.let { it.y + npc.position.y } ?: npc.position.y.toDouble()
+        val z = origin?.worldZ(npc.position.x, npc.position.z) ?: npc.position.z.toDouble()
+        val yaw = npc.rotation.y + (origin?.yaw ?: 0.0)
         """{"type":${json(npc.type.name)},"area":${npc.areaId},"section":${npc.sectionId},""" +
-            """"x":${npc.position.x},"y":${npc.position.y},"z":${npc.position.z},""" +
-            """"yaw":${npc.rotation.y},"wave":${npc.wave},"script":${npc.scriptLabel}}"""
+            """"x":$x,"y":$y,"z":$z,""" +
+            """"yaw":$yaw,"wave":${npc.wave},"script":${npc.scriptLabel}}"""
     })
     append("],\n")
 
@@ -82,9 +151,14 @@ private fun questJson(quest: Quest): String = buildString {
         // three floats at 40 and three ints at 52 (door/switch ids ride the first int).
         val paramsF = listOf(40, 44, 48).map { obj.data.getFloat(it) }
         val paramsI = listOf(52, 56, 60).map { obj.data.getInt(it) }
+        val origin = tables[obj.areaId]?.get(obj.sectionId.toInt())
+        val x = origin?.worldX(obj.position.x, obj.position.z) ?: obj.position.x.toDouble()
+        val y = origin?.let { it.y + obj.position.y } ?: obj.position.y.toDouble()
+        val z = origin?.worldZ(obj.position.x, obj.position.z) ?: obj.position.z.toDouble()
+        val yaw = obj.rotation.y + (origin?.yaw ?: 0.0)
         """{"type":${json(obj.type.name)},"typeId":${obj.typeId},"area":${obj.areaId},""" +
-            """"section":${obj.sectionId},"x":${obj.position.x},"y":${obj.position.y},""" +
-            """"z":${obj.position.z},"yaw":${obj.rotation.y},""" +
+            """"section":${obj.sectionId},"x":$x,"y":$y,""" +
+            """"z":$z,"yaw":$yaw,""" +
             """"paramsF":[${paramsF.joinToString(",")}],""" +
             """"paramsI":[${paramsI.joinToString(",")}]}"""
     })
