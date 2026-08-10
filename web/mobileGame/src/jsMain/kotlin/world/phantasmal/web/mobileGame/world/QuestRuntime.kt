@@ -32,6 +32,9 @@ object QuestSession {
     /** Floor number to handler label, as registered by the script's label 0. */
     val floorHandlers = mutableMapOf<Int, Int>()
 
+    /** Quest-board entries the script registered: slot to (label, display name). */
+    val boardHandlers = mutableMapOf<Int, Pair<Int, String>>()
+
     /** Slugs of completed quests, in completion order. */
     val completed = mutableListOf<String>()
 
@@ -42,6 +45,7 @@ object QuestSession {
         flags.clear()
         registers.fill(0)
         floorHandlers.clear()
+        boardHandlers.clear()
         persist()
     }
 
@@ -67,6 +71,8 @@ object QuestSession {
             append(floorHandlers.entries.joinToString(",") { "${it.key}:${it.value}" })
             append('|')
             append(completed.joinToString(","))
+            append('|')
+            append(boardHandlers.entries.joinToString(";") { "${it.key}:${it.value.first}:${it.value.second}" })
         }
         window.localStorage.setItem(KEY, payload)
     }
@@ -89,6 +95,15 @@ object QuestSession {
         }
         completed.clear()
         parts.getOrNull(4)?.split(',')?.filter { it.isNotEmpty() }?.let(completed::addAll)
+        boardHandlers.clear()
+        parts.getOrNull(5)?.split(';')?.forEach { entry ->
+            val kv = entry.split(':', limit = 3)
+            val slot = kv.getOrNull(0)?.toIntOrNull()
+            val label = kv.getOrNull(1)?.toIntOrNull()
+            if (slot != null && label != null) {
+                boardHandlers[slot] = label to (kv.getOrNull(2) ?: "")
+            }
+        }
     }
 }
 
@@ -214,6 +229,20 @@ interface QuestHost {
     fun isSwitchPressed(switchId: Int): Boolean
     fun characterClassId(): Int
     fun giveItem(code0: Int, code1: Int, code2: Int)
+
+    /** Script-driven travel: floor number in the quest space (see QUEST_FLOOR_FOR_MAP). */
+    fun goFloor(floor: Int)
+
+    /** The ending flow's return to the Hunter's Guild counter. */
+    fun returnToGuild()
+
+    /** The quest declares itself over. */
+    fun questExit()
+
+    /** Whether this character has felled any area boss yet -- boss_is_dead's answer. */
+    fun anyBossDead(): Boolean
+
+    fun playerHp(): Int
 }
 
 /**
@@ -251,6 +280,9 @@ class QuestVm(
     }
 
     val coordTriggers = mutableListOf<CoordTrigger>()
+
+    /** The quest-space floor number of the map this VM is running on (set by the host). */
+    var currentFloor: Int = 0
 
     private val threads = mutableListOf<VmThread>()
     private val unknownOps = mutableSetOf<String>()
@@ -306,7 +338,11 @@ class QuestVm(
             step(runnable)
             steps++
         }
-        threads.removeAll { it.stack.isEmpty() && it.blocked == null }
+        val finished = threads.removeAll { it.stack.isEmpty() && it.blocked == null }
+        // Registers are the story's memory (r120 "already spoke to the Principal" and kin);
+        // they must survive the page reload map travel causes, so they persist whenever a
+        // script thread runs to completion.
+        if (finished) QuestSession.persist()
     }
 
     private fun step(thread: VmThread) {
@@ -355,9 +391,20 @@ class QuestVm(
             "clear" -> registers[instr.int(0)] = 0
             "let" -> registers[instr.int(0)] = registers[instr.int(1)]
             "add" -> registers[instr.int(0)] += registers[instr.int(1)]
+            "sub" -> registers[instr.int(0)] -= registers[instr.int(1)]
             "addi" -> registers[instr.int(0)] += instr.int(1)
             "subi" -> registers[instr.int(0)] -= instr.int(1)
-            "sync_register" -> Unit
+            "and" -> registers[instr.int(0)] = registers[instr.int(0)] and registers[instr.int(1)]
+            "or" -> registers[instr.int(0)] = registers[instr.int(0)] or registers[instr.int(1)]
+            "xori" -> registers[instr.int(0)] = registers[instr.int(0)] xor instr.int(1)
+            "get_random" -> {
+                // (loBound reg pair, result reg): a random int in [rBase, rBase+1).
+                val base = instr.int(0)
+                val lo = registers[base]
+                val hi = registers[base + 1].coerceAtLeast(lo + 1)
+                registers[instr.int(1)] = lo + kotlin.random.Random.nextInt(hi - lo)
+            }
+            "sync_register", "gettime" -> Unit
 
             // -- Flags --
             "gset" -> { QuestSession.flags.add(instr.int(0)); QuestSession.persist() }
@@ -376,6 +423,19 @@ class QuestVm(
             "jmpi_<=" -> if (registers[instr.int(0)] <= instr.int(1)) jump(thread, instr.int(2))
             "jmp_=" -> if (registers[instr.int(0)] == registers[instr.int(1)]) jump(thread, instr.int(2))
             "jmp_!=" -> if (registers[instr.int(0)] != registers[instr.int(1)]) jump(thread, instr.int(2))
+            "jmp_<" -> if (registers[instr.int(0)] < registers[instr.int(1)]) jump(thread, instr.int(2))
+            "jmp_<=" -> if (registers[instr.int(0)] <= registers[instr.int(1)]) jump(thread, instr.int(2))
+            "jmp_>" -> if (registers[instr.int(0)] > registers[instr.int(1)]) jump(thread, instr.int(2))
+            "jmp_>=" -> if (registers[instr.int(0)] >= registers[instr.int(1)]) jump(thread, instr.int(2))
+            "switch_call" -> {
+                val value = registers[instr.int(0)]
+                val labelIndex = 1 + value
+                if (labelIndex < instr.args.size) thread.stack.addLast(Frame(instr.int(labelIndex), 0))
+            }
+            // The varargs bracket: BB collects arguments between va_start and va_end for the
+            // function va_call invokes. The arg stack already carries them here.
+            "va_start", "va_end" -> Unit
+            "va_call" -> thread.stack.addLast(Frame(instr.int(0), 0))
             "switch_jmp" -> {
                 val value = registers[instr.int(0)]
                 // args: register, then one label per case.
@@ -440,6 +500,18 @@ class QuestVm(
                     registers[base + 2].toDouble(), registers[base + 3].toDouble(),
                 )
             }
+            "at_coords_talk" -> {
+                // Same trigger shape as at_coords_call; the label it fires opens with its own
+                // message, so the distinction is the script's, not ours.
+                val base = instr.int(0)
+                coordTriggers.add(
+                    CoordTrigger(
+                        registers[base].toDouble(), registers[base + 2].toDouble(),
+                        registers[base + 3].toDouble().coerceAtLeast(5.0),
+                        registers[base + 4],
+                    )
+                )
+            }
             "at_coords_call" -> {
                 val base = instr.int(0)
                 coordTriggers.add(
@@ -458,6 +530,52 @@ class QuestVm(
             "lock_door2" -> host.lockDoor(instr.int(0))
             "pl_add_meseta2" -> host.addMeseta(instr.int(0))
             "item_create2" -> host.giveItem(instr.int(0), instr.int(1), instr.int(2))
+            "go_floor" -> host.goFloor(registers[instr.int(1)].takeIf { instr.args.size > 1 }
+                ?: instr.int(0))
+            "p_return_guild" -> host.returnToGuild()
+            "qexit" -> host.questExit()
+            "boss_is_dead" -> registers[instr.int(0)] = if (host.anyBossDead()) 1 else 0
+            "get_player_hp" -> registers[instr.int(1)] = host.playerHp()
+            "get_player_status" -> registers[instr.int(1)] = 0
+            "get_floor_number" -> registers[instr.int(1)] = currentFloor
+            // Without the quest's own field waves standing yet, a zone reads as cleared --
+            // the optimistic answer that keeps stories moving rather than deadlocked.
+            "if_zone_clear" -> registers[instr.int(0)] = 1
+            "read_global_flag" -> registers[instr.int(1)] =
+                if ((GLOBAL_FLAG_SPACE + instr.int(0)) in QuestSession.flags) 1 else 0
+            "write_global_flag" -> {
+                if (registers[instr.int(1)] != 0) QuestSession.flags.add(GLOBAL_FLAG_SPACE + instr.int(0))
+                else QuestSession.flags.remove(GLOBAL_FLAG_SPACE + instr.int(0))
+                QuestSession.persist()
+            }
+
+            // The guild counter's quest board.
+            "set_quest_board_handler" -> {
+                QuestSession.boardHandlers[instr.int(0)] = instr.int(1) to instr.string(2)
+                QuestSession.persist()
+            }
+            "clear_quest_board_handler" -> {
+                QuestSession.boardHandlers.remove(instr.int(0))
+                QuestSession.persist()
+            }
+            "disp_msg_qb" -> {
+                host.showWindow(instr.string(0))
+                thread.blocked = Block.Window
+                thread.windowOpen = true
+            }
+            "close_msg_qb" -> {
+                thread.windowOpen = false
+                host.closeWindow()
+            }
+            "winset_time", "window_time" -> {
+                host.showWindow(instr.string(instr.args.size - 1))
+                thread.blocked = Block.Window
+                thread.windowOpen = true
+            }
+            "winend_time" -> {
+                thread.windowOpen = false
+                host.closeWindow()
+            }
 
             // -- Queries --
             "get_difficulty_level2" -> registers[instr.int(0)] = 0
@@ -472,6 +590,15 @@ class QuestVm(
             "fleti_fixed_camera", "cam_quake", "cine_enable", "cine_disable",
             "disable_movement2", "enable_movement2", "npc_crp_v3", "npc_crt_v3",
             "get_coord_of_player", "pl_walk_v1", "chat_bubble",
+            "unhide_obj", "particle_v3", "particle_id_v3", "se", "fadeout", "fadein",
+            "clear_mainwarp", "warp_off", "warp_on", "default_camera_pos2",
+            "cam_zmin", "cam_zmout", "scroll_text", "p_disablewarp",
+            "disable_movement1", "enable_movement1", "bb_p2_menu",
+            "unfreeze_enemies", "freeze_enemies", "color_change",
+            "use_animation", "stop_animation", "animation_check",
+            "set_motion_blur", "p_move_v3", "map_designate_ex", "unknown_f8a9",
+            "set_palettex_callback", "activate_palettex", "enable_palettex",
+            "set_slot_invincible", "turn_off_bgm_p2",
             -> Unit
 
             else -> if (unknownOps.add(op)) {
@@ -486,5 +613,8 @@ class QuestVm(
     companion object {
         private const val MAX_STEPS_PER_FRAME = 2000
         private const val SYNC_BUDGET_PER_FRAME = 32
+
+        /** Offset separating read/write_global_flag's space from gset/gget's. */
+        private const val GLOBAL_FLAG_SPACE = 100_000
     }
 }

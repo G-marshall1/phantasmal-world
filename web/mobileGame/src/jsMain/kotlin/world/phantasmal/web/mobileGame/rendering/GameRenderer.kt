@@ -2456,6 +2456,30 @@ class GameRenderer(
         override fun giveItem(code0: Int, code1: Int, code2: Int) {
             showToast("The client hands you a reward")
         }
+
+        override fun goFloor(floor: Int) {
+            val destination = QUEST_FLOOR_FOR_MAP.entries.find { it.value == floor }?.key
+            if (destination != null && destination != mapSlug) {
+                QuestSession.persist()
+                onAreaTransition?.invoke(destination)
+            }
+        }
+
+        override fun returnToGuild() {
+            QuestSession.persist()
+            if (mapSlug != "pioneer2") onAreaTransition?.invoke("pioneer2")
+        }
+
+        override fun questExit() {
+            QuestSession.complete()
+            showToast("Quest complete!")
+            persistProgress()
+        }
+
+        override fun anyBossDead(): Boolean =
+            player?.defeatedBosses?.isNotEmpty() == true
+
+        override fun playerHp(): Int = player?.hp ?: 0
     }
 
     /**
@@ -2509,6 +2533,8 @@ class GameRenderer(
             }
         }
 
+        vm.currentFloor = floor
+
         // Label 0 registers the floor handlers and reads the flags; then this floor's handler.
         vm.startThread(0)
         QuestSession.floorHandlers[floor]?.let { vm.startThread(it) }
@@ -2533,6 +2559,15 @@ class GameRenderer(
                 if (activeSlug != null) {
                     val questName = questIndex.find { it.slug == activeSlug }?.name ?: activeSlug
                     rows.add(DialogRow("", "In progress: $questName"))
+                    // The quest board: whatever the script has posted (collected key items,
+                    // reports) -- each entry runs its own script label.
+                    for ((slot, entry) in QuestSession.boardHandlers.entries.sortedBy { it.key }) {
+                        val (label, name) = entry
+                        rows.add(DialogRow("BOARD", name.ifEmpty { "Entry ${slot + 1}" }) {
+                            questVm?.startThread(label)
+                            npcDialog.close()
+                        })
+                    }
                     rows.add(DialogRow("TURN IN", "Report the job done") {
                         val vm = questVm
                         if (vm != null && vm.qtSuccessLabel >= 0) {
