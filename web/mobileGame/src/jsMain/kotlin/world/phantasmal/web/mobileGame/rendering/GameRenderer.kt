@@ -2514,7 +2514,7 @@ class GameRenderer(
         QuestSession.floorHandlers[floor]?.let { vm.startThread(it) }
     }
 
-    private fun openNpcDialog(active: ActiveNpc) {
+    private fun openNpcDialog(active: ActiveNpc, page: String? = null) {
         val p = player ?: return
         val spec = active.spec
         val rows = mutableListOf<DialogRow>()
@@ -2571,90 +2571,130 @@ class GameRenderer(
                 }
             }
 
-            NpcRole.TOOL_SHOP -> {
-                rows.add(DialogRow("", "-- BUY --"))
-                for ((tool, fullPrice) in TOOL_SHOP) {
-                    val price = shopPrice(fullPrice)
-                    rows.add(DialogRow("BUY", tool.uiName, "$price Meseta", icon = tool.itemIcon) {
-                        if (buyTool(tool, price)) openNpcDialog(active)
+            NpcRole.TOOL_SHOP -> when (page) {
+                null -> {
+                    rows.add(DialogRow("GO", "Buy", "Browse the counter's stock") {
+                        openNpcDialog(active, "buy")
+                    })
+                    rows.add(DialogRow("GO", "Sell", "Sell from your pack") {
+                        openNpcDialog(active, "sell")
                     })
                 }
-                val sellable = p.tools.entries.mapNotNull { (tool, count) ->
-                    toolSellPrice(tool)?.let { Triple(tool, count, it) }
+                "buy" -> {
+                    rows.add(DialogRow("BACK", "Back") { openNpcDialog(active) })
+                    for ((tool, fullPrice) in TOOL_SHOP) {
+                        val price = shopPrice(fullPrice)
+                        rows.add(DialogRow("BUY", tool.uiName, "$price Meseta", icon = tool.itemIcon) {
+                            if (buyTool(tool, price)) openNpcDialog(active, "buy")
+                        })
+                    }
                 }
-                if (sellable.isNotEmpty() || p.treasures.isNotEmpty()) {
-                    rows.add(DialogRow("", "-- SELL --"))
+                else -> {
+                    rows.add(DialogRow("BACK", "Back") { openNpcDialog(active) })
+                    val sellable = p.tools.entries.mapNotNull { (tool, count) ->
+                        toolSellPrice(tool)?.let { Triple(tool, count, it) }
+                    }
+                    if (sellable.isEmpty() && p.treasures.isEmpty()) {
+                        rows.add(DialogRow("", "Nothing in the pack I'd buy."))
+                    }
                     for ((tool, count, price) in sellable) {
                         rows.add(DialogRow("SELL", "${tool.uiName}  x$count", "$price Meseta each", icon = tool.itemIcon) {
-                            if (sellTool(tool, price)) openNpcDialog(active)
+                            if (sellTool(tool, price)) openNpcDialog(active, "sell")
                         })
                     }
                     for (treasureItem in p.treasures.toList()) {
                         rows.add(DialogRow("SELL", treasureItem.uiName, "$TREASURE_SELL_PRICE Meseta", icon = treasureItem.itemIcon) {
-                            if (sellTreasure(treasureItem)) openNpcDialog(active)
+                            if (sellTreasure(treasureItem)) openNpcDialog(active, "sell")
                         })
                     }
                 }
             }
 
-            // The orange counter: weapons only (the orange item box's contents), buy and sell.
-            NpcRole.WEAPON_SHOP -> {
-                rows.add(DialogRow("", "-- WEAPONS --"))
-                for (tier in armsShopStock(p.level)) {
-                    val price = weaponBuyPrice(tier)
-                    rows.add(DialogRow("BUY", tier.name, "${tier.atpMin}-${tier.atpMax} ATP  ·  $price Meseta", icon = tier.type.itemIcon) {
-                        if (buyWeapon(tier, price)) openNpcDialog(active)
+            // The orange counter: weapons only (the orange item box's contents).
+            NpcRole.WEAPON_SHOP -> when (page) {
+                null -> {
+                    rows.add(DialogRow("GO", "Buy", "Browse the weapon racks") {
+                        openNpcDialog(active, "buy")
+                    })
+                    rows.add(DialogRow("GO", "Sell", "Sell weapons from your pack") {
+                        openNpcDialog(active, "sell")
                     })
                 }
-                // A ???? can't be sold until it's appraised -- the shop won't touch a mystery.
-                val sellableWeapons = inventory.filter { !it.unidentified }
-                if (sellableWeapons.isNotEmpty()) {
-                    rows.add(DialogRow("", "-- SELL --"))
+                "buy" -> {
+                    rows.add(DialogRow("BACK", "Back") { openNpcDialog(active) })
+                    for (tier in armsShopStock(p.level)) {
+                        val price = weaponBuyPrice(tier)
+                        rows.add(DialogRow("BUY", tier.name, "${tier.atpMin}-${tier.atpMax} ATP  ·  $price Meseta", icon = tier.type.itemIcon) {
+                            if (buyWeapon(tier, price)) openNpcDialog(active, "buy")
+                        })
+                    }
+                }
+                else -> {
+                    rows.add(DialogRow("BACK", "Back") { openNpcDialog(active) })
+                    // A ???? can't be sold until it's appraised -- no price on a mystery.
+                    val sellableWeapons = inventory.filter { !it.unidentified }
+                    if (sellableWeapons.isEmpty()) {
+                        rows.add(DialogRow("", "No weapons in the pack I'd buy."))
+                    }
                     for (item in sellableWeapons.toList()) {
                         rows.add(DialogRow("SELL", item.displayName, "${weaponSellPrice(item)} Meseta", icon = item.itemIcon) {
-                            if (sellWeapon(item)) openNpcDialog(active)
+                            if (sellWeapon(item)) openNpcDialog(active, "sell")
                         })
                     }
                 }
             }
 
-            // The blue counter: frames, barriers and units (the blue item box), buy and sell.
-            NpcRole.ARMOR_SHOP -> {
-                rows.add(DialogRow("", "-- FRAMES --"))
-                for (spec in armorShopFrames(p.level)) {
-                    rows.add(DialogRow("BUY", spec.name, "frame · DFP ${spec.dfpMin}-${spec.dfpMax} · ${shopPrice(spec.price)} Meseta", icon = ItemIcon.ARMOR) {
-                        if (buyFrame(spec)) openNpcDialog(active)
+            // The blue counter: frames, barriers and units (the blue item box).
+            NpcRole.ARMOR_SHOP -> when (page) {
+                null -> {
+                    rows.add(DialogRow("GO", "Buy", "Browse frames, barriers and units") {
+                        openNpcDialog(active, "buy")
+                    })
+                    rows.add(DialogRow("GO", "Sell", "Sell gear from your pack") {
+                        openNpcDialog(active, "sell")
                     })
                 }
-                rows.add(DialogRow("", "-- BARRIERS --"))
-                for (spec in armorShopBarriers(p.level)) {
-                    rows.add(DialogRow("BUY", spec.name, "barrier · EVP ${spec.evpMin}-${spec.evpMax} · ${shopPrice(spec.price)} Meseta", icon = ItemIcon.UNIT) {
-                        if (buyBarrier(spec)) openNpcDialog(active)
-                    })
+                "buy" -> {
+                    rows.add(DialogRow("BACK", "Back") { openNpcDialog(active) })
+                    rows.add(DialogRow("", "-- FRAMES --"))
+                    for (spec in armorShopFrames(p.level)) {
+                        rows.add(DialogRow("BUY", spec.name, "frame · DFP ${spec.dfpMin}-${spec.dfpMax} · ${shopPrice(spec.price)} Meseta", icon = ItemIcon.ARMOR) {
+                            if (buyFrame(spec)) openNpcDialog(active, "buy")
+                        })
+                    }
+                    rows.add(DialogRow("", "-- BARRIERS --"))
+                    for (spec in armorShopBarriers(p.level)) {
+                        rows.add(DialogRow("BUY", spec.name, "barrier · EVP ${spec.evpMin}-${spec.evpMax} · ${shopPrice(spec.price)} Meseta", icon = ItemIcon.UNIT) {
+                            if (buyBarrier(spec)) openNpcDialog(active, "buy")
+                        })
+                    }
+                    rows.add(DialogRow("", "-- UNITS --"))
+                    for (unit in UNIT_SHOP) {
+                        rows.add(DialogRow("BUY", unit.uiName, "${unit.detail} · ${shopPrice(unit.price)} Meseta", icon = unit.itemIcon) {
+                            if (buyUnit(unit)) openNpcDialog(active, "buy")
+                        })
+                    }
                 }
-                rows.add(DialogRow("", "-- UNITS --"))
-                for (unit in UNIT_SHOP) {
-                    rows.add(DialogRow("BUY", unit.uiName, "${unit.detail} · ${shopPrice(unit.price)} Meseta", icon = unit.itemIcon) {
-                        if (buyUnit(unit)) openNpcDialog(active)
-                    })
-                }
-                val hasArmor = p.ownedFrames.isNotEmpty() || p.ownedBarriers.isNotEmpty() ||
-                    p.ownedUnits.isNotEmpty()
-                if (hasArmor) {
-                    rows.add(DialogRow("", "-- SELL --"))
+                else -> {
+                    rows.add(DialogRow("BACK", "Back") { openNpcDialog(active) })
+                    val hasArmor = p.ownedFrames.isNotEmpty() || p.ownedBarriers.isNotEmpty() ||
+                        p.ownedUnits.isNotEmpty()
+                    if (!hasArmor) {
+                        rows.add(DialogRow("", "No gear in the pack I'd buy."))
+                    }
                     for (item in p.ownedFrames.toList()) {
                         rows.add(DialogRow("SELL", item.displayName, "${frameSellPrice(item)} Meseta", icon = item.itemIcon) {
-                            if (sellFrame(item)) openNpcDialog(active)
+                            if (sellFrame(item)) openNpcDialog(active, "sell")
                         })
                     }
                     for (item in p.ownedBarriers.toList()) {
                         rows.add(DialogRow("SELL", item.displayName, "${barrierSellPrice(item)} Meseta", icon = item.itemIcon) {
-                            if (sellBarrier(item)) openNpcDialog(active)
+                            if (sellBarrier(item)) openNpcDialog(active, "sell")
                         })
                     }
                     for (unit in p.ownedUnits.toList()) {
                         rows.add(DialogRow("SELL", unit.uiName, "${unitSellPrice(unit)} Meseta", icon = unit.itemIcon) {
-                            if (sellUnit(unit)) openNpcDialog(active)
+                            if (sellUnit(unit)) openNpcDialog(active, "sell")
                         })
                     }
                 }
@@ -2675,76 +2715,87 @@ class GameRenderer(
                 }
             }
 
-            NpcRole.BANK -> {
-                rows.add(DialogRow("", "carrying ${p.meseta}  ·  banked ${p.bankMeseta}"))
-                rows.add(DialogRow("MESETA", "Deposit 100", icon = ItemIcon.MESETA) { if (bankMesetaDeposit(100)) openNpcDialog(active) })
-                rows.add(DialogRow("MESETA", "Deposit all", icon = ItemIcon.MESETA) { if (bankMesetaDeposit(p.meseta)) openNpcDialog(active) })
-                rows.add(DialogRow("MESETA", "Withdraw 100", icon = ItemIcon.MESETA) { if (bankMesetaWithdraw(100)) openNpcDialog(active) })
-                rows.add(DialogRow("MESETA", "Withdraw all", icon = ItemIcon.MESETA) { if (bankMesetaWithdraw(p.bankMeseta)) openNpcDialog(active) })
+            NpcRole.BANK -> when (page) {
+                null -> {
+                    rows.add(DialogRow("", "carrying ${p.meseta}  ·  banked ${p.bankMeseta}"))
+                    rows.add(DialogRow("GO", "Deposit", "Store Meseta and items") {
+                        openNpcDialog(active, "deposit")
+                    })
+                    rows.add(DialogRow("GO", "Withdraw", "Take Meseta and items back") {
+                        openNpcDialog(active, "withdraw")
+                    })
+                }
 
-                if (p.tools.isNotEmpty() || inventory.isNotEmpty() || p.treasures.isNotEmpty()) {
-                    rows.add(DialogRow("", "-- DEPOSIT --"))
+                "deposit" -> {
+                    rows.add(DialogRow("BACK", "Back") { openNpcDialog(active) })
+                    rows.add(DialogRow("", "carrying ${p.meseta} Meseta"))
+                    rows.add(DialogRow("MESETA", "Deposit 100", icon = ItemIcon.MESETA) { if (bankMesetaDeposit(100)) openNpcDialog(active, "deposit") })
+                    rows.add(DialogRow("MESETA", "Deposit all", icon = ItemIcon.MESETA) { if (bankMesetaDeposit(p.meseta)) openNpcDialog(active, "deposit") })
                     for ((tool, count) in p.tools.entries.toList()) {
                         rows.add(DialogRow("IN", "${tool.uiName}  x$count", "Tap to store one", icon = tool.itemIcon) {
-                            if (bankDepositTool(tool)) openNpcDialog(active)
+                            if (bankDepositTool(tool)) openNpcDialog(active, "deposit")
                         })
                     }
                     for (item in inventory.toList()) {
                         rows.add(DialogRow("IN", item.displayName, "Tap to store", icon = item.itemIcon) {
-                            if (bankDepositWeapon(item)) openNpcDialog(active)
+                            if (bankDepositWeapon(item)) openNpcDialog(active, "deposit")
                         })
                     }
                     for (treasureItem in p.treasures.toList()) {
                         rows.add(DialogRow("IN", treasureItem.uiName, "Tap to store", icon = treasureItem.itemIcon) {
-                            if (bankDepositTreasure(treasureItem)) openNpcDialog(active)
+                            if (bankDepositTreasure(treasureItem)) openNpcDialog(active, "deposit")
+                        })
+                    }
+                    for (item in p.ownedFrames.toList()) {
+                        rows.add(DialogRow("IN", item.displayName, "Tap to store", icon = item.itemIcon) {
+                            if (moveItem { p.ownedFrames.remove(item) && p.bankFrames.add(item) }) openNpcDialog(active, "deposit")
+                        })
+                    }
+                    for (item in p.ownedBarriers.toList()) {
+                        rows.add(DialogRow("IN", item.displayName, "Tap to store", icon = item.itemIcon) {
+                            if (moveItem { p.ownedBarriers.remove(item) && p.bankBarriers.add(item) }) openNpcDialog(active, "deposit")
+                        })
+                    }
+                    for (unit in p.ownedUnits.toList()) {
+                        rows.add(DialogRow("IN", unit.uiName, "Tap to store", icon = unit.itemIcon) {
+                            if (moveItem { p.ownedUnits.remove(unit) && p.bankUnits.add(unit) }) openNpcDialog(active, "deposit")
                         })
                     }
                 }
-                for (item in p.ownedFrames.toList()) {
-                    rows.add(DialogRow("IN", item.displayName, "Tap to store", icon = item.itemIcon) {
-                        if (moveItem { p.ownedFrames.remove(item) && p.bankFrames.add(item) }) openNpcDialog(active)
-                    })
-                }
-                for (item in p.ownedBarriers.toList()) {
-                    rows.add(DialogRow("IN", item.displayName, "Tap to store", icon = item.itemIcon) {
-                        if (moveItem { p.ownedBarriers.remove(item) && p.bankBarriers.add(item) }) openNpcDialog(active)
-                    })
-                }
-                for (unit in p.ownedUnits.toList()) {
-                    rows.add(DialogRow("IN", unit.uiName, "Tap to store", icon = unit.itemIcon) {
-                        if (moveItem { p.ownedUnits.remove(unit) && p.bankUnits.add(unit) }) openNpcDialog(active)
-                    })
-                }
-                for (item in p.bankFrames.toList()) {
-                    rows.add(DialogRow("OUT", item.displayName, "Tap to take", icon = item.itemIcon) {
-                        if (moveItem { p.bankFrames.remove(item) && p.ownedFrames.add(item) }) openNpcDialog(active)
-                    })
-                }
-                for (item in p.bankBarriers.toList()) {
-                    rows.add(DialogRow("OUT", item.displayName, "Tap to take", icon = item.itemIcon) {
-                        if (moveItem { p.bankBarriers.remove(item) && p.ownedBarriers.add(item) }) openNpcDialog(active)
-                    })
-                }
-                for (unit in p.bankUnits.toList()) {
-                    rows.add(DialogRow("OUT", unit.uiName, "Tap to take", icon = unit.itemIcon) {
-                        if (moveItem { p.bankUnits.remove(unit) && p.ownedUnits.add(unit) }) openNpcDialog(active)
-                    })
-                }
-                if (p.bankTools.isNotEmpty() || p.bankWeapons.isNotEmpty() || p.bankTreasures.isNotEmpty()) {
-                    rows.add(DialogRow("", "-- WITHDRAW --"))
+
+                else -> {
+                    rows.add(DialogRow("BACK", "Back") { openNpcDialog(active) })
+                    rows.add(DialogRow("", "banked ${p.bankMeseta} Meseta"))
+                    rows.add(DialogRow("MESETA", "Withdraw 100", icon = ItemIcon.MESETA) { if (bankMesetaWithdraw(100)) openNpcDialog(active, "withdraw") })
+                    rows.add(DialogRow("MESETA", "Withdraw all", icon = ItemIcon.MESETA) { if (bankMesetaWithdraw(p.bankMeseta)) openNpcDialog(active, "withdraw") })
                     for ((tool, count) in p.bankTools.entries.toList()) {
                         rows.add(DialogRow("OUT", "${tool.uiName}  x$count", "Tap to take one", icon = tool.itemIcon) {
-                            if (bankWithdrawTool(tool)) openNpcDialog(active)
+                            if (bankWithdrawTool(tool)) openNpcDialog(active, "withdraw")
                         })
                     }
                     for (item in p.bankWeapons.toList()) {
                         rows.add(DialogRow("OUT", item.displayName, "Tap to take", icon = item.itemIcon) {
-                            if (bankWithdrawWeapon(item)) openNpcDialog(active)
+                            if (bankWithdrawWeapon(item)) openNpcDialog(active, "withdraw")
                         })
                     }
                     for (treasureItem in p.bankTreasures.toList()) {
                         rows.add(DialogRow("OUT", treasureItem.uiName, "Tap to take", icon = treasureItem.itemIcon) {
-                            if (bankWithdrawTreasure(treasureItem)) openNpcDialog(active)
+                            if (bankWithdrawTreasure(treasureItem)) openNpcDialog(active, "withdraw")
+                        })
+                    }
+                    for (item in p.bankFrames.toList()) {
+                        rows.add(DialogRow("OUT", item.displayName, "Tap to take", icon = item.itemIcon) {
+                            if (moveItem { p.bankFrames.remove(item) && p.ownedFrames.add(item) }) openNpcDialog(active, "withdraw")
+                        })
+                    }
+                    for (item in p.bankBarriers.toList()) {
+                        rows.add(DialogRow("OUT", item.displayName, "Tap to take", icon = item.itemIcon) {
+                            if (moveItem { p.bankBarriers.remove(item) && p.ownedBarriers.add(item) }) openNpcDialog(active, "withdraw")
+                        })
+                    }
+                    for (unit in p.bankUnits.toList()) {
+                        rows.add(DialogRow("OUT", unit.uiName, "Tap to take", icon = unit.itemIcon) {
+                            if (moveItem { p.bankUnits.remove(unit) && p.ownedUnits.add(unit) }) openNpcDialog(active, "withdraw")
                         })
                     }
                 }
