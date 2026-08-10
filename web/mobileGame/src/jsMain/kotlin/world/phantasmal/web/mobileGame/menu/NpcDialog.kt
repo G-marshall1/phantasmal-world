@@ -8,6 +8,7 @@ import world.phantasmal.core.disposable.TrackedDisposable
 import world.phantasmal.web.mobileGame.input.ItemIcon
 import world.phantasmal.web.mobileGame.input.disposableTap
 import world.phantasmal.web.mobileGame.input.itemIconStyle
+import world.phantasmal.web.mobileGame.input.toolIconStyle
 import world.phantasmal.webui.dom.disposableListener
 
 /** One tappable line in an NPC's window -- a purchase, a sale, a bank move. */
@@ -17,6 +18,8 @@ class DialogRow(
     val d: String? = null,
     /** The category glyph shown beside the name -- see ItemIcons.kt. */
     val icon: ItemIcon? = null,
+    /** A cell in the per-tool strip instead, when the row is one specific tool. */
+    val toolCell: Int? = null,
     /**
      * Null renders an inert header/info line. Last so a trailing lambda still binds to it --
      * putting [icon] after this made every `DialogRow(..., icon = X) { ... }` call fail to
@@ -118,10 +121,12 @@ class NpcDialog(
                 el.textContent = row.k
                 rowEl.appendChild(el)
             }
-            row.icon?.let { icon ->
+            val iconCss = row.toolCell?.let { toolIconStyle(it, ITEM_ICON_SCALE) }
+                ?: row.icon?.let { itemIconStyle(it, ITEM_ICON_SCALE) }
+            iconCss?.let { css ->
                 (document.createElement("div") as HTMLElement).also { el ->
                     el.className = "pw-npc-row-icon"
-                    el.style.cssText = itemIconStyle(icon, ITEM_ICON_SCALE)
+                    el.style.cssText = css
                     rowEl.appendChild(el)
                 }
             }

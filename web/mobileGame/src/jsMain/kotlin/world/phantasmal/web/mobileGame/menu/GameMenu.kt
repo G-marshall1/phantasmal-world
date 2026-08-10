@@ -9,7 +9,10 @@ import world.phantasmal.web.mobileGame.input.ActionHex
 import world.phantasmal.web.mobileGame.input.ItemIcon
 import world.phantasmal.web.mobileGame.input.disposableTap
 import world.phantasmal.web.mobileGame.input.itemIconStyle
+import world.phantasmal.web.mobileGame.input.toolIconStyle
 import world.phantasmal.web.mobileGame.player.itemIcon
+import world.phantasmal.web.mobileGame.player.iconCell
+import world.phantasmal.web.mobileGame.player.TECH_DISK_ICON_CELL
 import world.phantasmal.web.mobileGame.player.ActionPaletteConfig
 import world.phantasmal.web.mobileGame.player.BaseStats
 import world.phantasmal.web.mobileGame.player.Mag
@@ -481,7 +484,7 @@ row.disposableTap {
                 el.className = "pw-menu-slot pw-menu-action-row"
                 content.appendChild(el)
             }
-            appendIcon(row, tool.itemIcon)
+            appendToolIcon(row, tool.iconCell)
             (document.createElement("div") as HTMLElement).also { k ->
                 k.className = "pw-menu-slot-k"
                 k.textContent = tool.uiName
@@ -512,6 +515,7 @@ row.disposableTap {
                 el.className = "pw-menu-slot pw-menu-action-row"
                 content.appendChild(el)
             }
+            appendToolIcon(row, TECH_DISK_ICON_CELL)
             (document.createElement("div") as HTMLElement).also { k ->
                 k.className = "pw-menu-slot-k"
                 k.textContent = "DISK"
@@ -568,7 +572,7 @@ row.disposableTap {
                 el.className = "pw-menu-slot"
                 content.appendChild(el)
             }
-            appendIcon(row, treasureItem.itemIcon)
+            appendToolIcon(row, treasureItem.iconCell)
             (document.createElement("div") as HTMLElement).also { k ->
                 k.className = "pw-menu-slot-k"
                 k.textContent = "RARE"
@@ -1036,6 +1040,15 @@ row.disposableTap {
         (document.createElement("div") as HTMLElement).also { el ->
             el.className = "pw-menu-icon"
             el.style.cssText = itemIconStyle(icon, ITEM_ICON_SCALE)
+            parent.appendChild(el)
+        }
+    }
+
+    /** The per-tool glyph, where a row is one specific tool rather than a category. */
+    private fun appendToolIcon(parent: HTMLElement, cell: Int) {
+        (document.createElement("div") as HTMLElement).also { el ->
+            el.className = "pw-menu-icon"
+            el.style.cssText = toolIconStyle(cell, ITEM_ICON_SCALE)
             parent.appendChild(el)
         }
     }

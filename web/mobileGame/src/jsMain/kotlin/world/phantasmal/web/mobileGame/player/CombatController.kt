@@ -237,6 +237,14 @@ class CombatController(
          * crates and traps -- the fix for a one-target saber smashing a whole row of boxes.
          */
         onStrikeResolved: (reached: Int) -> Unit = {},
+        /**
+         * Extra strikes this weapon can land on one body past the first: 0 for everything
+         * ordinary, and one per additional targetable region the sweep covers on a multi-part
+         * boss -- a five-round shot burst peppers the Dragon's head AND both feet instead of
+         * collapsing into a single pellet. Each extra strike spends one unit of the weapon's
+         * target budget and rolls its own accuracy. Evaluated at the contact frame.
+         */
+        bonusHitsFor: (Enemy) -> Int = { 0 },
     ): Boolean {
         if (isAttacking) return false
 
@@ -312,31 +320,41 @@ class CombatController(
                 .sortedBy { centreDistance(it) }
                 .take(maxTargets)
 
+            // Budget the sweep didn't spend on separate bodies can strike extra regions
+            // of one -- what multi-target weapons are for against a boss-sized target.
+            var spareBudget = maxTargets - inReach.size
             for (enemy in inReach) {
-                // Accuracy is rolled per target, from the attacker's ATA against this enemy's
-                // evasion, scaled by the attack type and how far into the combo this swing is. A
-                // miss still costs the wind-up -- that's the trade heavy and special make.
-                val accuracy = accuracyPercent(totalAta, type, step, enemy.evp)
+                val extra = bonusHitsFor(enemy).coerceIn(0, spareBudget)
+                spareBudget -= extra
 
-                if (Random.nextDouble() * 100.0 >= accuracy) {
-                    onMiss(enemy)
-                    continue
+                for (strike in 0..extra) {
+                    if (enemy.isDead) break
+                    // Accuracy is rolled per strike, from the attacker's ATA against this
+                    // enemy's evasion, scaled by the attack type and how far into the combo
+                    // this swing is. A miss still costs the wind-up -- that's the trade heavy
+                    // and special make.
+                    val accuracy = accuracyPercent(totalAta, type, step, enemy.evp)
+
+                    if (Random.nextDouble() * 100.0 >= accuracy) {
+                        onMiss(enemy)
+                        continue
+                    }
+
+                    val base =
+                        if (damageModifierOverride != null)
+                            physicalDamageWithModifier(attackPower, enemy.effectiveDfp, damageModifierOverride)
+                        else physicalDamage(attackPower, enemy.effectiveDfp, type)
+                    val critical = Random.nextDouble() < criticalChance(luck)
+                    val damage = (if (critical) base * CRITICAL_MULTIPLIER else base.toDouble())
+                        .toInt()
+                        .coerceAtLeast(1)
+
+                    enemy.hp -= damage
+                    onHit(enemy, damage, critical)
+
+                    // A quarter of the target's health in one blow puts it on the floor.
+                    if (isKnockdown(damage, enemy.maxHp)) onKnockdown(enemy)
                 }
-
-                val base =
-                if (damageModifierOverride != null)
-                    physicalDamageWithModifier(attackPower, enemy.effectiveDfp, damageModifierOverride)
-                else physicalDamage(attackPower, enemy.effectiveDfp, type)
-                val critical = Random.nextDouble() < criticalChance(luck)
-                val damage = (if (critical) base * CRITICAL_MULTIPLIER else base.toDouble())
-                    .toInt()
-                    .coerceAtLeast(1)
-
-                enemy.hp -= damage
-                onHit(enemy, damage, critical)
-
-                // A quarter of the target's health in one blow puts it on the floor.
-                if (isKnockdown(damage, enemy.maxHp)) onKnockdown(enemy)
             }
 
             if (!strikeResolvedReported) {

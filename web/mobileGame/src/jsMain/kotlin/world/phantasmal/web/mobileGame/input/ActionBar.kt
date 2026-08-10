@@ -6,6 +6,7 @@ import org.w3c.dom.pointerevents.PointerEvent
 import world.phantasmal.core.disposable.Disposable
 import world.phantasmal.core.disposable.TrackedDisposable
 import world.phantasmal.web.mobileGame.player.ActionBarConfig
+import world.phantasmal.web.mobileGame.player.iconCell
 import world.phantasmal.web.mobileGame.player.GameAction
 import world.phantasmal.webui.dom.disposableListener
 
@@ -83,12 +84,7 @@ class ActionBar(
             val icon = icons[i]
             icon.textContent = ""
             icon.style.cssText = when {
-                action.tool != null -> {
-                    icon.textContent = action.hexLabel ?: ""
-                    "color:#8fe8a0;font:bold 12px sans-serif;text-shadow:0 1px 2px black;" +
-                        "display:flex;align-items:center;justify-content:center;" +
-                        "width:100%;height:100%;"
-                }
+                action.tool != null -> toolIconStyle(action.tool.iconCell, BAR_ITEM_ICON_SCALE)
                 action.actionIcon != null -> actionIconStyle(action.actionIcon, BAR_ACTION_ICON_SCALE)
                 action.itemIcon != null -> itemIconStyle(action.itemIcon, BAR_ITEM_ICON_SCALE)
                 action.technique != null -> hudSpriteStyle(

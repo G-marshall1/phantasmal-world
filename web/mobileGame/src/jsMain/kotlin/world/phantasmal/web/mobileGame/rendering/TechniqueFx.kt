@@ -293,13 +293,16 @@ class TechniqueFx(
     }
 
     /** Rafoie: the violent inflating explosion sphere with a white heart. */
-    fun rafoie(x: Double, y: Double, z: Double) {
+    fun rafoie(x: Double, y: Double, z: Double, radiusWorld: Double = 3.5 * bu) {
+        // The molten sphere IS the blast zone: the caller passes the real damage radius so
+        // whatever the dome visibly engulfs is genuinely inside the hit.
+        val spread = radiusWorld / (3.5 * bu)
         solid(
-            Mesh(IcosahedronGeometry(3.5 * bu, 1), basic(0xff5500, opacity = 0.85)),
+            Mesh(IcosahedronGeometry(radiusWorld, 1), basic(0xff5500, opacity = 0.85)),
             life = 0.3, scaleFrom = 0.1, scaleTo = 1.0,
         ).also { solids.last().mesh.position.set(x, y, z) }
         solid(
-            Mesh(SphereGeometry(1.2 * bu, 10, 8), basic(0xffffff)),
+            Mesh(SphereGeometry(radiusWorld * 0.34, 10, 8), basic(0xffffff)),
             life = 0.2, scaleFrom = 0.6, scaleTo = 1.4,
         ).also { solids.last().mesh.position.set(x, y, z) }
         cloud(
@@ -308,7 +311,7 @@ class TechniqueFx(
         ) {
             val theta = Random.nextDouble() * 2 * PI
             val phi = Random.nextDouble() * PI
-            val speed = (4.0 + Random.nextDouble() * 6.0) * bu
+            val speed = (4.0 + Random.nextDouble() * 6.0) * bu * spread
             doubleArrayOf(
                 x, y, z,
                 sin(phi) * cos(theta) * speed, cos(phi) * speed, sin(phi) * sin(theta) * speed,

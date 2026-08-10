@@ -96,20 +96,6 @@ enum class GameAction(
     USE_ANTIDOTE("Antidote", "Cures poison.", tool = ToolType.ANTIDOTE),
     USE_ANTIPARALYSIS("Antiparalysis", "Cures paralysis.", tool = ToolType.ANTIPARALYSIS),
     ;
-
-    /** Two-letter label drawn on a hex for the tool actions, which have no sheet glyph. */
-    val hexLabel: String?
-        get() = when (tool) {
-            ToolType.MONOMATE -> "MM"
-            ToolType.DIMATE -> "DM"
-            ToolType.TRIMATE -> "TM"
-            ToolType.MONOFLUID -> "MF"
-            ToolType.DIFLUID -> "DF"
-            ToolType.TRIFLUID -> "TF"
-            ToolType.ANTIDOTE -> "AD"
-            ToolType.ANTIPARALYSIS -> "AP"
-            else -> null
-        }
 }
 
 /**

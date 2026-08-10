@@ -60,6 +60,7 @@ import world.phantasmal.web.mobileGame.player.CharacterController
 import world.phantasmal.web.mobileGame.player.ActionPaletteConfig
 import world.phantasmal.web.mobileGame.player.AttackType
 import world.phantasmal.web.mobileGame.player.effectiveAtp
+import world.phantasmal.web.mobileGame.player.iconCell
 import world.phantasmal.web.mobileGame.player.isKnockdown
 import world.phantasmal.web.mobileGame.player.isAndroid
 import world.phantasmal.web.mobileGame.player.isRanged
@@ -1422,6 +1423,10 @@ class GameRenderer(
     private var dragonPartOverrideRemaining = 0.0
     private val partScratch = Vector3()
 
+    /** Scratch for the aim-point helpers below -- never held across calls. */
+    private val techAimScratch = Vector3()
+    private val focusCoordScratch = Vector3()
+
     // A quick tap (short, unmoved) on the world picks the Dragon part nearest the fingertip.
     // Registered directly rather than through the camera controller: taps that land on HUD
     // buttons never reach the canvas, and the camera's own drag logic ignores unmoved taps.
@@ -2614,7 +2619,7 @@ class GameRenderer(
                     rows.add(DialogRow("BACK", "Back") { openNpcDialog(active) })
                     for ((tool, fullPrice) in TOOL_SHOP) {
                         val price = shopPrice(fullPrice)
-                        rows.add(DialogRow("BUY", tool.uiName, "$price Meseta", icon = tool.itemIcon) {
+                        rows.add(DialogRow("BUY", tool.uiName, "$price Meseta", toolCell = tool.iconCell) {
                             if (buyTool(tool, price)) openNpcDialog(active, "buy")
                         })
                     }
@@ -2628,12 +2633,12 @@ class GameRenderer(
                         rows.add(DialogRow("", "Nothing in the pack I'd buy."))
                     }
                     for ((tool, count, price) in sellable) {
-                        rows.add(DialogRow("SELL", "${tool.uiName}  x$count", "$price Meseta each", icon = tool.itemIcon) {
+                        rows.add(DialogRow("SELL", "${tool.uiName}  x$count", "$price Meseta each", toolCell = tool.iconCell) {
                             if (sellTool(tool, price)) openNpcDialog(active, "sell")
                         })
                     }
                     for (treasureItem in p.treasures.toList()) {
-                        rows.add(DialogRow("SELL", treasureItem.uiName, "$TREASURE_SELL_PRICE Meseta", icon = treasureItem.itemIcon) {
+                        rows.add(DialogRow("SELL", treasureItem.uiName, "$TREASURE_SELL_PRICE Meseta", toolCell = treasureItem.iconCell) {
                             if (sellTreasure(treasureItem)) openNpcDialog(active, "sell")
                         })
                     }
@@ -2694,7 +2699,7 @@ class GameRenderer(
                     }
                     rows.add(DialogRow("", "-- BARRIERS --"))
                     for (spec in armorShopBarriers(p.level)) {
-                        rows.add(DialogRow("BUY", spec.name, "barrier · EVP ${spec.evpMin}-${spec.evpMax} · ${shopPrice(spec.price)} Meseta", icon = ItemIcon.UNIT) {
+                        rows.add(DialogRow("BUY", spec.name, "barrier · EVP ${spec.evpMin}-${spec.evpMax} · ${shopPrice(spec.price)} Meseta", icon = ItemIcon.SHIELD) {
                             if (buyBarrier(spec)) openNpcDialog(active, "buy")
                         })
                     }
@@ -2762,7 +2767,7 @@ class GameRenderer(
                     rows.add(DialogRow("MESETA", "Deposit 100", icon = ItemIcon.MESETA) { if (bankMesetaDeposit(100)) openNpcDialog(active, "deposit") })
                     rows.add(DialogRow("MESETA", "Deposit all", icon = ItemIcon.MESETA) { if (bankMesetaDeposit(p.meseta)) openNpcDialog(active, "deposit") })
                     for ((tool, count) in p.tools.entries.toList()) {
-                        rows.add(DialogRow("IN", "${tool.uiName}  x$count", "Tap to store one", icon = tool.itemIcon) {
+                        rows.add(DialogRow("IN", "${tool.uiName}  x$count", "Tap to store one", toolCell = tool.iconCell) {
                             if (bankDepositTool(tool)) openNpcDialog(active, "deposit")
                         })
                     }
@@ -2772,7 +2777,7 @@ class GameRenderer(
                         })
                     }
                     for (treasureItem in p.treasures.toList()) {
-                        rows.add(DialogRow("IN", treasureItem.uiName, "Tap to store", icon = treasureItem.itemIcon) {
+                        rows.add(DialogRow("IN", treasureItem.uiName, "Tap to store", toolCell = treasureItem.iconCell) {
                             if (bankDepositTreasure(treasureItem)) openNpcDialog(active, "deposit")
                         })
                     }
@@ -2799,7 +2804,7 @@ class GameRenderer(
                     rows.add(DialogRow("MESETA", "Withdraw 100", icon = ItemIcon.MESETA) { if (bankMesetaWithdraw(100)) openNpcDialog(active, "withdraw") })
                     rows.add(DialogRow("MESETA", "Withdraw all", icon = ItemIcon.MESETA) { if (bankMesetaWithdraw(p.bankMeseta)) openNpcDialog(active, "withdraw") })
                     for ((tool, count) in p.bankTools.entries.toList()) {
-                        rows.add(DialogRow("OUT", "${tool.uiName}  x$count", "Tap to take one", icon = tool.itemIcon) {
+                        rows.add(DialogRow("OUT", "${tool.uiName}  x$count", "Tap to take one", toolCell = tool.iconCell) {
                             if (bankWithdrawTool(tool)) openNpcDialog(active, "withdraw")
                         })
                     }
@@ -2809,7 +2814,7 @@ class GameRenderer(
                         })
                     }
                     for (treasureItem in p.bankTreasures.toList()) {
-                        rows.add(DialogRow("OUT", treasureItem.uiName, "Tap to take", icon = treasureItem.itemIcon) {
+                        rows.add(DialogRow("OUT", treasureItem.uiName, "Tap to take", toolCell = treasureItem.iconCell) {
                             if (bankWithdrawTreasure(treasureItem)) openNpcDialog(active, "withdraw")
                         })
                     }
@@ -6550,12 +6555,17 @@ class GameRenderer(
         else -> false
     }
 
+    // Routed through the aim point rather than the mesh centre: on a multi-part boss the lock
+    // sits on a *part*, and everything reading these -- the casting yaw, the swing cone, the
+    // projectile launch -- must aim where the reticle actually is, not at the body's middle.
     private fun focusTargetX(target: FocusTarget): Double =
-        target.enemy?.mesh?.position?.x ?: target.box?.x ?: target.trap?.x
+        target.enemy?.let { focusAimPoint(it, focusCoordScratch); focusCoordScratch.x }
+            ?: target.box?.x ?: target.trap?.x
             ?: target.pickup!!.mesh.position.x
 
     private fun focusTargetZ(target: FocusTarget): Double =
-        target.enemy?.mesh?.position?.z ?: target.box?.z ?: target.trap?.z
+        target.enemy?.let { focusAimPoint(it, focusCoordScratch); focusCoordScratch.z }
+            ?: target.box?.z ?: target.trap?.z
             ?: target.pickup!!.mesh.position.z
 
     /** The lock's aim point and silhouette radius for any target kind -- see [focusAimPoint]. */
@@ -6903,39 +6913,31 @@ class GameRenderer(
                     }
                 }
                 if (target != null) {
-                    // technic_pt.xvm's lightning bolt, dropped from above the target, with the
+                    // technic_pt.xvm's lightning bolt, dropped from above the *locked point* --
+                    // on the Dragon that's the chosen part, not the body's middle -- with the
                     // effect sheet's starburst at the strike point.
-                    val strikeY = centerMassHeight(target)
-                    techniqueFx?.zonde(
-                        target.mesh.position.x, target.mesh.position.y, target.mesh.position.z,
-                    )
+                    focusAimPoint(target, techAimScratch)
+                    val sx = techAimScratch.x
+                    val strikeY = techAimScratch.y
+                    val sz = techAimScratch.z
+                    techniqueFx?.zonde(sx, target.mesh.position.y, sz)
                     val bolt = effectSprite("zonde_bolt", 3.4, 11.0, colorHex = ZONDE_COLOR)
-                    bolt.position.set(
-                        target.mesh.position.x,
-                        strikeY + 3.5 * worldUnit,
-                        target.mesh.position.z,
-                    )
+                    bolt.position.set(sx, strikeY + 3.5 * worldUnit, sz)
                     addEffect(TimedEffect(bolt, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
 
                     // Lightning crawls away from the strike along the ground.
                     spawnLightningCrawl(
-                        target.mesh.position.x, target.mesh.position.y, target.mesh.position.z,
+                        sx, target.mesh.position.y, sz,
                         count = 4, spreadWorld = 9.0 * worldUnit,
                     )
                     // effect_nt's own forked-lightning sheet crossed over the strike, with its
                     // plasma ball at the point of contact.
                     if ("nt_bolts" in effectTextures) {
                         val forks = effectSprite("nt_bolts", 4.6, 7.0, colorHex = ZONDE_COLOR)
-                        forks.position.set(
-                            target.mesh.position.x,
-                            strikeY + 1.6 * worldUnit,
-                            target.mesh.position.z,
-                        )
+                        forks.position.set(sx, strikeY + 1.6 * worldUnit, sz)
                         addEffect(TimedEffect(forks, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
                         val plasma = effectSprite("nt_plasma", 2.8)
-                        plasma.position.set(
-                            target.mesh.position.x, strikeY, target.mesh.position.z,
-                        )
+                        plasma.position.set(sx, strikeY, sz)
                         addEffect(
                             TimedEffect(
                                 plasma, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS,
@@ -6945,17 +6947,16 @@ class GameRenderer(
                     }
 
                     val flash = effectSprite("zonde_flash", 4.2, colorHex = ZONDE_COLOR)
-                    flash.position.set(
-                        target.mesh.position.x,
-                        strikeY,
-                        target.mesh.position.z,
-                    )
+                    flash.position.set(sx, strikeY, sz)
                     addEffect(
                         TimedEffect(flash, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 1.5)
                     )
-                    spawnZondeSparks(target.mesh.position.x, strikeY, target.mesh.position.z)
+                    spawnZondeSparks(sx, strikeY, sz)
 
-                    hurtEnemy(target, techniqueDamage(power, mst, target.resistances.thunder))
+                    hurtEnemyAt(
+                        target, techniqueDamage(power, mst, target.resistances.thunder),
+                        sx, strikeY, sz,
+                    )
                 }
             }
 
@@ -6971,23 +6972,24 @@ class GameRenderer(
                     }
                 }
                 // The freezing line: everything within the wave's length and half-width ahead
-                // takes the hit; the wave itself is barta_lv1hontai's own recipe -- forty small
-                // shards erupting one after another down the line (spawnIceWake).
+                // takes the hit -- every targetable region it crosses on a multi-part boss --
+                // and the wave itself is barta_lv1hontai's own recipe: forty small shards
+                // erupting one after another down the line (spawnIceWake).
                 for (enemy in enemies.filter { !it.isDead }) {
-                    val dx = enemy.mesh.position.x - p.mesh.position.x
-                    val dz = enemy.mesh.position.z - p.mesh.position.z
-                    val along = dx * dirX + dz * dirZ
-                    val lateral = dx * dirZ - dz * dirX
-                    val halfWidth = BARTA_HALF_WIDTH_UNITS * worldUnit + enemy.hitboxRadius
-                    if (along in 0.0..(BARTA_RANGE_UNITS * worldUnit) && lateral in -halfWidth..halfWidth) {
+                    val hits = lineHitPoints(
+                        enemy, p.mesh.position.x, p.mesh.position.z, dirX, dirZ,
+                        BARTA_RANGE_UNITS * worldUnit, BARTA_HALF_WIDTH_UNITS * worldUnit,
+                    )
+                    for (pt in hits) {
                         val burst = effectSprite("barta_burst", 3.2, colorHex = BARTA_COLOR)
-                        burst.position.set(
-                            enemy.mesh.position.x,
-                            centerMassHeight(enemy),
-                            enemy.mesh.position.z,
-                        )
+                        burst.position.set(pt[0], pt[1], pt[2])
                         addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
-                        hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.ice))
+                        hurtEnemyAt(
+                            enemy, techniqueDamage(power, mst, enemy.resistances.ice),
+                            pt[0], pt[1], pt[2],
+                        )
+                    }
+                    if (hits.isNotEmpty()) {
                         spawnIceCrystals(
                             enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
                             count = 2, radiusWorld = enemy.hitboxRadius * 0.8,
@@ -7033,15 +7035,24 @@ class GameRenderer(
                 // wider with every turn, and each enemy burns when the ring actually reaches
                 // them -- not all at once inside a fixed circle.
                 for (enemy in enemiesWithin(p.mesh.position.x, p.mesh.position.z, GIFOIE_RADIUS_UNITS)) {
-                    val dx = enemy.mesh.position.x - p.mesh.position.x
-                    val dz = enemy.mesh.position.z - p.mesh.position.z
-                    val arrival =
-                        sqrt(dx * dx + dz * dz) / (GIFOIE_RADIUS_UNITS * worldUnit) * GIFOIE_SECONDS
-                    delayedTechActions.add(DelayedAction(arrival) {
-                        if (!enemy.isDead) {
-                            hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.fire))
-                        }
-                    })
+                    // One burn per targetable region on a multi-part boss, each on the ring's
+                    // own clock -- the wheel visibly sweeps the head before it reaches the tail.
+                    for (pt in areaHitPoints(
+                        enemy, p.mesh.position.x, p.mesh.position.z, GIFOIE_RADIUS_UNITS * worldUnit,
+                    )) {
+                        val dx = pt[0] - p.mesh.position.x
+                        val dz = pt[2] - p.mesh.position.z
+                        val arrival =
+                            sqrt(dx * dx + dz * dz) / (GIFOIE_RADIUS_UNITS * worldUnit) * GIFOIE_SECONDS
+                        delayedTechActions.add(DelayedAction(arrival) {
+                            if (!enemy.isDead) {
+                                hurtEnemyAt(
+                                    enemy, techniqueDamage(power, mst, enemy.resistances.fire),
+                                    pt[0], pt[1], pt[2],
+                                )
+                            }
+                        })
+                    }
                 }
                 // Three arms of fire spiralling outward for the spell's whole turn: a train of
                 // short-lived flames whose orbit radius grows with time, so the eye sees fire
@@ -7070,34 +7081,52 @@ class GameRenderer(
                 val boxTarget = focusedTarget?.box?.takeIf { !it.broken }
                 if (target == null && boxTarget != null) {
                     // The lock is on a crate: the explosion lands there instead.
-                    techniqueFx?.rafoie(boxTarget.x, boxTarget.y + 2.0 * worldUnit, boxTarget.z)
+                    techniqueFx?.rafoie(
+                        boxTarget.x, boxTarget.y + 2.0 * worldUnit, boxTarget.z,
+                        RAFOIE_RADIUS_UNITS * worldUnit,
+                    )
                     spawnExplosionDome(
                         boxTarget.x, boxTarget.y + 2.0 * worldUnit, boxTarget.z,
                         RAFOIE_RADIUS_UNITS * worldUnit, FOIE_COLOR,
                     )
                     breakBoxNear(boxTarget.x, boxTarget.z, RAFOIE_RADIUS_UNITS * worldUnit)
                     for (enemy in enemiesWithin(boxTarget.x, boxTarget.z, RAFOIE_RADIUS_UNITS)) {
-                        hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.fire))
+                        for (pt in areaHitPoints(enemy, boxTarget.x, boxTarget.z, RAFOIE_RADIUS_UNITS * worldUnit)) {
+                            hurtEnemyAt(
+                                enemy, techniqueDamage(power, mst, enemy.resistances.fire),
+                                pt[0], pt[1], pt[2],
+                            )
+                        }
                     }
                 } else if (target == null) {
                     showToast("Rafoie needs a target")
                 } else {
-                    val tx = target.mesh.position.x
-                    val tz = target.mesh.position.z
+                    // The explosion is centred on the locked point -- the chosen part on a
+                    // multi-part boss -- and every targetable region the blast reaches takes
+                    // its own hit, which is what a huge explosion on a huge body means.
+                    focusAimPoint(target, techAimScratch)
+                    val tx = techAimScratch.x
+                    val ty = techAimScratch.y
+                    val tz = techAimScratch.z
                     for (enemy in enemiesWithin(tx, tz, RAFOIE_RADIUS_UNITS)) {
-                        hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.fire))
+                        for (pt in areaHitPoints(enemy, tx, tz, RAFOIE_RADIUS_UNITS * worldUnit)) {
+                            hurtEnemyAt(
+                                enemy, techniqueDamage(power, mst, enemy.resistances.fire),
+                                pt[0], pt[1], pt[2],
+                            )
+                        }
                     }
-                    techniqueFx?.rafoie(tx, centerMassHeight(target), tz)
+                    techniqueFx?.rafoie(tx, ty, tz, RAFOIE_RADIUS_UNITS * worldUnit)
                     breakBoxNear(tx, tz, RAFOIE_RADIUS_UNITS * worldUnit)
-                    spawnFoieImpact(tx, centerMassHeight(target), tz)
+                    spawnFoieImpact(tx, ty, tz)
                     // The whole blast zone swells as one molten dome -- the reference's giant
                     // orange sphere -- with the starburst inside it.
                     spawnExplosionDome(
-                        tx, centerMassHeight(target), tz,
+                        tx, ty, tz,
                         RAFOIE_RADIUS_UNITS * worldUnit, FOIE_COLOR,
                     )
                     val burst = effectSprite("burst_orange", RAFOIE_RADIUS_UNITS * 1.6, colorHex = FOIE_COLOR)
-                    burst.position.set(tx, centerMassHeight(target), tz)
+                    burst.position.set(tx, ty, tz)
                     addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 2.0))
 
                     // The blast throws embers: arcs of flame falling back out of the explosion.
@@ -7105,7 +7134,7 @@ class GameRenderer(
                         val angle = Random.nextDouble() * 2 * PI
                         val speed = 10.0 + Random.nextDouble() * 14.0
                         spawnParticle(
-                            "foie_flame_0", tx, centerMassHeight(target), tz,
+                            "foie_flame_0", tx, ty, tz,
                             sizeWorld = 2.5, colorHex = FOIE_COLOR,
                             vx = cos(angle) * speed,
                             vy = 8.0 + Random.nextDouble() * 10.0,
@@ -7132,16 +7161,19 @@ class GameRenderer(
                     ) smashBox(box)
                 }
                 // A freezing breath: wider and shorter than Barta's line, and it can freeze.
+                // On a multi-part boss every region caught in the cone is its own hit.
                 for (enemy in enemies.filter { !it.isDead }) {
-                    val dx = enemy.mesh.position.x - p.mesh.position.x
-                    val dz = enemy.mesh.position.z - p.mesh.position.z
-                    val along = dx * dirX + dz * dirZ
-                    val lateral = dx * dirZ - dz * dirX
-                    val halfWidth = GIBARTA_HALF_WIDTH_UNITS * worldUnit + enemy.hitboxRadius
-                    if (along in 0.0..(GIBARTA_RANGE_UNITS * worldUnit) &&
-                        lateral in -halfWidth..halfWidth
-                    ) {
-                        hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.ice))
+                    val hits = lineHitPoints(
+                        enemy, p.mesh.position.x, p.mesh.position.z, dirX, dirZ,
+                        GIBARTA_RANGE_UNITS * worldUnit, GIBARTA_HALF_WIDTH_UNITS * worldUnit,
+                    )
+                    for (pt in hits) {
+                        hurtEnemyAt(
+                            enemy, techniqueDamage(power, mst, enemy.resistances.ice),
+                            pt[0], pt[1], pt[2],
+                        )
+                    }
+                    if (hits.isNotEmpty()) {
                         if (!enemy.isDead) maybeFreeze(enemy)
                         // The breath leaves its victims encased -- the real crystal model
                         // bursting up around each body caught in the cone.
@@ -7162,20 +7194,26 @@ class GameRenderer(
                     val reach = RABARTA_RADIUS_UNITS * worldUnit + box.radius
                     if (bdx * bdx + bdz * bdz <= reach * reach) smashBox(box)
                 }
-                // Ice bursting in a circle around the caster, freezing what it catches.
+                // Ice bursting in a circle around the caster, freezing what it catches --
+                // every targetable region of a multi-part boss inside the circle bursts.
                 for (enemy in enemiesWithin(p.mesh.position.x, p.mesh.position.z, RABARTA_RADIUS_UNITS)) {
-                    hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.ice))
+                    for (pt in areaHitPoints(
+                        enemy, p.mesh.position.x, p.mesh.position.z, RABARTA_RADIUS_UNITS * worldUnit,
+                    )) {
+                        hurtEnemyAt(
+                            enemy, techniqueDamage(power, mst, enemy.resistances.ice),
+                            pt[0], pt[1], pt[2],
+                        )
+                        val burst = effectSprite("barta_burst", 3.2, colorHex = BARTA_COLOR)
+                        burst.position.set(pt[0], pt[1], pt[2])
+                        addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
+                    }
                     if (!enemy.isDead) maybeFreeze(enemy)
                     spawnIceCrystals(
                         enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
                         count = 3, radiusWorld = enemy.hitboxRadius,
                         scale = 1.0 + enemy.hitboxRadius / (6.0 * worldUnit),
                     )
-                    val burst = effectSprite("barta_burst", 3.2, colorHex = BARTA_COLOR)
-                    burst.position.set(
-                        enemy.mesh.position.x, centerMassHeight(enemy), enemy.mesh.position.z,
-                    )
-                    addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
                 }
                 // Barta's shard wake bent into a circle: a ring of ice racing outward along
                 // the ground from the caster's feet.
@@ -7209,32 +7247,72 @@ class GameRenderer(
                 val chainPoints = mutableListOf(doubleArrayOf(fromX, fromY, fromZ))
                 while (current != null && links < GIZONDE_MAX_TARGETS) {
                     struck.add(current)
-                    links++
-                    val toX = current.mesh.position.x
-                    val toY = centerMassHeight(current)
-                    val toZ = current.mesh.position.z
-                    boltBetween(fromX, fromY, fromZ, toX, toY, toZ)
-                    chainPoints.add(doubleArrayOf(toX, toY, toZ))
-                    spawnLightningCrawl(
-                        toX, current.mesh.position.y, toZ,
-                        count = 2, spreadWorld = 6.0 * worldUnit,
-                    )
-                    val flash = effectSprite("zonde_flash", 3.4, colorHex = ZONDE_COLOR)
-                    flash.position.set(toX, toY, toZ)
-                    addEffect(
-                        TimedEffect(flash, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 1.2)
-                    )
-                    fromX = toX
-                    fromY = toY
-                    fromZ = toZ
-                    hurtEnemy(current, techniqueDamage(power, mst, current.resistances.thunder))
+                    val body: Enemy = current
 
-                    val from = current
-                    current = enemiesWithin(from.mesh.position.x, from.mesh.position.z, GIZONDE_CHAIN_UNITS)
+                    // One strike on a link: bolt in, flash, crawl, damage number at the point.
+                    fun strike(toX: Double, toY: Double, toZ: Double) {
+                        links++
+                        boltBetween(fromX, fromY, fromZ, toX, toY, toZ)
+                        chainPoints.add(doubleArrayOf(toX, toY, toZ))
+                        spawnLightningCrawl(
+                            toX, body.mesh.position.y, toZ,
+                            count = 2, spreadWorld = 6.0 * worldUnit,
+                        )
+                        val flash = effectSprite("zonde_flash", 3.4, colorHex = ZONDE_COLOR)
+                        flash.position.set(toX, toY, toZ)
+                        addEffect(
+                            TimedEffect(flash, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 1.2)
+                        )
+                        fromX = toX
+                        fromY = toY
+                        fromZ = toZ
+                        hurtEnemyAt(
+                            body, techniqueDamage(power, mst, body.resistances.thunder),
+                            toX, toY, toZ,
+                        )
+                    }
+
+                    val fight = multiPartFightOf(body)
+                    if (fight == null) {
+                        strike(body.mesh.position.x, centerMassHeight(body), body.mesh.position.z)
+                    } else {
+                        // On a multi-part boss the chain crawls across the body itself: each
+                        // targetable region within a link's reach of the last strike is its own
+                        // link -- gold lightning hopping head to wing to tail.
+                        val visited = mutableSetOf<Int>()
+                        val hopReach = GIZONDE_CHAIN_UNITS * worldUnit
+                        var hopped = true
+                        while (hopped && links < GIZONDE_MAX_TARGETS) {
+                            hopped = false
+                            var best = -1
+                            // The first hop onto the boss rides the chain's normal reach (the
+                            // body was already selected); later hops measure from the last part.
+                            var bestD = if (visited.isEmpty()) Double.MAX_VALUE else hopReach * hopReach
+                            for (i in fight.parts.indices) {
+                                if (i in visited) continue
+                                fight.partPosition(i, techAimScratch)
+                                val dx = techAimScratch.x - fromX
+                                val dz = techAimScratch.z - fromZ
+                                val d = dx * dx + dz * dz
+                                if (d < bestD) {
+                                    bestD = d
+                                    best = i
+                                }
+                            }
+                            if (best >= 0) {
+                                visited.add(best)
+                                fight.partPosition(best, techAimScratch)
+                                strike(techAimScratch.x, techAimScratch.y, techAimScratch.z)
+                                hopped = true
+                            }
+                        }
+                    }
+
+                    current = enemiesWithin(fromX, fromZ, GIZONDE_CHAIN_UNITS)
                         .filter { it !in struck && !it.isDead }
                         .minByOrNull {
-                            val dx = it.mesh.position.x - from.mesh.position.x
-                            val dz = it.mesh.position.z - from.mesh.position.z
+                            val dx = it.mesh.position.x - fromX
+                            val dz = it.mesh.position.z - fromZ
                             dx * dx + dz * dz
                         }
                 }
@@ -7281,14 +7359,19 @@ class GameRenderer(
                 )
                 val caught = enemiesWithin(p.mesh.position.x, p.mesh.position.z, RAZONDE_RADIUS_UNITS)
                 for (enemy in caught) {
-                    val bolt = effectSprite("zonde_bolt", 2.6, 9.0, colorHex = ZONDE_COLOR)
-                    bolt.position.set(
-                        enemy.mesh.position.x,
-                        centerMassHeight(enemy) + 3.0 * worldUnit,
-                        enemy.mesh.position.z,
-                    )
-                    addEffect(TimedEffect(bolt, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
-                    hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.thunder))
+                    // The storm drops one bolt per targetable region inside it: on the Dragon
+                    // that's lightning walking across head, wings, feet and tail.
+                    for (pt in areaHitPoints(
+                        enemy, p.mesh.position.x, p.mesh.position.z, RAZONDE_RADIUS_UNITS * worldUnit,
+                    )) {
+                        val bolt = effectSprite("zonde_bolt", 2.6, 9.0, colorHex = ZONDE_COLOR)
+                        bolt.position.set(pt[0], pt[1] + 3.0 * worldUnit, pt[2])
+                        addEffect(TimedEffect(bolt, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
+                        hurtEnemyAt(
+                            enemy, techniqueDamage(power, mst, enemy.resistances.thunder),
+                            pt[0], pt[1], pt[2],
+                        )
+                    }
                 }
                 val flare = effectSprite("flare_blue", RAZONDE_RADIUS_UNITS * 1.4, colorHex = ZONDE_COLOR)
                 flare.position.set(
@@ -7325,24 +7408,21 @@ class GameRenderer(
                 } else if (target == null) {
                     showToast("Grants needs a target")
                 } else {
-                    hurtEnemy(target, techniqueDamage(power, mst, target.resistances.light))
-                    techniqueFx?.grants(
-                        target.mesh.position.x, target.mesh.position.y, target.mesh.position.z,
-                    )
+                    // The pillar drops on the locked point -- the chosen part of a multi-part
+                    // boss -- not on the body's centre.
+                    focusAimPoint(target, techAimScratch)
+                    val gx = techAimScratch.x
+                    val gy = techAimScratch.y
+                    val gz = techAimScratch.z
+                    hurtEnemyAt(target, techniqueDamage(power, mst, target.resistances.light), gx, gy, gz)
+                    techniqueFx?.grants(gx, target.mesh.position.y, gz)
                     // The reference's column of light dropped on the judged.
-                    spawnLightPillar(
-                        target.mesh.position.x, target.mesh.position.y, target.mesh.position.z,
-                        GRANTS_COLOR,
-                    )
+                    spawnLightPillar(gx, target.mesh.position.y, gz, GRANTS_COLOR)
                     // effect_nt's golden magic circle turning under the judged -- the seal the
                     // real Grants stamps its target with.
                     if ("nt_circle_gold" in effectTextures) {
                         val seal = effectGroundQuad("nt_circle_gold", 3.8, 3.8, 0.0)
-                        seal.position.set(
-                            target.mesh.position.x,
-                            target.mesh.position.y + 0.3 * worldUnit,
-                            target.mesh.position.z,
-                        )
+                        seal.position.set(gx, target.mesh.position.y + 0.3 * worldUnit, gz)
                         addEffect(
                             TimedEffect(
                                 seal, GRANTS_SEAL_SECONDS, GRANTS_SEAL_SECONDS,
@@ -7351,15 +7431,14 @@ class GameRenderer(
                         )
                     }
                     // Light gathers before it strikes: rays converging on the mark from a ring.
-                    val cy = centerMassHeight(target)
                     for (k in 0 until GRANTS_RAY_COUNT) {
                         val angle = k * 2 * PI / GRANTS_RAY_COUNT
                         val radius = 12.0
                         spawnParticle(
                             "burst_bright",
-                            target.mesh.position.x + cos(angle) * radius,
-                            cy + 8.0,
-                            target.mesh.position.z + sin(angle) * radius,
+                            gx + cos(angle) * radius,
+                            gy + 8.0,
+                            gz + sin(angle) * radius,
                             sizeWorld = 4.0, colorHex = GRANTS_COLOR,
                             vx = -cos(angle) * radius / 0.3,
                             vy = -8.0 / 0.3,
@@ -7368,14 +7447,10 @@ class GameRenderer(
                         )
                     }
                     val flare = effectSprite("flare_gold", 5.0, colorHex = GRANTS_COLOR)
-                    flare.position.set(
-                        target.mesh.position.x, centerMassHeight(target), target.mesh.position.z,
-                    )
+                    flare.position.set(gx, gy, gz)
                     addEffect(TimedEffect(flare, GRANTS_FLASH_SECONDS, GRANTS_FLASH_SECONDS))
                     val burst = effectSprite("burst_bright", 3.4, colorHex = GRANTS_COLOR)
-                    burst.position.set(
-                        target.mesh.position.x, centerMassHeight(target), target.mesh.position.z,
-                    )
+                    burst.position.set(gx, gy, gz)
                     addEffect(
                         TimedEffect(burst, GRANTS_FLASH_SECONDS, GRANTS_FLASH_SECONDS, growPerSecond = 1.2)
                     )
@@ -7787,7 +7862,136 @@ class GameRenderer(
             if (enemy.isDead || enemy.untargetable) return@filter false
             val dx = enemy.mesh.position.x - x
             val dz = enemy.mesh.position.z - z
-            dx * dx + dz * dz <= (radius + enemy.hitboxRadius) * (radius + enemy.hitboxRadius)
+            if (dx * dx + dz * dz <= (radius + enemy.hitboxRadius) * (radius + enemy.hitboxRadius)) {
+                return@filter true
+            }
+            // A multi-part boss is in the blast if any of its regions is, even when the body's
+            // centre sits well outside -- an explosion on the tail is still an explosion on it.
+            val fight = multiPartFightOf(enemy) ?: return@filter false
+            fight.parts.indices.any { i ->
+                fight.partPosition(i, techAimScratch)
+                val pdx = techAimScratch.x - x
+                val pdz = techAimScratch.z - z
+                val reach = radius + fight.parts[i].radiusUnits * worldUnit
+                pdx * pdx + pdz * pdz <= reach * reach
+            }
+        }
+    }
+
+    /** The multi-part boss fight [enemy] belongs to, if it is one -- the Dragon today. */
+    private fun multiPartFightOf(enemy: Enemy): DragonFight? =
+        dragonFight?.takeIf { it.enemy === enemy }
+
+    /**
+     * Extra strikes a sweeping weapon can land on [enemy] past the first: its targetable
+     * regions inside the weapon's own reach cone beyond the one every body gets. Zero for
+     * ordinary enemies. Measured from the yaw the swing was actually thrown at.
+     */
+    private fun bossBonusStrikes(enemy: Enemy, p: Player): Int {
+        val fight = multiPartFightOf(enemy) ?: return 0
+        val yaw = p.mesh.rotation.y
+        val forwardX = sin(yaw)
+        val forwardZ = cos(yaw)
+        val reach = (p.combat.reach + PLAYER_HITBOX_UNITS_FOR_BOXES) * worldUnit
+        val angleTan = tan(p.weaponType.angleDegrees * PI / 180.0)
+        var count = 0
+        for (i in fight.parts.indices) {
+            fight.partPosition(i, techAimScratch)
+            val dx = techAimScratch.x - p.mesh.position.x
+            val dz = techAimScratch.z - p.mesh.position.z
+            val r = fight.parts[i].radiusUnits * worldUnit
+            val along = dx * forwardX + dz * forwardZ
+            if (along < 0 || along > reach + r) continue
+            val lateral = dx * forwardZ - dz * forwardX
+            val halfWidth = angleTan * along + r
+            if (lateral in -halfWidth..halfWidth) count++
+        }
+        return (count - 1).coerceAtLeast(0)
+    }
+
+    /**
+     * Where an area attack centred on ([x], [z]) actually strikes [enemy]: one point per
+     * targetable region inside [radiusWorld] on a multi-part boss -- a blast engulfing the head
+     * AND a foot genuinely hits both -- or the body's one strike point for an ordinary enemy.
+     * Never empty for an enemy the caller already established as caught.
+     */
+    private fun areaHitPoints(enemy: Enemy, x: Double, z: Double, radiusWorld: Double): List<DoubleArray> {
+        val fight = multiPartFightOf(enemy)
+            ?: return listOf(
+                doubleArrayOf(enemy.mesh.position.x, centerMassHeight(enemy), enemy.mesh.position.z)
+            )
+        val points = mutableListOf<DoubleArray>()
+        for (i in fight.parts.indices) {
+            fight.partPosition(i, techAimScratch)
+            val dx = techAimScratch.x - x
+            val dz = techAimScratch.z - z
+            val reach = radiusWorld + fight.parts[i].radiusUnits * worldUnit
+            if (dx * dx + dz * dz <= reach * reach) {
+                points.add(doubleArrayOf(techAimScratch.x, techAimScratch.y, techAimScratch.z))
+            }
+        }
+        if (points.isEmpty()) {
+            points.add(
+                doubleArrayOf(enemy.mesh.position.x, centerMassHeight(enemy), enemy.mesh.position.z)
+            )
+        }
+        return points
+    }
+
+    /** [areaHitPoints] for the line techniques: strike points inside the corridor ahead. */
+    private fun lineHitPoints(
+        enemy: Enemy,
+        x: Double,
+        z: Double,
+        dirX: Double,
+        dirZ: Double,
+        rangeWorld: Double,
+        halfWidthWorld: Double,
+    ): List<DoubleArray> {
+        val fight = multiPartFightOf(enemy)
+        if (fight == null) {
+            val dx = enemy.mesh.position.x - x
+            val dz = enemy.mesh.position.z - z
+            val along = dx * dirX + dz * dirZ
+            val lateral = dx * dirZ - dz * dirX
+            val halfWidth = halfWidthWorld + enemy.hitboxRadius
+            return if (along in 0.0..rangeWorld && lateral in -halfWidth..halfWidth) {
+                listOf(doubleArrayOf(enemy.mesh.position.x, centerMassHeight(enemy), enemy.mesh.position.z))
+            } else emptyList()
+        }
+        val points = mutableListOf<DoubleArray>()
+        for (i in fight.parts.indices) {
+            fight.partPosition(i, techAimScratch)
+            val dx = techAimScratch.x - x
+            val dz = techAimScratch.z - z
+            val along = dx * dirX + dz * dirZ
+            val partR = fight.parts[i].radiusUnits * worldUnit
+            val lateral = dx * dirZ - dz * dirX
+            val halfWidth = halfWidthWorld + partR
+            if (along in 0.0..(rangeWorld + partR) && lateral in -halfWidth..halfWidth) {
+                points.add(doubleArrayOf(techAimScratch.x, techAimScratch.y, techAimScratch.z))
+            }
+        }
+        return points
+    }
+
+    /**
+     * Whether a travelling technique at ([x], [z]) has run into [enemy] -- the body cylinder,
+     * or any region of a multi-part boss, so a fireball aimed at a wingtip bursts on the
+     * wingtip instead of sailing through it.
+     */
+    private fun projectileHits(enemy: Enemy, x: Double, z: Double, projRadiusWorld: Double): Boolean {
+        val dx = enemy.mesh.position.x - x
+        val dz = enemy.mesh.position.z - z
+        val reach = enemy.hitboxRadius + projRadiusWorld
+        if (dx * dx + dz * dz <= reach * reach) return true
+        val fight = multiPartFightOf(enemy) ?: return false
+        return fight.parts.indices.any { i ->
+            fight.partPosition(i, techAimScratch)
+            val pdx = techAimScratch.x - x
+            val pdz = techAimScratch.z - z
+            val partReach = fight.parts[i].radiusUnits * worldUnit + projRadiusWorld
+            pdx * pdx + pdz * pdz <= partReach * partReach
         }
     }
 
@@ -7851,15 +8055,21 @@ class GameRenderer(
     }
 
     /** Technique damage lands exactly like a weapon hit: numbers, flinch, and the kill payout. */
-    private fun hurtEnemy(enemy: Enemy, damage: Int) {
+    private fun hurtEnemy(enemy: Enemy, damage: Int) =
+        hurtEnemyAt(enemy, damage, enemy.mesh.position.x, labelHeight(enemy), enemy.mesh.position.z)
+
+    /**
+     * [hurtEnemy] with the damage number anchored at a specific strike point -- how the
+     * multi-part hits stay legible: five numbers rising off five parts of the Dragon reads as
+     * five hits, the same five stacked on its centre reads as a glitch.
+     */
+    private fun hurtEnemyAt(enemy: Enemy, damage: Int, x: Double, y: Double, z: Double) {
         // The Dragon under the arena floor can't be hurt -- the wiki's own rule: wait for it
-        // to resurface and become targetable again.
-        if (enemy.untargetable) return
+        // to resurface and become targetable again. The isDead guard is what makes repeated
+        // part hits in one cast safe: the strike that kills is the last one that counts.
+        if (enemy.untargetable || enemy.isDead) return
         enemy.hp -= damage
-        damageNumbers.showDamage(
-            enemy.mesh.position.x, labelHeight(enemy), enemy.mesh.position.z,
-            damage, false,
-        )
+        damageNumbers.showDamage(x, y, z, damage, false)
         maybeLilyScreech(enemy)
         if (enemy.isDead) onEnemyKilled(enemy) else {
             enemy.ai?.onDamaged()
@@ -7904,11 +8114,16 @@ class GameRenderer(
             var hit = false
             for (enemy in enemies) {
                 if (enemy.isDead) continue
-                val dx = enemy.mesh.position.x - proj.sprite.position.x
-                val dz = enemy.mesh.position.z - proj.sprite.position.z
-                val reach = enemy.hitboxRadius + FOIE_RADIUS_UNITS * worldUnit
-                if (dx * dx + dz * dz <= reach * reach) {
-                    hurtEnemy(enemy, techniqueDamage(proj.power, player?.stats?.mst ?: 0, enemy.resistances.fire))
+                if (projectileHits(
+                        enemy, proj.sprite.position.x, proj.sprite.position.z,
+                        FOIE_RADIUS_UNITS * worldUnit,
+                    )
+                ) {
+                    hurtEnemyAt(
+                        enemy,
+                        techniqueDamage(proj.power, player?.stats?.mst ?: 0, enemy.resistances.fire),
+                        proj.sprite.position.x, proj.sprite.position.y, proj.sprite.position.z,
+                    )
                     hit = true
                     break
                 }
@@ -7968,24 +8183,26 @@ class GameRenderer(
             var hit = false
             for (enemy in enemies) {
                 if (enemy.isDead) continue
-                val dx = enemy.mesh.position.x - shot.sprite.position.x
-                val dz = enemy.mesh.position.z - shot.sprite.position.z
-                val reach = enemy.hitboxRadius + FOIE_RADIUS_UNITS * worldUnit
-                if (dx * dx + dz * dz <= reach * reach) {
+                if (projectileHits(
+                        enemy, shot.sprite.position.x, shot.sprite.position.z,
+                        FOIE_RADIUS_UNITS * worldUnit,
+                    )
+                ) {
                     hit = true
                     // Success chance = power - dark resist (the wiki's EDK), a straight roll:
-                    // the curse takes them or does nothing at all.
+                    // the curse takes them or does nothing at all. One roll however large the
+                    // body -- death has no need to strike twice.
                     val chance = shot.power - enemy.resistances.dark
                     if (Random.nextDouble() * 100.0 < chance) {
                         enemy.hp = 0
                         damageNumbers.showDamage(
-                            enemy.mesh.position.x, labelHeight(enemy), enemy.mesh.position.z,
+                            shot.sprite.position.x, shot.sprite.position.y, shot.sprite.position.z,
                             enemy.maxHp, true,
                         )
                         onEnemyKilled(enemy)
                     } else {
                         damageNumbers.showMiss(
-                            enemy.mesh.position.x, labelHeight(enemy), enemy.mesh.position.z,
+                            shot.sprite.position.x, shot.sprite.position.y, shot.sprite.position.z,
                         )
                     }
                     break
@@ -8237,6 +8454,9 @@ class GameRenderer(
             onStrikeResolved = { reached ->
                 breakBoxesInSwing(p, p.combat.maxTargets - reached)
             },
+            // A multi-part boss soaks the sweep's spare pellets/arc: one extra strike per
+            // additional targetable region the weapon's own cone covers.
+            bonusHitsFor = { enemy -> bossBonusStrikes(enemy, p) },
             onHit = { enemy, damage, critical ->
             // Special attacks don't feed the blast gauge -- their payoff is the weapon's own
             // effect (wiki: "Special attacks also do not contribute to the Photon Blast gauge").
@@ -8244,13 +8464,26 @@ class GameRenderer(
                 p.photonBlast.onDamageDealt(damage, p.level)
             }
 
-            damageNumbers.showDamage(
-                enemy.mesh.position.x,
-                labelHeight(enemy),
-                enemy.mesh.position.z,
-                damage,
-                critical,
-            )
+            // On a multi-part boss the numbers rise off the struck region (jittered so a
+            // pellet spread reads as several hits), not stacked on the body's centre.
+            if (multiPartFightOf(enemy) != null) {
+                focusAimPoint(enemy, techAimScratch)
+                damageNumbers.showDamage(
+                    techAimScratch.x + (Random.nextDouble() - 0.5) * 3.0 * worldUnit,
+                    techAimScratch.y + (Random.nextDouble() - 0.5) * 2.0 * worldUnit,
+                    techAimScratch.z + (Random.nextDouble() - 0.5) * 3.0 * worldUnit,
+                    damage,
+                    critical,
+                )
+            } else {
+                damageNumbers.showDamage(
+                    enemy.mesh.position.x,
+                    labelHeight(enemy),
+                    enemy.mesh.position.z,
+                    damage,
+                    critical,
+                )
+            }
 
             if (p.weaponType.isRanged) maybeLilyScreech(enemy)
             if (!enemy.isDead) trySplitSlime(enemy)
@@ -9134,7 +9367,9 @@ class GameRenderer(
         private const val GIFOIE_RADIUS_UNITS = 15.0
         private const val GIFOIE_SECONDS = 2.2
         private const val GIFOIE_SPIN = 6.0
-        private const val RAFOIE_RADIUS_UNITS = 6.0
+        // A huge explosion means a huge blast zone: sized so everything the swelling dome
+        // visibly engulfs is genuinely inside the damage radius.
+        private const val RAFOIE_RADIUS_UNITS = 11.0
         private const val GIBARTA_RANGE_UNITS = 12.0
         private const val GIBARTA_HALF_WIDTH_UNITS = 4.0
         private const val RABARTA_RADIUS_UNITS = 7.0
