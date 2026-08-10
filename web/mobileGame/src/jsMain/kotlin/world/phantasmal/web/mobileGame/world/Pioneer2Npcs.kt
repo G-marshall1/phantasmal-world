@@ -77,39 +77,25 @@ class Pioneer2Npc(
  */
 val PIONEER2_NPCS: List<Pioneer2Npc> = listOf(
     // -- Section 30 (rotations include the section's 180-degree offset) --
+    // The mall's own vendors, at their authored spots, each running the counter of their
+    // item-box colour -- blue sells what the blue box holds, green the green, orange the
+    // orange -- with the Tekker at the far right of the big room for the ???? mysteries.
     Pioneer2Npc("Male Fat", "CitizenMan3", -240.884, 2.6, 244.693, 120.932,
         PlayerAnimations.Idles.BREATHING,
-        displayName = "Citizen", role = NpcRole.CHAT,
-        dialog = "Ragol's surface is finally open... but the Hunters who go down come back changed."),
+        displayName = "Armor Shop", role = NpcRole.ARMOR_SHOP,
+        dialog = "Frames, barriers, units -- everything the blue box holds. Keep yourself in one piece."),
     Pioneer2Npc("Female Macho", "CitizenWoman5", -208.871, 2.6, 276.803, 147.651,
         PlayerAnimations.Idles.HAND_ON_HIP,
-        displayName = "Citizen", role = NpcRole.CHAT,
-        dialog = "I've been training every day. If the Hunters can fight, so can I!"),
+        displayName = "Tool Shop", role = NpcRole.TOOL_SHOP,
+        dialog = "Mates, fluids, Telepipes -- everything the green box holds, stocked and priced fair."),
     Pioneer2Npc("Male Macho", "CitizenMan4", -165.34, 2.6, 286.72, 180.0,
         PlayerAnimations.Idles.STANDING,
-        displayName = "Citizen", role = NpcRole.CHAT,
-        dialog = "The central dome exploded the moment we made orbit. They still won't tell us why."),
+        displayName = "Weapon Shop", role = NpcRole.WEAPON_SHOP,
+        dialog = "Sabers, guns, canes -- anything that comes in an orange box. Browse away."),
     Pioneer2Npc("Tekker", "GovStaff3", -121.29, 2.6, 254.782, 225.0,
         PlayerAnimations.Idles.BREATHING,
         displayName = "Tekker", role = NpcRole.TEKKER,
         dialog = "Weapons, friend. Buying or selling, nobody knows their worth better than I do."),
-    // The shop district's own tool counter, like the real game -- the Nurse still stocks the
-    // same list at the medical center, but this is where players go looking for it.
-    Pioneer2Npc("Tool Shop Clerk", "GovStaff2", -95.0, 2.6, 232.0, 240.0,
-        PlayerAnimations.Idles.BREATHING,
-        displayName = "Tool Shop", role = NpcRole.TOOL_SHOP,
-        dialog = "Mates, fluids, Telepipes -- stocked and priced fair. What'll it be?"),
-    // The three shop counters, split by item-box colour like the real mall: the orange stand
-    // handles weapons, the blue stand handles frames/barriers/units, the green stand (above)
-    // handles tools. They line the shop district beside one another.
-    Pioneer2Npc("Weapon Shop Clerk", "GovStaff4", -140.0, 2.6, 232.0, 300.0,
-        PlayerAnimations.Idles.BREATHING,
-        displayName = "Weapon Shop", role = NpcRole.WEAPON_SHOP,
-        dialog = "Sabers, guns, canes -- anything that comes in an orange box. Browse away."),
-    Pioneer2Npc("Armor Shop Clerk", "GovStaff5", -185.0, 2.6, 232.0, 300.0,
-        PlayerAnimations.Idles.BREATHING,
-        displayName = "Armor Shop", role = NpcRole.ARMOR_SHOP,
-        dialog = "Frames, barriers, units -- the blue-box gear. Keep yourself in one piece."),
     Pioneer2Npc("Female Tall", "CitizenWoman7", -181.004, 0.0, 196.004, 112.495,
         PlayerAnimations.Idles.HAND_ON_HIP,
         displayName = "Citizen", role = NpcRole.CHAT,
