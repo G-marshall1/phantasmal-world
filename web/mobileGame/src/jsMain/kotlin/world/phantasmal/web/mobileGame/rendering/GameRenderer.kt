@@ -3565,6 +3565,28 @@ class GameRenderer(
     }
 
     /** Applies an item's stats to combat. Same weapon class only -- see [updatePickups]. */
+    /**
+     * The strike zone a weapon actually gets. A firearm reaches as far as it can lock: the
+     * reticle is a promise that the shot can land there, and a gun whose hit test stopped
+     * short of its own reticle silently ate every long shot. Melee keeps its own measured
+     * reach -- a saber has no business hitting at lock range.
+     */
+    private fun combatReachUnits(type: WeaponType, characterClass: CharacterClass): Double =
+        if (type.isRanged) maxOf(type.effectiveReach, focusRangeUnits(type, characterClass))
+        else type.effectiveReach
+
+    /**
+     * Re-points the combat controller at the weapon now in hand. Called on every weapon change:
+     * these three settings used to be written once at spawn, so drawing a rifle after starting
+     * with a handgun left the character swinging with the handgun's reach, cone and target
+     * count for the rest of the run.
+     */
+    private fun applyWeaponToCombat(p: Player) {
+        p.combat.reach = combatReachUnits(p.weaponType, p.characterClass)
+        p.combat.setAngleDegrees(p.weaponType.angleDegrees)
+        p.combat.maxTargets = p.weaponType.maxTargets
+    }
+
     private fun equipItem(item: WeaponItem) {
         equippedItem = item
         actionPalette?.setUnusable(GameAction.SPECIAL_ATTACK, item.specialAttack == null)
@@ -5261,7 +5283,7 @@ class GameRenderer(
 
             // The equipped weapon's strike zone. PSO states every range against the player's own
             // 1.0-unit cylinder, so this is what the whole table is measured in.
-            combat.reach = equipped.effectiveReach
+            combat.reach = combatReachUnits(equipped, appearance.characterClass)
             combat.setAngleDegrees(equipped.angleDegrees)
             combat.maxTargets = equipped.maxTargets
 
@@ -5933,6 +5955,7 @@ class GameRenderer(
             p.weaponType = item.tier.type
             p.currentAttackMotion = null
             equippedWeaponAtp = item.tier.type.atp
+            applyWeaponToCombat(p)
 
             weaponAttachment.forEach { it.parent?.remove(it) }
             weaponAttachment = attachment
@@ -6365,7 +6388,13 @@ class GameRenderer(
             }
 
             context.scene.add(mesh)
-            bullets.add(Bullet(mesh, flightX, flightY, flightZ, BULLET_LIFETIME_SECONDS))
+            // Long enough to carry the full lock range, with a little over so a target sitting
+            // right on the edge is still reached rather than watched from a foot away.
+            val flightSeconds = maxOf(
+                BULLET_LIFETIME_SECONDS,
+                focusRangeUnits(p.weaponType, p.characterClass) / BULLET_SPEED_UNITS * BULLET_RANGE_OVERSHOOT,
+            )
+            bullets.add(Bullet(mesh, flightX, flightY, flightZ, flightSeconds))
         }
     }
 
@@ -6678,18 +6707,27 @@ class GameRenderer(
      * margin, so melee locks what's engaging you and a gun locks down its sightline. No facing
      * requirement: locking is what *gives* the facing.
      */
-    private fun findFocusTarget(p: Player): FocusTarget? {
-        // A caster's engagement range is their techniques, not the cane in their hand -- a
-        // Force locks at spell distance the way a Ranger locks down a gun's sightline. And
-        // nobody's lock stops at their weapon's edge: the real game's reticle finds targets
-        // well before a saber can touch them, which is what lets you pick a fight on your own
-        // terms -- hence the floor under every class.
-        val engagementReach = maxOf(
-            p.weaponType.effectiveReach,
-            if (professionOf(p.characterClass) == Profession.FORCE) TECH_FOCUS_RANGE_UNITS else 0.0,
+    /**
+     * How far the lock reaches, in PSO units. This is the one number the reticle, a round's
+     * flight and a gun's hit test all read, so the reticle's promise holds: anything it can
+     * hold onto is something the shot can actually reach. Splitting these apart is what had
+     * handgun rounds dying in mid-air short of the target the reticle was sitting on.
+     *
+     * A caster's engagement range is their techniques, not the cane in their hand -- a Force
+     * locks at spell distance the way a Ranger locks down a gun's sightline. And nobody's lock
+     * stops at their weapon's edge: the real game's reticle finds targets well before a saber
+     * can touch them, which is what lets you pick a fight on your own terms -- hence the floor
+     * under every class.
+     */
+    private fun focusRangeUnits(type: WeaponType, characterClass: CharacterClass): Double =
+        maxOf(
+            type.effectiveReach,
+            if (professionOf(characterClass) == Profession.FORCE) TECH_FOCUS_RANGE_UNITS else 0.0,
             FOCUS_RANGE_FLOOR_UNITS,
-        )
-        val rangeWorld = (engagementReach + FOCUS_MARGIN_UNITS) * worldUnit
+        ) + FOCUS_MARGIN_UNITS
+
+    private fun findFocusTarget(p: Player): FocusTarget? {
+        val rangeWorld = focusRangeUnits(p.weaponType, p.characterClass) * worldUnit
         var best: FocusTarget? = null
         var bestD2 = Double.MAX_VALUE
 
@@ -9564,7 +9602,12 @@ class GameRenderer(
         /** How far right of the character's centre line the barrel sits. */
         private const val BULLET_MUZZLE_RIGHT_UNITS = 0.6
         private const val BULLET_SPEED_UNITS = 70.0
+
+        /** Floor on a round's flight; the lock range sets the real figure -- see fireBullet. */
         private const val BULLET_LIFETIME_SECONDS = 0.45
+
+        /** How far past the lock's edge a round carries, so edge targets are actually reached. */
+        private const val BULLET_RANGE_OVERSHOOT = 1.15
 
         private const val FOIE_SPRITE_UNITS = 1.0
         private const val FOIE_FRAME_RATE = 18.0
