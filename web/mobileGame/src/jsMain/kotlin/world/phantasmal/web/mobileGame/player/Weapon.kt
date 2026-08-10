@@ -23,8 +23,8 @@ import world.phantasmal.web.mobileGame.world.WeaponAssetLoader
  * That +Z-out-of-the-grip convention is NOT universal: the models were authored on whichever axis
  * suited each item, so a shared transform holds some of them sideways or backwards.
  * [applyModelConvention] normalizes each measured deviation onto the Saber convention first, and
- * [ALREADY_FACING_FORWARD] then decides which families still need the half-turn that reverses
- * which way the weapon points out of the fist (see its doc for whose word that is).
+ * [NO_FACING_FLIP] then decides which families still need the half-turn that reverses which way
+ * the weapon points out of the fist (see its doc for whose word that is).
  *
  * Rules are keyed on [WeaponType] rather than on model slug, so a rare with its own model (a
  * Varista, say) is oriented like the rest of its family instead of falling through to the
@@ -43,18 +43,21 @@ object Weapon {
     private const val ALIGN_BLADE_TO_Y = -PI / 2
 
     /**
-     * The families the player confirmed already point the right way on device: "only the rifle
-     * and the shot were facing the right way. The sword, double saber and saber looks fine."
-     * Everything else takes the half-turn.
+     * The families that do NOT take the blanket half-turn, for one of two reasons.
      *
-     * The launcher rides with the guns rather than being flipped blind: Rifle, Shot and Panzer
-     * Faust are all authored barrel-down-Y and share one convention fix, and two of the three
-     * are confirmed correct under it -- flipping the third would break what its own family
-     * proves is right.
+     * Confirmed correct on device as they were: "only the rifle and the shot were facing the
+     * right way. The sword, double saber and saber looks fine." The launcher rides with the
+     * guns rather than being flipped blind -- Rifle, Shot and Panzer Faust are all authored
+     * barrel-down-Y under one convention fix, and two of the three are confirmed right under
+     * it, so flipping the third would break what its own family proves.
+     *
+     * The pistols are here for the other reason: they take an explicit correction of their own
+     * in [applyModelConvention] instead, which subsumes the half-turn (see the note there).
      */
-    private val ALREADY_FACING_FORWARD: Set<WeaponType> = setOf(
+    private val NO_FACING_FLIP: Set<WeaponType> = setOf(
         WeaponType.SABER, WeaponType.SWORD, WeaponType.DOUBLE_SABER,
         WeaponType.RIFLE, WeaponType.SHOT, WeaponType.LAUNCHER,
+        WeaponType.HANDGUN, WeaponType.MECHGUN,
     )
 
     /**
@@ -110,7 +113,7 @@ object Weapon {
         // points whatever axis the model was authored on.
         val facing = Group().apply {
             add(weaponMesh)
-            if (type !in ALREADY_FACING_FORWARD) rotation.y = PI
+            if (type !in NO_FACING_FLIP) rotation.y = PI
         }
 
         val aligned = Group().apply {
@@ -181,12 +184,18 @@ object Weapon {
      *   its correct normalization: blades sweep down-forward through the target.
      * - The Dagger is authored blade-backwards (-Z, z in [-5.1, 2.0]), so it starts a half-turn
      *   about Y from the shared convention.
+     * - The pistols hung under the hand pointing backwards on device, wanting "180 on its x and
+     *   180 on its Y" on top of the blanket half-turn. Those three half-turns compose to a
+     *   single roll about X -- Ry(pi) . Rx(pi) . Ry(pi) = Rx(pi) -- which is what's applied
+     *   here, with the blanket turn dropped (see [NO_FACING_FLIP]). The Mechgun follows the
+     *   Handgun: both are authored on the same +Z convention and were flipped together.
      */
     private fun applyModelConvention(mesh: Mesh, type: WeaponType) {
         when (type) {
             WeaponType.RIFLE, WeaponType.SHOT, WeaponType.LAUNCHER -> mesh.rotation.z = PI
             WeaponType.CLAW -> mesh.rotation.x = -PI / 2
             WeaponType.DAGGER -> mesh.rotation.y = PI
+            WeaponType.HANDGUN, WeaponType.MECHGUN -> mesh.rotation.x = PI
             else -> Unit
         }
     }
