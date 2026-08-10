@@ -7046,26 +7046,9 @@ class GameRenderer(
                 // Three arms of fire spiralling outward for the spell's whole turn: a train of
                 // short-lived flames whose orbit radius grows with time, so the eye sees fire
                 // travelling AND spreading.
+                // The wheel itself is TechniqueFx's orbiters: solid flames visibly circling
+                // outward -- one clear visual instead of two competing ones.
                 techniqueFx?.gifoie(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z)
-                val flameFrames = (0 until 16).map { effectTexture("foie_flame_$it") }
-                for (arm in 0 until GIFOIE_ARMS) {
-                    for (step in 0 until GIFOIE_STEPS) {
-                        val t = step.toDouble() / GIFOIE_STEPS * GIFOIE_SECONDS
-                        val angle = arm * 2 * PI / GIFOIE_ARMS + GIFOIE_SPIN * t
-                        val radius =
-                            (2.0 + (GIFOIE_RADIUS_UNITS - 2.0) * t / GIFOIE_SECONDS) * worldUnit
-                        spawnParticle(
-                            "foie_flame_0",
-                            p.mesh.position.x + sin(angle) * radius,
-                            p.mesh.position.y + 4.0,
-                            p.mesh.position.z + cos(angle) * radius,
-                            sizeWorld = 6.0, colorHex = FOIE_COLOR,
-                            seconds = 0.35, growPerSecond = 0.5,
-                            frames = flameFrames, frameRate = 24.0,
-                            delaySeconds = t,
-                        )
-                    }
-                }
             }
 
             Technique.RAFOIE -> {
@@ -7133,24 +7116,6 @@ class GameRenderer(
                             scale = 1.0 + enemy.hitboxRadius / (6.0 * worldUnit),
                         )
                     }
-                }
-                // gibartalv1star's recipe: ten crystals breathed forward at speed 50, fanning
-                // through the cone -- a gust of ice stars, not a strip on the ground.
-                for (k in 0 until GIBARTA_STAR_COUNT) {
-                    val spread = (Random.nextDouble() - 0.5) * 2 * GIBARTA_SPREAD_RADIANS
-                    spawnParticle(
-                        "barta_burst",
-                        p.mesh.position.x + dirX * worldUnit,
-                        p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit * (0.7 + Random.nextDouble() * 0.4),
-                        p.mesh.position.z + dirZ * worldUnit,
-                        sizeWorld = GIBARTA_STAR_SIZE_WORLD,
-                        colorHex = BARTA_COLOR,
-                        vx = sin(yaw + spread) * GIBARTA_STAR_SPEED_WORLD,
-                        vz = cos(yaw + spread) * GIBARTA_STAR_SPEED_WORLD,
-                        seconds = GIBARTA_RANGE_UNITS * worldUnit / GIBARTA_STAR_SPEED_WORLD,
-                        growPerSecond = 0.6,
-                        delaySeconds = Random.nextDouble() * 0.08,
-                    )
                 }
             }
 
@@ -7849,8 +7814,8 @@ class GameRenderer(
             proj.sprite.position.z += proj.dirZ * FOIE_SPEED_UNITS * worldUnit * deltaTime
             projectileTrails[proj.sprite]?.let { kind ->
                 val sp = proj.sprite.position
-                if (kind == "foie") techniqueFx?.foieTrail(sp.x, sp.y, sp.z)
-                else techniqueFx?.megidTrail(sp.x, sp.y, sp.z)
+                if (kind == "foie") techniqueFx?.foieTrail(sp.x, sp.y, sp.z, proj.dirX, proj.dirZ)
+                else techniqueFx?.megidTrail(sp.x, sp.y, sp.z, proj.dirX, proj.dirZ)
             }
 
             // The flame it drags: a short-lived ember shed behind every frame of flight.
@@ -7902,8 +7867,8 @@ class GameRenderer(
             shot.sprite.position.z += shot.dirZ * step
             projectileTrails[shot.sprite]?.let { kind ->
                 val sp = shot.sprite.position
-                if (kind == "foie") techniqueFx?.foieTrail(sp.x, sp.y, sp.z)
-                else techniqueFx?.megidTrail(sp.x, sp.y, sp.z)
+                if (kind == "foie") techniqueFx?.foieTrail(sp.x, sp.y, sp.z, shot.dirX, shot.dirZ)
+                else techniqueFx?.megidTrail(sp.x, sp.y, sp.z, shot.dirX, shot.dirZ)
             }
 
             // The curse's wake: violet residue hanging in the air where it passed.
@@ -9053,7 +9018,7 @@ class GameRenderer(
         private const val BULLET_SPEED_UNITS = 70.0
         private const val BULLET_LIFETIME_SECONDS = 0.45
 
-        private const val FOIE_SPRITE_UNITS = 1.6
+        private const val FOIE_SPRITE_UNITS = 1.0
         private const val FOIE_FRAME_RATE = 18.0
         private const val FOIE_IMPACT_SECONDS = 0.5
 
@@ -9091,7 +9056,7 @@ class GameRenderer(
         private const val RAZONDE_RADIUS_UNITS = 9.0
         private const val SUPPORT_RADIUS_UNITS = 10.0
         private const val GRANTS_FLASH_SECONDS = 0.7
-        private const val MEGID_SPRITE_UNITS = 1.4
+        private const val MEGID_SPRITE_UNITS = 0.9
         private const val FREEZE_SPRITE_UNITS = 3.4
 
         // --- Particle figures, in raw world units (particleentry.dat's own space). Counts,

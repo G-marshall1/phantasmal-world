@@ -25,6 +25,8 @@ import world.phantasmal.web.externals.three.Points
 import world.phantasmal.web.externals.three.PointsMaterial
 import world.phantasmal.web.externals.three.RingGeometry
 import world.phantasmal.web.externals.three.SphereGeometry
+import world.phantasmal.web.externals.three.Sprite
+import world.phantasmal.web.externals.three.SpriteMaterial
 import world.phantasmal.web.externals.three.Texture
 
 /**
@@ -64,6 +66,8 @@ class TechniqueFx(
         /** Sine-wobble amplitude on x per particle (the support glitter's sway). */
         val wobble: Double = 0.0,
         var age: Double = 0.0,
+        /** Per-particle birth times: a particle holds at its spawn point until its moment. */
+        val delays: FloatArray? = null,
     )
 
     private val clouds = mutableListOf<Cloud>()
@@ -78,6 +82,7 @@ class TechniqueFx(
         gravity: Double = 0.0,
         wobble: Double = 0.0,
         opacity: Double = 0.95,
+        delays: FloatArray? = null,
         place: (Int) -> DoubleArray,
     ): Cloud {
         val positions = Float32Array(count * 3)
@@ -105,7 +110,7 @@ class TechniqueFx(
         })
         val points = Points(geometry, material)
         scene.add(points)
-        val c = Cloud(points, positions, velocities, count, life, life, drag, gravity, wobble)
+        val c = Cloud(points, positions, velocities, count, life, life, drag, gravity, wobble, delays = delays)
         clouds.add(c)
         return c
     }
@@ -147,6 +152,60 @@ class TechniqueFx(
             this.opacity = opacity
             if (additive) this.blending = AdditiveBlending
         }).also { it.depthWrite = false }
+
+    // ---------------------------------------------------------------- orbiters
+
+    /** One flame circling the caster: Gifoie's wheel is made of these. */
+    private class Orbiter(
+        val sprite: Sprite,
+        val centerX: Double,
+        val centerY: Double,
+        val centerZ: Double,
+        val angle0: Double,
+        val spin: Double,
+        val radiusFrom: Double,
+        val radiusTo: Double,
+        var life: Double,
+        val maxLife: Double,
+    )
+
+    private val orbiters = mutableListOf<Orbiter>()
+
+    /**
+     * Gifoie as the name promises: solid flames that visibly circle the caster, winding
+     * outward turn by turn until the ring dissipates at its rim.
+     */
+    fun gifoie(x: Double, y: Double, z: Double) {
+        val arms = 3
+        val flamesPerArm = 5
+        for (arm in 0 until arms) {
+            for (i in 0 until flamesPerArm) {
+                val material = SpriteMaterial(obj {
+                    this.map = texture("foie_flame_0")
+                    this.color = Color(if (i < 2) 0xffcc44 else 0xff5522)
+                    this.transparent = true
+                    this.opacity = 1.0
+                    this.blending = AdditiveBlending
+                    this.depthWrite = false
+                })
+                val sprite = Sprite(material)
+                val size = (1.3 + i * 0.15) * bu
+                sprite.scale.set(size, size, 1.0)
+                scene.add(sprite)
+                orbiters.add(
+                    Orbiter(
+                        sprite,
+                        x, y + 1.2 * bu, z,
+                        angle0 = arm * 2 * PI / arms - i * 0.35,
+                        spin = 4.2,
+                        radiusFrom = 0.8 * bu,
+                        radiusTo = 6.5 * bu,
+                        life = 2.2, maxLife = 2.2,
+                    )
+                )
+            }
+        }
+    }
 
     // ---------------------------------------------------------------- bolts
 
@@ -207,53 +266,29 @@ class TechniqueFx(
 
     /** Foie's flying body: a white-hot core with an ember glow shell. */
     fun foieCore(): Object3D {
-        val core = Mesh(SphereGeometry(0.35 * bu, 12, 10), basic(0xffffaa))
-        val shell = Mesh(SphereGeometry(0.55 * bu, 12, 10), basic(0xff6622, opacity = 0.5))
+        val core = Mesh(SphereGeometry(0.18 * bu, 12, 10), basic(0xffffaa))
+        val shell = Mesh(SphereGeometry(0.28 * bu, 12, 10), basic(0xff6622, opacity = 0.5))
         core.add(shell)
         return core
     }
 
-    /** A puff of embers left along Foie's flight -- call per frame at the orb's position. */
-    fun foieTrail(x: Double, y: Double, z: Double) {
+    /**
+     * Foie's tail: a fat ember streak shed every frame, drifting back against the flight so
+     * the orb visibly drags fire behind it.
+     */
+    fun foieTrail(x: Double, y: Double, z: Double, dirX: Double, dirZ: Double) {
         cloud(
-            count = 3, colorHex = 0xff4400, size = 0.9 * bu, textureName = "burst_orange",
-            life = 0.45, drag = 2.0,
+            count = 5, colorHex = 0xff5511, size = 1.4 * bu, textureName = "burst_orange",
+            life = 0.6, drag = 1.2, opacity = 1.0,
         ) {
             doubleArrayOf(
-                x + (Random.nextDouble() - 0.5) * 0.3 * bu,
-                y + (Random.nextDouble() - 0.5) * 0.3 * bu,
-                z + (Random.nextDouble() - 0.5) * 0.3 * bu,
-                (Random.nextDouble() - 0.5) * 2.0 * bu,
-                (Random.nextDouble() - 0.2) * 1.5 * bu,
-                (Random.nextDouble() - 0.5) * 2.0 * bu,
+                x + (Random.nextDouble() - 0.5) * 0.25 * bu,
+                y + (Random.nextDouble() - 0.5) * 0.25 * bu,
+                z + (Random.nextDouble() - 0.5) * 0.25 * bu,
+                -dirX * (2.0 + Random.nextDouble() * 2.0) * bu + (Random.nextDouble() - 0.5) * bu,
+                (Random.nextDouble() - 0.3) * 1.2 * bu,
+                -dirZ * (2.0 + Random.nextDouble() * 2.0) * bu + (Random.nextDouble() - 0.5) * bu,
             )
-        }
-    }
-
-    /** Gifoie: flame wheels riding a logarithmic spiral outward and upward. */
-    fun gifoie(x: Double, y: Double, z: Double) {
-        // Two clouds give the size/colour gradient a single material can't: small hot
-        // yellow near the centre, large crimson at the rim.
-        for ((count, colorHex, size, speedScale) in listOf(
-            Quad(60, 0xffaa00, 0.6 * bu, 0.8),
-            Quad(60, 0xdc143c, 1.4 * bu, 1.25),
-        )) {
-            cloud(
-                count = count, colorHex = colorHex, size = size, textureName = "burst_orange",
-                life = 2.2, drag = 0.25, opacity = 0.85,
-            ) { i ->
-                val theta = i * 0.45
-                val r = 0.3 * bu * exp(0.16 * theta)
-                val px = x + cos(theta) * r
-                val pz = z + sin(theta) * r
-                // Velocity carries the spiral outward as it rises.
-                doubleArrayOf(
-                    px, y + 0.5 * bu + i * 0.008 * bu, pz,
-                    cos(theta) * 2.6 * bu * speedScale,
-                    (0.9 + Random.nextDouble() * 0.5) * bu,
-                    sin(theta) * 2.6 * bu * speedScale,
-                )
-            }
         }
     }
 
@@ -285,14 +320,25 @@ class TechniqueFx(
     fun bartaSpike(x: Double, y: Double, z: Double) {
         // Normal blending, not additive: ice must stay solid against bright terrain.
         val spike = Mesh(
-            OctahedronGeometry(0.6 * bu, 0),
+            OctahedronGeometry(1.5 * bu, 0),
             MeshBasicMaterial(obj {
                 this.color = Color(0x00d2ff)
                 this.transparent = true
-                this.opacity = 0.85
+                this.opacity = 0.9
             }),
         )
-        spike.scale.y = 3.0
+        spike.scale.y = 2.2
+        // A white heart inside the shard, so the ice reads dense instead of glassy-thin.
+        val heart = Mesh(
+            OctahedronGeometry(0.8 * bu, 0),
+            MeshBasicMaterial(obj {
+                this.color = Color(0xdff6ff)
+                this.transparent = true
+                this.opacity = 0.95
+            }),
+        )
+        heart.scale.y = 1.8
+        spike.add(heart)
         spike.position.set(x, y + 0.9 * bu, z)
         spike.rotation.y = Random.nextDouble() * PI
         solid(spike, life = 0.8, scaleFrom = 1.0, scaleTo = 1.0)
@@ -309,29 +355,37 @@ class TechniqueFx(
         }
     }
 
-    /** Gibarta: the freezing cone -- big diamond glints inside a fog of frost. */
+    /**
+     * Gibarta as a cast, not a pop: ice shards stream OUT OF THE HANDS over half a second --
+     * each particle holds at the palm until its birth moment, then flies its cone line, so the
+     * eye reads a continuous breath of ice rather than an instant scatter.
+     */
     fun gibarta(x: Double, y: Double, z: Double, dirX: Double, dirZ: Double) {
+        val handX = x + dirX * 0.8 * bu
+        val handY = y + 1.6 * bu
+        val handZ = z + dirZ * 0.8 * bu
         fun coneVelocity(speed: Double): DoubleArray {
-            // Within 45 degrees of dead ahead.
-            val spread = (Random.nextDouble() - 0.5) * PI / 2
+            val spread = (Random.nextDouble() - 0.5) * PI / 2.4
             val cosS = cos(spread); val sinS = sin(spread)
             val vx = dirX * cosS - dirZ * sinS
             val vz = dirX * sinS + dirZ * cosS
-            return doubleArrayOf(vx * speed, (Random.nextDouble() - 0.3) * 1.2 * bu, vz * speed)
+            return doubleArrayOf(vx * speed, (Random.nextDouble() - 0.35) * 1.0 * bu, vz * speed)
         }
         cloud(
-            count = 50, colorHex = 0xffffff, size = 1.2 * bu, textureName = "nt_shard",
-            life = 0.9, drag = 0.8, opacity = 0.9,
+            count = 60, colorHex = 0xffffff, size = 1.6 * bu, textureName = "nt_shard",
+            life = 1.2, drag = 0.4, opacity = 1.0,
+            delays = FloatArray(60) { (it * 0.009f) },
         ) {
-            val v = coneVelocity((6.0 + Random.nextDouble() * 5.0) * bu)
-            doubleArrayOf(x, y + 1.0 * bu, z, v[0], v[1], v[2])
+            val v = coneVelocity((8.0 + Random.nextDouble() * 5.0) * bu)
+            doubleArrayOf(handX, handY, handZ, v[0], v[1], v[2])
         }
         cloud(
-            count = 150, colorHex = 0x1e90ff, size = 0.4 * bu, textureName = "burst_bright",
-            life = 1.1, drag = 0.6, opacity = 0.7,
+            count = 120, colorHex = 0x66c8ff, size = 0.7 * bu, textureName = "burst_bright",
+            life = 1.2, drag = 0.4, opacity = 0.85,
+            delays = FloatArray(120) { (it * 0.0045f) },
         ) {
-            val v = coneVelocity((4.0 + Random.nextDouble() * 6.0) * bu)
-            doubleArrayOf(x, y + 1.0 * bu, z, v[0], v[1], v[2])
+            val v = coneVelocity((6.0 + Random.nextDouble() * 6.0) * bu)
+            doubleArrayOf(handX, handY, handZ, v[0], v[1], v[2])
         }
     }
 
@@ -461,27 +515,27 @@ class TechniqueFx(
     fun megidCore(): Object3D {
         // Normal blending and near-black: the centre must swallow light, not add it.
         val core = Mesh(
-            SphereGeometry(0.6 * bu, 14, 12),
+            SphereGeometry(0.3 * bu, 14, 12),
             MeshBasicMaterial(obj { this.color = Color(0x050010) }),
         )
-        val rim = Mesh(SphereGeometry(0.78 * bu, 14, 12), basic(0x4b0082, opacity = 0.55))
+        val rim = Mesh(SphereGeometry(0.42 * bu, 14, 12), basic(0x4b0082, opacity = 0.55))
         core.add(rim)
         return core
     }
 
-    /** Megid's crackling dark trail. */
-    fun megidTrail(x: Double, y: Double, z: Double) {
+    /** Megid's tail: a violet wake dragged behind the void core. */
+    fun megidTrail(x: Double, y: Double, z: Double, dirX: Double, dirZ: Double) {
         cloud(
-            count = 3, colorHex = 0x4b0082, size = 1.2 * bu, textureName = "burst_bright",
-            life = 0.5, drag = 1.5,
+            count = 5, colorHex = 0x7722cc, size = 1.5 * bu, textureName = "burst_bright",
+            life = 0.65, drag = 1.0, opacity = 1.0,
         ) {
             doubleArrayOf(
-                x + (Random.nextDouble() - 0.5) * 0.5 * bu,
-                y + (Random.nextDouble() - 0.5) * 0.5 * bu,
-                z + (Random.nextDouble() - 0.5) * 0.5 * bu,
-                (Random.nextDouble() - 0.5) * 1.5 * bu,
-                (Random.nextDouble() - 0.5) * 1.5 * bu,
-                (Random.nextDouble() - 0.5) * 1.5 * bu,
+                x + (Random.nextDouble() - 0.5) * 0.3 * bu,
+                y + (Random.nextDouble() - 0.5) * 0.3 * bu,
+                z + (Random.nextDouble() - 0.5) * 0.3 * bu,
+                -dirX * (1.8 + Random.nextDouble() * 1.8) * bu + (Random.nextDouble() - 0.5) * bu,
+                (Random.nextDouble() - 0.5) * 0.8 * bu,
+                -dirZ * (1.8 + Random.nextDouble() * 1.8) * bu + (Random.nextDouble() - 0.5) * bu,
             )
         }
     }
@@ -520,6 +574,7 @@ class TechniqueFx(
             }
             val dragFactor = 1.0 - (c.drag * deltaTime).coerceAtMost(0.9)
             for (i in 0 until c.count) {
+                if (c.delays != null && c.age < c.delays[i]) continue
                 var vx = c.velocities[i * 3]
                 var vy = c.velocities[i * 3 + 1]
                 var vz = c.velocities[i * 3 + 2]
@@ -563,6 +618,27 @@ class TechniqueFx(
             }
         }
 
+        val orbiterIterator = orbiters.iterator()
+        while (orbiterIterator.hasNext()) {
+            val o = orbiterIterator.next()
+            o.life -= deltaTime
+            if (o.life <= 0) {
+                o.sprite.parent?.remove(o.sprite)
+                orbiterIterator.remove()
+                continue
+            }
+            val progress = 1.0 - o.life / o.maxLife
+            val radius = o.radiusFrom + (o.radiusTo - o.radiusFrom) * progress
+            val angle = o.angle0 + o.spin * progress * o.maxLife
+            o.sprite.position.set(
+                o.centerX + cos(angle) * radius,
+                o.centerY + sin(progress * PI * 3) * 0.3 * bu,
+                o.centerZ + sin(angle) * radius,
+            )
+            // Full flame until the last quarter, then it burns out at the rim.
+            o.sprite.material.opacity = if (progress < 0.75) 1.0 else (1.0 - progress) * 4.0
+        }
+
         val boltIterator = bolts.iterator()
         while (boltIterator.hasNext()) {
             val b = boltIterator.next()
@@ -581,5 +657,4 @@ class TechniqueFx(
         }
     }
 
-    private data class Quad(val a: Int, val b: Int, val c: Double, val d: Double)
 }
