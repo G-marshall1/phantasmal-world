@@ -110,6 +110,14 @@ import world.phantasmal.web.mobileGame.world.enemyStats
 import world.phantasmal.web.mobileGame.world.EnemyFragmentRef
 import world.phantasmal.web.mobileGame.world.FieldGates
 import world.phantasmal.web.mobileGame.world.MapAssetLoader
+import world.phantasmal.web.mobileGame.world.QUEST_FLOOR_FOR_MAP
+import world.phantasmal.web.mobileGame.world.QuestDef
+import world.phantasmal.web.mobileGame.world.QuestHost
+import world.phantasmal.web.mobileGame.world.QuestIndexEntry
+import world.phantasmal.web.mobileGame.world.QuestSession
+import world.phantasmal.web.mobileGame.world.QuestVm
+import world.phantasmal.web.mobileGame.world.loadQuestDef
+import world.phantasmal.web.mobileGame.world.loadQuestIndex
 import world.phantasmal.web.mobileGame.world.RICO_MESSAGES
 import world.phantasmal.web.mobileGame.world.RoomWaveDirector
 import world.phantasmal.web.mobileGame.world.TriggerVolume
@@ -2177,6 +2185,42 @@ class GameRenderer(
     )
 
     private val activeNpcs = mutableListOf<ActiveNpc>()
+
+    // --- The quest system's renderer half ---
+
+    private var questIndex: List<QuestIndexEntry> = emptyList()
+    private var questDef: QuestDef? = null
+    private var questVm: QuestVm? = null
+
+    /** Quest-cast NPCs: mesh identity to the script label their talk runs. */
+    private val questNpcLabels = HashMap<Object3D, Int>()
+
+    /** The classic bottom message window the quest scripts speak through. */
+    private val questMessageBox = (document.createElement("div") as HTMLElement).also { el ->
+        el.className = "pw-quest-msg"
+        el.style.cssText = "position:fixed;left:50%;bottom:calc(96px + var(--pw-safe-bottom));" +
+            "transform:translateX(-50%);width:min(620px,86vw);display:none;z-index:60;" +
+            "background:rgba(6,22,34,.92);border:1px solid rgba(140,220,220,.55);" +
+            "border-radius:8px;padding:14px 16px;color:#e8f6f6;font-size:15px;" +
+            "line-height:1.5;white-space:pre-wrap;font-family:inherit;" +
+            "box-shadow:0 4px 18px rgba(0,0,0,.5);-webkit-tap-highlight-color:transparent;"
+        document.body!!.appendChild(el)
+    }
+
+    private val questChoiceBox = (document.createElement("div") as HTMLElement).also { el ->
+        el.style.cssText = "position:fixed;left:50%;bottom:calc(200px + var(--pw-safe-bottom));" +
+            "transform:translateX(-50%);display:none;z-index:61;min-width:200px;" +
+            "background:rgba(6,22,34,.95);border:1px solid rgba(140,220,220,.55);" +
+            "border-radius:8px;padding:8px;color:#e8f6f6;font-size:15px;"
+        document.body!!.appendChild(el)
+    }
+
+    init {
+        questMessageBox.addEventListener("pointerdown", {
+            it.preventDefault()
+            questVm?.advanceUi()
+        })
+    }
     private val fieldInteractables = mutableListOf<FieldInteractable>()
     private var currentInteractable: FieldInteractable? = null
     private var currentTalkNpc: ActiveNpc? = null
@@ -2190,6 +2234,7 @@ class GameRenderer(
     )
 
     private val talkBubble = (document.createElement("div") as HTMLElement).also { el ->
+        el.className = "pw-hud-talk"
         el.textContent = "TALK"
         el.style.cssText = "position:fixed;transform:translate(-50%,-100%);padding:5px 16px;" +
             "border-radius:14px;border:2px solid rgba(90,210,255,.85);background:rgba(6,26,44,.92);" +
@@ -2344,13 +2389,187 @@ class GameRenderer(
     }
 
     /** Opens the NPC's window: their line, then whatever they deal in as rows. */
+    /** The character's name as the quest scripts address them. */
+    private fun characterDisplayName(): String =
+        save?.name ?: "hunter"
+
+    /** The world side of the quest VM: message windows, doors, meseta, the player's body. */
+    private inner class RendererQuestHost : QuestHost {
+        override fun showMessagePage(npcId: Int, text: String) {
+            // The scripts' markup: <color N> spans and player-name tokens.
+            val clean = text
+                .replace(Regex("<color [0-9]+>"), "")
+                .replace("<name hero>", characterDisplayName())
+                .replace("<name job>", professionOf(appearance.characterClass).name
+                    .lowercase().replaceFirstChar { it.uppercase() })
+            questMessageBox.textContent = clean + "\n\u25BC"
+            questMessageBox.style.display = "block"
+        }
+
+        override fun closeMessage() {
+            questMessageBox.style.display = "none"
+        }
+
+        override fun showWindow(text: String) = showMessagePage(-1, text)
+
+        override fun closeWindow() = closeMessage()
+
+        override fun showChoice(options: List<String>) {
+            questChoiceBox.innerHTML = ""
+            for ((index, option) in options.withIndex()) {
+                (document.createElement("div") as HTMLElement).also { row ->
+                    row.textContent = option
+                    row.style.cssText = "padding:8px 18px;cursor:pointer;border-radius:6px;"
+                    row.addEventListener("pointerdown", {
+                        it.preventDefault()
+                        questChoiceBox.style.display = "none"
+                        questVm?.chooseUi(index)
+                    })
+                    questChoiceBox.appendChild(row)
+                }
+            }
+            questChoiceBox.style.display = "block"
+        }
+
+        override fun addMeseta(amount: Int) {
+            player?.let { it.meseta += amount; persistProgress() }
+        }
+
+        override fun unlockDoor(doorId: Int) {
+            fieldGates?.doors?.find { it.doorId == doorId }?.open()
+        }
+
+        override fun lockDoor(doorId: Int) = Unit
+
+        override fun setPlayerPosition(x: Double, y: Double, z: Double, yaw: Double) {
+            player?.let { p ->
+                p.controller.position.set(x, y, z)
+                p.mesh.position.set(x, y, z)
+                p.mesh.rotation.y = yaw * PI / 180.0
+            }
+        }
+
+        override fun isSwitchPressed(switchId: Int): Boolean = false
+
+        override fun characterClassId(): Int = appearance.characterClass.ordinal
+
+        override fun giveItem(code0: Int, code1: Int, code2: Int) {
+            showToast("The client hands you a reward")
+        }
+    }
+
+    /**
+     * Enters quest mode for this map: the quest's own cast stands in the world, the script's
+     * label 0 runs (handlers, designations), and the floor's handler fires.
+     */
+    private suspend fun setupQuestMode() {
+        if (!QuestSession.active) return
+        val slug = QuestSession.slug ?: return
+        val def = try {
+            loadQuestDef(assetLoader, slug)
+        } catch (e: Throwable) {
+            console.warn("Quest $slug failed to load: ${e.message}")
+            return
+        }
+        questDef = def
+        val vm = QuestVm(def, RendererQuestHost())
+        questVm = vm
+
+        val floor = QUEST_FLOOR_FOR_MAP[mapSlug] ?: return
+
+        // The quest's story cast for Pioneer 2 -- only the figures the base hub doesn't
+        // already stand (the Principal and his secretary). Spawning the whole quest roster
+        // would double every citizen the city already has.
+        if (floor == 0) {
+            val npcLoader = NpcAssetLoader(assetLoader)
+            for (npc in def.npcs.filter { it.area == 0 && it.type in QUEST_STORY_NPCS }) {
+                val model = QUEST_NPC_MODELS[npc.type] ?: continue
+                try {
+                    val meshData = npcLoader.loadNpc(model)
+                    val mesh = meshData.mesh
+                    mesh.position.set(npc.x, npc.y, npc.z)
+                    mesh.rotation.y = npc.yaw
+                    context.scene.add(mesh)
+                    questNpcLabels[mesh] = npc.script
+                    activeNpcs.add(
+                        ActiveNpc(
+                            Pioneer2Npc(
+                                npc.type, model, npc.x, npc.y, npc.z,
+                                npc.yaw * 180.0 / PI,
+                                idleAnimation = 0,
+                                displayName = QUEST_NPC_NAMES[npc.type] ?: npc.type,
+                                role = NpcRole.CHAT,
+                            ),
+                            mesh,
+                        )
+                    )
+                } catch (e: Throwable) {
+                    console.warn("Quest NPC ${npc.type} ($model) failed to load")
+                }
+            }
+        }
+
+        // Label 0 registers the floor handlers and reads the flags; then this floor's handler.
+        vm.startThread(0)
+        QuestSession.floorHandlers[floor]?.let { vm.startThread(it) }
+    }
+
     private fun openNpcDialog(active: ActiveNpc) {
         val p = player ?: return
         val spec = active.spec
         val rows = mutableListOf<DialogRow>()
 
+        // A quest-cast NPC speaks through the script, not the dialog rows.
+        questNpcLabels[active.mesh]?.let { label ->
+            questVm?.startThread(label)
+            return
+        }
+
         when (spec.role) {
             NpcRole.CHAT -> Unit
+
+            NpcRole.GUILD -> {
+                val activeSlug = QuestSession.slug
+                if (activeSlug != null) {
+                    val questName = questIndex.find { it.slug == activeSlug }?.name ?: activeSlug
+                    rows.add(DialogRow("", "In progress: $questName"))
+                    rows.add(DialogRow("TURN IN", "Report the job done") {
+                        val vm = questVm
+                        if (vm != null && vm.qtSuccessLabel >= 0) {
+                            vm.startThread(vm.qtSuccessLabel)
+                            // The Normal-difficulty award label, straight from the script.
+                            vm.startThread(21)
+                        }
+                        QuestSession.complete()
+                        npcDialog.close()
+                        showToast("Quest complete!")
+                        persistProgress()
+                    })
+                    rows.add(DialogRow("CANCEL", "Abandon the job") {
+                        QuestSession.abandon()
+                        npcDialog.close()
+                        onAreaTransition?.invoke("pioneer2")
+                    })
+                } else {
+                    rows.add(DialogRow("", "-- GOVERNMENT JOBS --"))
+                    for ((index, entry) in questIndex.withIndex()) {
+                        val done = entry.slug in QuestSession.completed
+                        val unlocked = index == 0 ||
+                            questIndex[index - 1].slug in QuestSession.completed
+                        when {
+                            done -> rows.add(DialogRow("", "${entry.name}  \u2713"))
+                            !unlocked -> rows.add(DialogRow("", "${entry.name}  (locked)"))
+                            else -> rows.add(
+                                DialogRow("ACCEPT", entry.name, entry.short.replace("\n", " ")) {
+                                    QuestSession.begin(entry.slug)
+                                    npcDialog.close()
+                                    onAreaTransition?.invoke("pioneer2")
+                                }
+                            )
+                        }
+                    }
+                }
+            }
 
             NpcRole.TOOL_SHOP -> {
                 rows.add(DialogRow("", "-- BUY --"))
@@ -4740,6 +4959,16 @@ class GameRenderer(
                     npcMixers.add(npcMixer)
                 }
             }
+
+            // The quest layer: the counter's job list, and -- with a job accepted -- the
+            // quest's own cast and running script.
+            QuestSession.restore()
+            questIndex = try {
+                loadQuestIndex(assetLoader)
+            } catch (e: Throwable) {
+                emptyList()
+            }
+            setupQuestMode()
 
             val combat = CombatController(mesh.position, bSphereRadius)
 
@@ -8149,6 +8378,7 @@ class GameRenderer(
                     }
                 }
                 updateHealRings(p)
+                questVm?.update(p.mesh.position.x, p.mesh.position.z)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
@@ -9070,6 +9300,39 @@ class GameRenderer(
 
         /** How long a downed Dubchic lies before its pod puts it back up. */
         private const val DUBCHIC_REVIVE_SECONDS = 6.0
+
+        /** Quest NPC types to the converted city models that portray them. */
+        private val QUEST_NPC_MODELS: Map<String, String> = mapOf(
+            "Principal" to "Soutoku",
+            "Irene" to "Hisyo",
+            "GuildLady" to "Hisyo",
+            "Tekker" to "GovStaff3",
+            "Nurse" to "Nurse",
+            "Scientist" to "Hakase",
+            "RedSoldier" to "GuildStaff2",
+            "BlueSoldier" to "GuildStaff1",
+            "FemaleFat" to "CitizenWoman2",
+            "FemaleMacho" to "CitizenWoman3",
+            "FemaleTall" to "CitizenWoman4",
+            "MaleDwarf" to "CitizenMan2",
+            "MaleOld" to "CitizenMan5",
+            "MaleMacho" to "CitizenMan1",
+            "MaleFat" to "CitizenMan3",
+        )
+
+        /** Story NPCs spawned from the quest -- the ones the base hub roster doesn't cover. */
+        private val QUEST_STORY_NPCS = setOf("Principal", "Irene")
+
+        private val QUEST_NPC_NAMES: Map<String, String> = mapOf(
+            "Principal" to "Principal Tyrell",
+            "Irene" to "Irene",
+            "GuildLady" to "Guild Receptionist",
+            "Tekker" to "Tekker",
+            "Nurse" to "Nurse",
+            "Scientist" to "Scientist",
+            "RedSoldier" to "Soldier",
+            "BlueSoldier" to "Soldier",
+        )
 
         /** The Tekker's flat appraisal fee. */
         private const val TEKKER_FEE = 100

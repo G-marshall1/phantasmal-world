@@ -18,6 +18,8 @@ enum class NpcRole {
     BANK,
     /** Appraises ???? rares for a fee -- the hooded figure by the shops. */
     TEKKER,
+    /** The Hunter's Guild counter: the government jobs board. */
+    GUILD,
 }
 
 class Pioneer2Npc(
@@ -141,6 +143,6 @@ val PIONEER2_NPCS: List<Pioneer2Npc> = listOf(
     // -- Section 10 --
     Pioneer2Npc("Guild Lady", "Hisyo", 178.999, 0.0, 341.996, 135.0,
         PlayerAnimations.Idles.HAND_ON_HIP,
-        displayName = "Guild Receptionist", role = NpcRole.CHAT,
+        displayName = "Guild Receptionist", role = NpcRole.GUILD,
         dialog = "The Hunter's Guild takes quests at this counter... once the quest board reopens."),
 )
