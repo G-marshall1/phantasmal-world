@@ -51,8 +51,8 @@ object Weapon {
      * barrel-down-Y under one convention fix, and two of the three are confirmed right under
      * it, so flipping the third would break what its own family proves.
      *
-     * The pistols are here for the other reason: they were authored correctly to begin with and
-     * the blanket turn is what put them wrong (see the note in [applyModelConvention]).
+     * The pistols are here for the other reason: they are barrel-down-Y guns like the rifles
+     * and take that family's own correction instead (see the note in [applyModelConvention]).
      */
     private val NO_FACING_FLIP: Set<WeaponType> = setOf(
         WeaponType.SABER, WeaponType.SWORD, WeaponType.DOUBLE_SABER,
@@ -176,25 +176,30 @@ object Weapon {
      *
      * - Most models are authored blade-out-+Z with the origin at the grip (Saber z [-3.0, 14.0])
      *   and need no normalization at all.
-     * - Rifle (y [-13.0, 1.6]), Shot (y [-11.5, 7.0]) and Panzer Faust (y [-9.5, 5.2]) were
-     *   authored barrel-down-Y. The half-turn about Z is what levels them at the target -- the
-     *   "obvious" pitch of -Y onto +Z instead stood them muzzle-up at the fire frame, because
+     * - Every gun is authored barrel-down-Y with its grip running +Z, and they all take the same
+     *   half-turn about Z to level them at the target: Rifle (y [-13.0, 1.6]), Shot
+     *   (y [-11.5, 7.0]), Panzer Faust (y [-9.5, 5.2]), and -- measured after they came out
+     *   wrong on device -- Handgun (y [-2.7, 1.0], z [-0.9, 2.3]) and Mechgun (y [-5.1, 1.1]).
+     *   The pistols carrying no correction was the original bug; they read as "aiming dead at
+     *   the target with no adjustment" in an early check, which the device disproved twice. The
+     *   "obvious" pitch of -Y onto +Z instead stands them muzzle-up at the fire frame, because
      *   each attack clip orients the hand's axes differently than the geometry alone suggests.
      * - The Claw's blades run -Y too (y [-7.4, 2.8]) but rake with the punch, so the pitch IS
      *   its correct normalization: blades sweep down-forward through the target.
      * - The Dagger is authored blade-backwards (-Z, z in [-5.1, 2.0]), so it starts a half-turn
      *   about Y from the shared convention.
-     * - The pistols need nothing, and the walk back to that is worth recording. They were
-     *   verified aiming dead at the target before any of this; the blanket half-turn then put
-     *   them under the hand facing backwards, a requested "180 on its x and 180 on its Y" took
-     *   them to a single roll about X (Ry(pi) . Rx(pi) . Ry(pi) = Rx(pi)), which stood them in
-     *   the grip but upside down, and the last half-turn about X asked for from there is
-     *   exactly Rx(pi) . Rx(pi) = identity. So the Handgun and Mechgun carry no rotation at all
-     *   and are excluded from the blanket turn -- the state they started in.
+     * The pistols took three rounds to place, and the path is worth recording so nobody
+     * relitigates it: the blanket turn put them under the hand backwards; a half-turn about X
+     * and another about Y left them aiming right but upside down; undoing that left them right
+     * side up but aiming backwards. Those two reports are consistent only if the barrel runs
+     * -Y, which the measured bounds then confirmed -- so the answer was the gun family's own
+     * Z half-turn all along, which keeps the authored roll and reverses the aim.
      */
     private fun applyModelConvention(mesh: Mesh, type: WeaponType) {
         when (type) {
-            WeaponType.RIFLE, WeaponType.SHOT, WeaponType.LAUNCHER -> mesh.rotation.z = PI
+            WeaponType.RIFLE, WeaponType.SHOT, WeaponType.LAUNCHER,
+            WeaponType.HANDGUN, WeaponType.MECHGUN,
+            -> mesh.rotation.z = PI
             WeaponType.CLAW -> mesh.rotation.x = -PI / 2
             WeaponType.DAGGER -> mesh.rotation.y = PI
             else -> Unit
