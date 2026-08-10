@@ -30,6 +30,8 @@ class WeaponTier(
     /** Equip requirements -- the stat the class must reach before this can be drawn. */
     val atpRequired: Int = 0,
     val ataRequired: Int = 0,
+    /** The client's own equip mask -- see [usableBy] in ClassRules.kt. All-classes default. */
+    val usability: Int = 0xFF,
 )
 
 /** "DB\'S SABER" -> "Db\'s Saber": the source uses caps for rares; the UI reads better titled. */
@@ -74,6 +76,7 @@ val ALL_WEAPON_TIERS: List<WeaponTier> = GeneratedItemCatalog.weapons.map { w ->
         maxGrind = w.maxGrind,
         atpRequired = w.atpRequired,
         ataRequired = w.ataRequired,
+        usability = w.usability,
     )
 }
 

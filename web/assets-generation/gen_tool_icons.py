@@ -147,6 +147,18 @@ def disk(d):
     d.arc((2, 3, 13, 12), 200, 290, fill=rgba(shade(c, 1.6)))
 
 
+def trap_orb(d, c):
+    """An android trap: the floating spiked orb, in its status colour."""
+    for x0, y0, x1, y1 in ((7, 0, 8, 2), (7, 13, 8, 15), (0, 7, 2, 8), (13, 7, 15, 8)):
+        rect(d, x0, y0, x1, y1, shade(c, 0.75))
+    for x, y in ((3, 3), (12, 3), (3, 12), (12, 12)):
+        px(d, x, y, shade(c, 0.75))
+        px(d, x + (1 if x < 8 else -1), y + (1 if y < 8 else -1), shade(c, 0.75))
+    d.ellipse((3, 3, 12, 12), fill=rgba(c))
+    d.ellipse((5, 5, 10, 10), fill=rgba(shade(c, 0.55)))
+    rect(d, 7, 7, 8, 8, shade(c, 1.6))
+
+
 def wing(d):
     c = (255, 200, 110)
     for i, (x, y, l) in enumerate(((3, 3, 11), (5, 6, 8), (7, 9, 5))):
@@ -174,6 +186,9 @@ CELLS = [
     (None, lambda d: gem(d, (70, 190, 235))),         # TP
     (None, lambda d: gear(d, 1)), (None, lambda d: gear(d, 2)), (None, lambda d: gear(d, 3)),
     (None, disk), (None, wing),
+    (None, lambda d: trap_orb(d, (240, 90, 50))),     # Damage Trap
+    (None, lambda d: trap_orb(d, (90, 170, 255))),    # Freeze Trap
+    (None, lambda d: trap_orb(d, (200, 100, 235))),   # Confuse Trap
 ]
 
 

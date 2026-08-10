@@ -59,6 +59,7 @@ fun main(args: Array<String>) {
         val code: String, val name: String, val type: String,
         val atpMin: Int, val atpMax: Int, val ata: Int, val maxGrind: Int,
         val atpRequired: Int, val ataRequired: Int, val mstRequired: Int,
+        val usability: Int,
         val stars: Int, val specialId: Int,
     )
 
@@ -94,6 +95,7 @@ fun main(args: Array<String>) {
                         atpMin = f("ATPMin"), atpMax = f("ATPMax"), ata = f("ATA"),
                         maxGrind = f("MaxGrind"),
                         atpRequired = f("ATPRequired"), ataRequired = f("ATARequired"),
+                        usability = f("UsabilityFlags"),
                         mstRequired = f("MSTRequired"),
                         stars = starsFor(f("ID")), specialId = f("Special"),
                     )
@@ -134,6 +136,8 @@ fun main(args: Array<String>) {
         appendLine("    val atpMin: Int, val atpMax: Int, val ata: Int, val maxGrind: Int,")
         appendLine("    val atpRequired: Int, val ataRequired: Int, val mstRequired: Int,")
         appendLine("    val stars: Int, val specialId: Int,")
+        appendLine("    /** The client's own equip mask: profession, race and sex bits -- see usableBy. */")
+        appendLine("    val usability: Int,")
         appendLine(")")
         appendLine()
         appendLine("internal class GeneratedArmor(")
@@ -148,7 +152,7 @@ fun main(args: Array<String>) {
             appendLine(
                 "        GeneratedWeapon(\"${w.code}\", \"${esc(w.name)}\", \"${w.type}\", " +
                     "${w.atpMin}, ${w.atpMax}, ${w.ata}, ${w.maxGrind}, " +
-                    "${w.atpRequired}, ${w.ataRequired}, ${w.mstRequired}, ${w.stars}, ${w.specialId}),"
+                    "${w.atpRequired}, ${w.ataRequired}, ${w.mstRequired}, ${w.stars}, ${w.specialId}, ${w.usability}),"
             )
         }
         appendLine("    )")

@@ -61,6 +61,10 @@ import world.phantasmal.web.mobileGame.player.ActionPaletteConfig
 import world.phantasmal.web.mobileGame.player.AttackType
 import world.phantasmal.web.mobileGame.player.effectiveAtp
 import world.phantasmal.web.mobileGame.player.iconCell
+import world.phantasmal.web.mobileGame.player.PlayerTrapKind
+import world.phantasmal.web.mobileGame.player.maxTechniqueLevel
+import world.phantasmal.web.mobileGame.player.trapCapacity
+import world.phantasmal.web.mobileGame.player.usableBy
 import world.phantasmal.web.mobileGame.player.isKnockdown
 import world.phantasmal.web.mobileGame.player.isAndroid
 import world.phantasmal.web.mobileGame.player.isRanged
@@ -1249,6 +1253,142 @@ class GameRenderer(
     }
 
     /** The Caves' heal rings: world position, and whether this visit has spent it. */
+    /**
+     * An android's deployed trap: it hovers where it was set, takes a moment to "come online"
+     * (the wiki's own wording), then detonates the instant any monster strays into reach.
+     * Player traps only ever affect monsters. See ClassRules.kt for who carries how many.
+     */
+    private class PlayerTrap(
+        val kind: PlayerTrapKind,
+        val sprite: Sprite,
+        val x: Double,
+        val y: Double,
+        val z: Double,
+        var armRemaining: Double,
+        var age: Double = 0.0,
+    )
+
+    private val playerTraps = mutableListOf<PlayerTrap>()
+
+    private fun playerTrapColor(kind: PlayerTrapKind): Int = when (kind) {
+        PlayerTrapKind.DAMAGE -> 0xf05a32
+        PlayerTrapKind.FREEZE -> 0x5aaaff
+        PlayerTrapKind.CONFUSE -> 0xc864eb
+    }
+
+    private fun setPlayerTrap(kind: PlayerTrapKind) {
+        val p = player ?: return
+        if (p.hp <= 0 || gameMenu.isOpen) return
+        if (!isAndroid(p.characterClass)) {
+            showToast("Only androids can set traps")
+            return
+        }
+        if (isPeacefulHub) {
+            showToast("Traps can't be set on Pioneer 2")
+            return
+        }
+        // The wiki's rule, verbatim: players cannot deploy traps in boss arenas.
+        if (mapSlug.startsWith("bossArea")) {
+            showToast("Traps can't be set in a boss arena")
+            return
+        }
+        val left = p.trapsLeft[kind] ?: 0
+        if (left <= 0) {
+            showToast("No ${kind.uiName}s left -- level up or find a heal ring")
+            return
+        }
+        p.trapsLeft[kind] = left - 1
+        persistProgress()
+
+        val sprite = effectSprite("burst_bright", PLAYER_TRAP_SPRITE_UNITS, colorHex = playerTrapColor(kind))
+        val y = p.mesh.position.y + PLAYER_TRAP_HOVER_UNITS * worldUnit
+        sprite.position.set(p.mesh.position.x, y, p.mesh.position.z)
+        context.scene.add(sprite)
+        playerTraps.add(
+            PlayerTrap(
+                kind, sprite,
+                p.mesh.position.x, y, p.mesh.position.z,
+                armRemaining = TRAP_ARM_SECONDS,
+            )
+        )
+        showToast("${kind.uiName} set  (${left - 1} left)")
+    }
+
+    private fun updatePlayerTraps(deltaTime: Double) {
+        val iterator = playerTraps.iterator()
+        while (iterator.hasNext()) {
+            val trap = iterator.next()
+            trap.age += deltaTime
+            trap.sprite.position.y = trap.y + sin(trap.age * 4.0) * 0.25 * worldUnit
+
+            if (trap.armRemaining > 0) {
+                // Still coming online: it pulses dimly and threatens nothing yet.
+                trap.armRemaining -= deltaTime
+                trap.sprite.material.opacity = 0.35 + 0.25 * sin(trap.age * 10.0)
+                continue
+            }
+            trap.sprite.material.opacity = 0.95
+
+            val triggered = enemies.any { enemy ->
+                if (enemy.isDead || enemy.untargetable) return@any false
+                val dx = enemy.mesh.position.x - trap.x
+                val dz = enemy.mesh.position.z - trap.z
+                val reach = TRAP_TRIGGER_UNITS * worldUnit + enemy.hitboxRadius
+                dx * dx + dz * dz <= reach * reach
+            }
+            if (triggered) {
+                trap.sprite.parent?.remove(trap.sprite)
+                iterator.remove()
+                detonatePlayerTrap(trap)
+            }
+        }
+    }
+
+    private fun detonatePlayerTrap(trap: PlayerTrap) {
+        val caught = enemiesWithin(trap.x, trap.z, TRAP_BLAST_UNITS)
+        when (trap.kind) {
+            PlayerTrapKind.DAMAGE -> {
+                spawnExplosionDome(trap.x, trap.y, trap.z, TRAP_BLAST_UNITS * worldUnit, FOIE_COLOR)
+                spawnFoieImpact(trap.x, trap.y, trap.z)
+                for (enemy in caught) {
+                    for (pt in areaHitPoints(enemy, trap.x, trap.z, TRAP_BLAST_UNITS * worldUnit)) {
+                        hurtEnemyAt(enemy, PLAYER_TRAP_DAMAGE, pt[0], pt[1], pt[2])
+                    }
+                }
+            }
+            PlayerTrapKind.FREEZE -> {
+                spawnIceCrystals(trap.x, trap.y - PLAYER_TRAP_HOVER_UNITS * worldUnit, trap.z,
+                    count = 5, radiusWorld = TRAP_BLAST_UNITS * worldUnit * 0.5, scale = 1.4)
+                for (enemy in caught) {
+                    freezeEnemy(enemy)
+                }
+            }
+            PlayerTrapKind.CONFUSE -> {
+                // Confusion proper (enemies attacking each other) needs enemy-vs-enemy combat;
+                // until then the burst scrambles them into a held stagger, marked purple.
+                for (enemy in caught) {
+                    enemy.ai?.onStatusHeld(CONFUSE_TRAP_SECONDS)
+                    spawnDebuffMarker(enemy, playerTrapColor(PlayerTrapKind.CONFUSE))
+                    supportSwirl(
+                        enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
+                        playerTrapColor(PlayerTrapKind.CONFUSE),
+                    )
+                }
+            }
+        }
+        val flash = effectSprite("burst_bright", TRAP_BLAST_UNITS * 0.9, colorHex = playerTrapColor(trap.kind))
+        flash.position.set(trap.x, trap.y, trap.z)
+        addEffect(TimedEffect(flash, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 2.2))
+    }
+
+    /** Refills an android's pouch to capacity: level up, heal ring, or a Scape Doll revival. */
+    private fun refillTraps(p: Player) {
+        if (!isAndroid(p.characterClass)) return
+        for (kind in PlayerTrapKind.entries) {
+            p.trapsLeft[kind] = trapCapacity(p.characterClass, kind, p.level)
+        }
+    }
+
     private val healRings = mutableListOf<Triple<Double, Double, Double>>()
     private val spentHealRings = mutableSetOf<Int>()
 
@@ -1266,6 +1406,7 @@ class GameRenderer(
 
             spentHealRings.add(index)
             p.hp = p.maxHp
+            refillTraps(p)
             playerStatusPanel.setHealth(p.hp, p.maxHp)
             supportRing(ring.first, ring.second, ring.third, "resta_ring", RESTA_COLOR)
             spawnHealLights(ring.first, ring.second, ring.third, RESTA_COLOR)
@@ -2102,6 +2243,7 @@ class GameRenderer(
             else p.tools[ToolType.SCAPE_DOLL] = dolls - 1
             p.hp = p.maxHp
             p.invulnerableRemaining = INVULNERABILITY_DURATION
+            refillTraps(p)
             playerStatusPanel.setHealth(p.hp, p.maxHp)
             showToast("The Scape Doll shattered in your place!")
             persistProgress()
@@ -5705,6 +5847,21 @@ class GameRenderer(
     }
 
     private fun equipFromMenu(item: WeaponItem): Boolean {
+        val p = player
+        if (p != null && !item.tier.usableBy(p.characterClass)) {
+            // The client's own ItemPMT equip mask: a Force holding a Rifle, an android holding
+            // a Cane -- the real game refuses these, so this one does too.
+            showToast("A ${p.characterClass.uiName} can't equip a ${item.tier.name}")
+            return false
+        }
+        if (p != null && (p.stats.atp < item.tier.atpRequired || p.stats.ata < item.tier.ataRequired)) {
+            val need = buildList {
+                if (p.stats.atp < item.tier.atpRequired) add("${item.tier.atpRequired} ATP")
+                if (p.stats.ata < item.tier.ataRequired) add("${item.tier.ataRequired} ATA")
+            }.joinToString(" and ")
+            showToast("Not strong enough yet -- it needs $need")
+            return false
+        }
         if (!inventory.remove(item)) return false
         if (item.unidentified) {
             inventory.add(item)
@@ -5826,6 +5983,13 @@ class GameRenderer(
             for ((name, level) in s.techLevels) {
                 Technique.entries.find { it.name == name }?.let { p.techLevels[it] = level }
             }
+            // The trap pouch: saved counts where they exist, else a fresh full pouch.
+            refillTraps(p)
+            for ((name, count) in s.trapCounts) {
+                PlayerTrapKind.entries.find { it.name == name }?.let {
+                    p.trapsLeft[it] = count.coerceAtMost(trapCapacity(p.characterClass, it, p.level))
+                }
+            }
             for (encoded in s.techDisks) {
                 val parts = encoded.split(":")
                 val technique = Technique.entries.find { it.name == parts.getOrNull(0) }
@@ -5919,6 +6083,7 @@ class GameRenderer(
                 bankBarriers = p.bankBarriers.map { it.toSaved() },
                 bankUnits = p.bankUnits.map { it.name },
                 bankKitGranted = true,
+                trapCounts = p.trapsLeft.entries.associate { it.key.name to it.value },
             )
         )
     }
@@ -5972,6 +6137,7 @@ class GameRenderer(
                 playerStatusPanel.setLevel(newLevel)
                 // TP grows with the level too, so the bar's ceiling moves with it.
                 playerStatusPanel.setTp(p.tp, p.stats.tp)
+                refillTraps(p)
                 showToast("LEVEL UP!  Lv.$newLevel")
             }
         }
@@ -6741,6 +6907,7 @@ class GameRenderer(
             action == GameAction.SPECIAL_ATTACK -> swing(AttackType.SPECIAL)
             action == GameAction.CHAT || action == GameAction.EMOTE -> openChat()
             action.technique != null -> castTechnique(action.technique)
+            action.trap != null -> setPlayerTrap(action.trap)
             action.tool != null -> useToolInField(action.tool)
         }
     }
@@ -6764,16 +6931,24 @@ class GameRenderer(
      * What the nine bar slots hold before the player edits them: Forces get their techniques
      * within thumb's reach, everyone gets the field tools.
      */
-    private fun defaultBarActions(): List<GameAction> =
-        if (professionOf(appearance.characterClass) == Profession.FORCE) listOf(
+    private fun defaultBarActions(): List<GameAction> = when {
+        professionOf(appearance.characterClass) == Profession.FORCE -> listOf(
             GameAction.FOIE, GameAction.BARTA, GameAction.ZONDE, GameAction.RESTA,
             GameAction.USE_MONOMATE, GameAction.USE_MONOFLUID, GameAction.USE_DIFLUID,
             GameAction.USE_ANTIDOTE, GameAction.CHAT,
-        ) else listOf(
+        )
+        // Androids: no TP, so no fluids -- their traps take those slots instead.
+        isAndroid(appearance.characterClass) -> listOf(
+            GameAction.USE_MONOMATE, GameAction.USE_DIMATE, GameAction.USE_TRIMATE,
+            GameAction.SET_DAMAGE_TRAP, GameAction.SET_FREEZE_TRAP, GameAction.SET_CONFUSE_TRAP,
+            GameAction.HEAVY_ATTACK, GameAction.SPECIAL_ATTACK, GameAction.CHAT,
+        )
+        else -> listOf(
             GameAction.USE_MONOMATE, GameAction.USE_DIMATE, GameAction.USE_TRIMATE,
             GameAction.USE_MONOFLUID, GameAction.USE_ANTIDOTE, GameAction.USE_ANTIPARALYSIS,
             GameAction.HEAVY_ATTACK, GameAction.SPECIAL_ATTACK, GameAction.CHAT,
         )
+    }
 
     /**
      * Casts one of the known techniques. Only Forces cast for now -- in the real game the other
@@ -7828,6 +8003,11 @@ class GameRenderer(
      */
     private fun maybeFreeze(enemy: Enemy) {
         if (Random.nextDouble() >= ICE_FREEZE_CHANCE) return
+        freezeEnemy(enemy)
+    }
+
+    /** The guaranteed freeze -- what a Freeze Trap's burst applies, no roll involved. */
+    private fun freezeEnemy(enemy: Enemy) {
         if (frozenEnemies.any { it.enemy === enemy }) return
 
         enemy.ai?.onStatusHeld(FREEZE_SECONDS)
@@ -8047,9 +8227,18 @@ class GameRenderer(
             showToast("Androids can't use technique disks")
             return
         }
+        val cap = maxTechniqueLevel(technique, p.characterClass)
+        if (cap == 0) {
+            showToast("A ${p.characterClass.uiName} can never learn ${technique.uiName}")
+            return
+        }
         val current = p.techLevel(technique)
         if (level <= current) {
             showToast("${technique.uiName} is already Lv.$current")
+            return
+        }
+        if (level > cap) {
+            showToast("A ${p.characterClass.uiName} can only learn ${technique.uiName} to Lv.$cap")
             return
         }
         p.techLevels[technique] = level
@@ -8400,9 +8589,11 @@ class GameRenderer(
     }
 
     /** Which palette actions this class can hold: techniques are the Forces' alone for now. */
+    // Androids never cast but do set traps; every human and newman casts whatever their
+    // class can learn (the ceilings live in maxTechniqueLevel) and never touches a trap.
     private fun availableActionsFor(characterClass: CharacterClass): List<GameAction> =
-        if (professionOf(characterClass) == Profession.FORCE) GameAction.entries.toList()
-        else GameAction.entries.filter { it.technique == null }
+        if (isAndroid(characterClass)) GameAction.entries.filter { it.technique == null }
+        else GameAction.entries.filter { it.trap == null }
 
     /**
      * Throws one swing in the given style. Shared by all three attack buttons -- they differ only
@@ -8853,6 +9044,7 @@ class GameRenderer(
                 updateHealRings(p)
                 questVm?.update(p.mesh.position.x, p.mesh.position.z)
                 techniqueFx?.update(deltaTime)
+                updatePlayerTraps(deltaTime)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
@@ -9189,6 +9381,9 @@ class GameRenderer(
         /** Fills from damage dealt and taken -- see PhotonBlastGauge. */
         val photonBlast = PhotonBlastGauge()
 
+        /** An android's remaining traps by kind -- capacities live in ClassRules.trapCapacity. */
+        val trapsLeft = mutableMapOf<PlayerTrapKind, Int>()
+
         /**
          * This character's statline with the Mag's contribution folded in. A Mag is the main
          * source of stats in PSO, so this is what combat should read, not the naked figures.
@@ -9374,6 +9569,19 @@ class GameRenderer(
         private const val RESTA_COLOR = 0x6dffa0
 
         private const val TECH_FLASH_SECONDS = 0.5
+
+        /**
+         * Android traps. Arm delay is the wiki's "come online" moment (shorter on higher
+         * difficulties, when those exist); the damage figure is a flat Normal-mode burn --
+         * no formula is published for player traps anywhere, so it's tuned, not sourced.
+         */
+        private const val TRAP_ARM_SECONDS = 1.6
+        private const val TRAP_TRIGGER_UNITS = 5.0
+        private const val TRAP_BLAST_UNITS = 8.0
+        private const val PLAYER_TRAP_DAMAGE = 90
+        private const val CONFUSE_TRAP_SECONDS = 8.0
+        private const val PLAYER_TRAP_SPRITE_UNITS = 1.4
+        private const val PLAYER_TRAP_HOVER_UNITS = 1.2
 
         /** The new techniques' shapes, in PSO units, from the wiki's behaviour descriptions. */
         private const val GIFOIE_RADIUS_UNITS = 15.0

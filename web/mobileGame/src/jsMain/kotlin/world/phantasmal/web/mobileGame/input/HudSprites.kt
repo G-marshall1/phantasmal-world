@@ -209,7 +209,7 @@ enum class ItemIcon(val index: Int) {
  * nearest-neighbour at build time so they keep their hard edges through a smooth downscale.
  */
 const val TOOL_ICON_SHEET_URL = "/assets/hud/pso-tool-icons.png"
-const val TOOL_ICON_CELLS = 25
+const val TOOL_ICON_CELLS = 28
 
 /** CSS for one per-tool glyph, magnified by [scale] -- same recipe as [itemIconStyle]. */
 fun toolIconStyle(cell: Int, scale: Double = 1.0): String =

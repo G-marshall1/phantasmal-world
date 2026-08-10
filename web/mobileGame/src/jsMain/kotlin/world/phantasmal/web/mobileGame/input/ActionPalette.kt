@@ -90,6 +90,7 @@ class ActionPalette(
 
             icon.textContent = ""
             icon.style.cssText = when {
+                action.trap != null -> toolIconStyle(action.trap.iconCell, ITEM_ICON_SCALE)
                 action.tool != null -> toolIconStyle(action.tool.iconCell, ITEM_ICON_SCALE)
                 action.actionIcon != null -> actionIconStyle(action.actionIcon, ACTION_ICON_SCALE)
                 action.itemIcon != null -> itemIconStyle(action.itemIcon, ITEM_ICON_SCALE)

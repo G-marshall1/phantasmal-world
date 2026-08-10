@@ -934,6 +934,7 @@ row.disposableTap {
 
     /** The action's glyph as CSS, the same recipe the bar and palette hexes draw with. */
     private fun actionIconCss(action: GameAction): String = when {
+        action.trap != null -> toolIconStyle(action.trap.iconCell, PICKER_ITEM_ICON_SCALE)
         action.tool != null -> toolIconStyle(action.tool.iconCell, PICKER_ITEM_ICON_SCALE)
         action.actionIcon != null -> actionIconStyle(action.actionIcon, PICKER_ACTION_ICON_SCALE)
         action.itemIcon != null -> itemIconStyle(action.itemIcon, PICKER_ITEM_ICON_SCALE)

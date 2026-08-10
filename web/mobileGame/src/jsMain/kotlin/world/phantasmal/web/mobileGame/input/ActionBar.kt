@@ -84,6 +84,7 @@ class ActionBar(
             val icon = icons[i]
             icon.textContent = ""
             icon.style.cssText = when {
+                action.trap != null -> toolIconStyle(action.trap.iconCell, BAR_ITEM_ICON_SCALE)
                 action.tool != null -> toolIconStyle(action.tool.iconCell, BAR_ITEM_ICON_SCALE)
                 action.actionIcon != null -> actionIconStyle(action.actionIcon, BAR_ACTION_ICON_SCALE)
                 action.itemIcon != null -> itemIconStyle(action.itemIcon, BAR_ITEM_ICON_SCALE)

@@ -26,6 +26,8 @@ enum class GameAction(
     val technique: Technique? = null,
     /** Set on the tool-use actions: tapping the hex drinks/uses one from the pack. */
     val tool: ToolType? = null,
+    /** Set on the android trap actions -- see ClassRules.kt. */
+    val trap: PlayerTrapKind? = null,
 ) {
     NORMAL_ATTACK(
         "Normal Attack",
@@ -95,6 +97,21 @@ enum class GameAction(
     USE_TRIFLUID("Trifluid", "Drink a Trifluid: full TP.", tool = ToolType.TRIFLUID),
     USE_ANTIDOTE("Antidote", "Cures poison.", tool = ToolType.ANTIDOTE),
     USE_ANTIPARALYSIS("Antiparalysis", "Cures paralysis.", tool = ToolType.ANTIPARALYSIS),
+    SET_DAMAGE_TRAP(
+        "Damage Trap",
+        "Androids only: plants a trap that explodes on the monsters that near it.",
+        trap = PlayerTrapKind.DAMAGE,
+    ),
+    SET_FREEZE_TRAP(
+        "Freeze Trap",
+        "Androids only: plants a trap that freezes the monsters caught in its burst.",
+        trap = PlayerTrapKind.FREEZE,
+    ),
+    SET_CONFUSE_TRAP(
+        "Confuse Trap",
+        "Androids only: plants a trap that scrambles the monsters caught in its burst.",
+        trap = PlayerTrapKind.CONFUSE,
+    ),
     ;
 }
 

@@ -92,6 +92,9 @@ data class CharacterSave(
     val bankUnits: List<String> = emptyList(),
     /** Whether the checkroom's one-time outfitting delivery has been claimed into this save. */
     val bankKitGranted: Boolean = false,
+
+    /** An android's remaining traps by kind name; missing means full (see trapCapacity). */
+    val trapCounts: Map<String, Int> = emptyMap(),
     /** Bosses this character has felled ("dragon", ...) -- the Ragol teleporter gates on these. */
     val defeatedBosses: List<String> = emptyList(),
 ) {

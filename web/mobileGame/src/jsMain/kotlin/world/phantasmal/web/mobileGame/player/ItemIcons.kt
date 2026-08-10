@@ -37,8 +37,16 @@ val ToolType.iconCell: Int get() = ordinal
 /** The violet technique disk, first cell past the ToolType run. */
 const val TECH_DISK_ICON_CELL = 23
 
-/** The golden wing marking the trade trophies, last cell of the strip. */
+/** The golden wing marking the trade trophies. */
 val TreasureType.iconCell: Int get() = 24
+
+/** The android traps' spiked orbs, drawn in their status colours past the trophy cell. */
+val PlayerTrapKind.iconCell: Int
+    get() = when (this) {
+        PlayerTrapKind.DAMAGE -> 25
+        PlayerTrapKind.FREEZE -> 26
+        PlayerTrapKind.CONFUSE -> 27
+    }
 
 val FrameItem.itemIcon: ItemIcon get() = ItemIcon.ARMOR
 
