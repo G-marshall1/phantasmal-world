@@ -7,7 +7,10 @@ import world.phantasmal.core.disposable.Disposable
 import world.phantasmal.core.disposable.TrackedDisposable
 import world.phantasmal.web.mobileGame.input.ActionHex
 import world.phantasmal.web.mobileGame.input.ItemIcon
+import world.phantasmal.web.mobileGame.input.HudSprites
+import world.phantasmal.web.mobileGame.input.actionIconStyle
 import world.phantasmal.web.mobileGame.input.disposableTap
+import world.phantasmal.web.mobileGame.input.hudSpriteStyle
 import world.phantasmal.web.mobileGame.input.itemIconStyle
 import world.phantasmal.web.mobileGame.input.toolIconStyle
 import world.phantasmal.web.mobileGame.player.itemIcon
@@ -245,6 +248,7 @@ class GameMenu(
     fun close() {
         if (!isOpen) return
         isOpen = false
+        closeActionPicker()
         confirmPrompt.close()
         root.style.display = "none"
         document.body?.classList?.remove("pw-menu-open")
@@ -848,12 +852,12 @@ row.disposableTap {
                 k.textContent = slotName(slot)
                 row.appendChild(k)
             }
-            (document.createElement("div") as HTMLElement).also { v ->
+            val valueEl = (document.createElement("div") as HTMLElement).also { v ->
                 v.className = "pw-menu-slot-v"
                 v.textContent = current.label
                 row.appendChild(v)
             }
-            (document.createElement("div") as HTMLElement).also { d ->
+            val descEl = (document.createElement("div") as HTMLElement).also { d ->
                 d.className = "pw-menu-slot-d"
                 d.textContent = current.description
                 row.appendChild(d)
@@ -862,9 +866,14 @@ row.disposableTap {
             listeners.add(row.disposableTap {
                 selectRow(row)
                 val actions = state.availableActions.ifEmpty { GameAction.entries.toList() }
-                config[slot] = actions[(actions.indexOf(config[slot]) + 1) % actions.size]
-                onPaletteChanged()
-                render()
+                openActionPicker("${slotName(slot)} HEX", actions, config[slot]) { picked ->
+                    config[slot] = picked
+                    onPaletteChanged()
+                    // Updated in place rather than re-rendering the pane: a rebuild resets the
+                    // scroll position, which yanked the player back to the top on every change.
+                    valueEl.textContent = picked.label
+                    descEl.textContent = picked.description
+                }
             })
         }
 
@@ -887,29 +896,126 @@ row.disposableTap {
                     k.textContent = "SLOT ${i + 1}"
                     row.appendChild(k)
                 }
-                (document.createElement("div") as HTMLElement).also { v ->
+                val valueEl = (document.createElement("div") as HTMLElement).also { v ->
                     v.className = "pw-menu-slot-v"
                     v.textContent = current.label
                     row.appendChild(v)
                 }
-                (document.createElement("div") as HTMLElement).also { d ->
+                val descEl = (document.createElement("div") as HTMLElement).also { d ->
                     d.className = "pw-menu-slot-d"
                     d.textContent = current.description
                     row.appendChild(d)
                 }
 
-                listeners.add(
-row.disposableTap {
+                listeners.add(row.disposableTap {
                     selectRow(row)
                     val actions = state.availableActions.ifEmpty { GameAction.entries.toList() }
-                    bar[i] = actions[(actions.indexOf(bar[i]) + 1) % actions.size]
-                    onPaletteChanged()
-                    render()
+                    openActionPicker("SLOT ${i + 1}", actions, bar[i]) { picked ->
+                        bar[i] = picked
+                        onPaletteChanged()
+                        valueEl.textContent = picked.label
+                        descEl.textContent = picked.description
+                    }
                 })
             }
         }
 
-        note("Tap a slot to change what it does. Saved on this device.")
+        note("Tap a slot, then pick its action from the grid. Saved on this device.")
+    }
+
+    // --- The action picker ---
+
+    private var pickerEl: HTMLElement? = null
+
+    private fun closeActionPicker() {
+        pickerEl?.remove()
+        pickerEl = null
+    }
+
+    /** The action's glyph as CSS, the same recipe the bar and palette hexes draw with. */
+    private fun actionIconCss(action: GameAction): String = when {
+        action.tool != null -> toolIconStyle(action.tool.iconCell, PICKER_ITEM_ICON_SCALE)
+        action.actionIcon != null -> actionIconStyle(action.actionIcon, PICKER_ACTION_ICON_SCALE)
+        action.itemIcon != null -> itemIconStyle(action.itemIcon, PICKER_ITEM_ICON_SCALE)
+        action.technique != null -> hudSpriteStyle(
+            HudSprites.hexTile(action.technique.icon.iconCol, action.technique.icon.iconRow),
+            PICKER_TECH_TILE_SCALE,
+        )
+        else -> ""
+    }
+
+    /**
+     * Every assignable action at once, icons and all -- tap one and it's in the slot. Replaces
+     * the old cycle-through-them-one-tap-at-a-time flow, which meant dozens of taps (each one
+     * also re-rendering the pane and losing the scroll position) to reach the action wanted.
+     */
+    private fun openActionPicker(
+        title: String,
+        actions: List<GameAction>,
+        current: GameAction,
+        onPick: (GameAction) -> Unit,
+    ) {
+        closeActionPicker()
+
+        val backdrop = (document.createElement("div") as HTMLElement).also { el ->
+            el.className = "pw-menu-picker-backdrop"
+            root.appendChild(el)
+        }
+        pickerEl = backdrop
+        listeners.add(backdrop.disposableTap { closeActionPicker() })
+
+        val panel = (document.createElement("div") as HTMLElement).also { el ->
+            el.className = "pw-menu-picker"
+            backdrop.appendChild(el)
+        }
+        // Swallows taps on the panel chrome so they don't reach the backdrop's close.
+        listeners.add(panel.disposableTap {})
+
+        (document.createElement("div") as HTMLElement).also { bar ->
+            bar.className = "pw-menu-picker-title"
+            panel.appendChild(bar)
+            (document.createElement("span") as HTMLElement).also { t ->
+                t.textContent = title
+                bar.appendChild(t)
+            }
+            (document.createElement("span") as HTMLElement).also { x ->
+                x.className = "pw-menu-picker-close"
+                x.textContent = "CLOSE"
+                bar.appendChild(x)
+                listeners.add(x.disposableTap { closeActionPicker() })
+            }
+        }
+
+        val grid = (document.createElement("div") as HTMLElement).also { el ->
+            el.className = "pw-menu-picker-grid"
+            panel.appendChild(el)
+        }
+
+        for (action in actions) {
+            val cell = (document.createElement("div") as HTMLElement).also { el ->
+                el.className =
+                    if (action == current) "pw-menu-picker-cell pw-menu-picker-cell-on"
+                    else "pw-menu-picker-cell"
+                grid.appendChild(el)
+            }
+            (document.createElement("div") as HTMLElement).also { box ->
+                box.className = "pw-menu-picker-icon"
+                cell.appendChild(box)
+                (document.createElement("div") as HTMLElement).also { glyph ->
+                    glyph.style.cssText = actionIconCss(action)
+                    box.appendChild(glyph)
+                }
+            }
+            (document.createElement("div") as HTMLElement).also { label ->
+                label.className = "pw-menu-picker-label"
+                label.textContent = action.label
+                cell.appendChild(label)
+            }
+            listeners.add(cell.disposableTap {
+                onPick(action)
+                closeActionPicker()
+            })
+        }
     }
 
     private fun slotName(slot: ActionHex): String = when (slot) {
@@ -1104,6 +1210,11 @@ row.disposableTap {
         /** The 16px glyphs sit comfortably beside the panes' 13px value text at this scale. */
         const val ITEM_ICON_SCALE = 1.0
 
+        /** Picker glyph scales: 16px item art, 48px attack art, 50x43 technique tiles. */
+        const val PICKER_ITEM_ICON_SCALE = 2.2
+        const val PICKER_ACTION_ICON_SCALE = 0.75
+        const val PICKER_TECH_TILE_SCALE = 0.8
+
         const val STYLESHEET = """
             /*
              * Laid out to match PSO's own menu rather than filling the screen: the nav column
@@ -1155,6 +1266,47 @@ row.disposableTap {
               border:2px solid rgba(90,210,255,0.55); border-radius:8px;
               background:repeating-linear-gradient(180deg, rgba(90,200,225,.14) 0px, rgba(90,200,225,.14) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px), linear-gradient(180deg, #04141f 0%, #020a12 100%); padding:10px 14px; overflow-y:auto;
               touch-action:pan-y;
+            }
+            .pw-menu-picker-backdrop {
+              position:fixed; inset:0; z-index:60;
+              background:rgba(0, 6, 12, 0.62);
+              display:flex; align-items:center; justify-content:center;
+            }
+            .pw-menu-picker {
+              width:min(92vw, 620px); max-height:min(80vh, 560px);
+              display:flex; flex-direction:column; overflow:hidden;
+              border:2px solid rgba(90,210,255,0.65); border-radius:10px;
+              background:repeating-linear-gradient(180deg, rgba(90,200,225,.12) 0px, rgba(90,200,225,.12) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px), linear-gradient(180deg, #05202e 0%, #02101c 100%);
+              box-shadow:0 10px 40px rgba(0,0,0,0.6);
+            }
+            .pw-menu-picker-title {
+              display:flex; justify-content:space-between; align-items:center;
+              padding:10px 14px; border-bottom:1px solid rgba(90,210,255,0.35);
+              color:#ffd36b; font-size:14px; letter-spacing:2px;
+            }
+            .pw-menu-picker-close {
+              color:#8fd8f0; font-size:12px; letter-spacing:1px; padding:4px 8px;
+              border:1px solid rgba(90,210,255,0.45); border-radius:5px; cursor:pointer;
+            }
+            .pw-menu-picker-grid {
+              overflow-y:auto; touch-action:pan-y; padding:12px;
+              display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:8px;
+            }
+            .pw-menu-picker-cell {
+              display:flex; flex-direction:column; align-items:center; gap:5px;
+              padding:8px 4px 7px; cursor:pointer;
+              border:1px solid rgba(90,210,255,0.28); border-radius:7px;
+              background:rgba(4, 22, 32, 0.85);
+            }
+            .pw-menu-picker-cell-on {
+              border-color:#ffd36b;
+              background:rgba(40, 34, 8, 0.85);
+            }
+            .pw-menu-picker-icon {
+              height:40px; display:flex; align-items:center; justify-content:center;
+            }
+            .pw-menu-picker-label {
+              color:#bfe8f5; font-size:10px; text-align:center; line-height:1.25;
             }
             .pw-menu-heading {
               color:#ffd36b; font-size:15px; letter-spacing:2px; margin-bottom:8px;

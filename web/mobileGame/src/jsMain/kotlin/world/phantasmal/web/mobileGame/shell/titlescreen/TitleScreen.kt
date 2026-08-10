@@ -306,7 +306,7 @@ class TitleScreen(
 
     companion object {
         /** Deploy fingerprint shown on the title screen; bump on every `cap copy ios`. */
-        private const val BUILD_STAMP = "BUILD 0810-Y"
+        private const val BUILD_STAMP = "BUILD 0810-Z"
 
         private const val BG_TEXT_CHARSET = " abcdefghijklmnopqrstuvwxyz0123456789 "
         private const val BG_TEXT_WORDS_PER_COLUMN = 50
