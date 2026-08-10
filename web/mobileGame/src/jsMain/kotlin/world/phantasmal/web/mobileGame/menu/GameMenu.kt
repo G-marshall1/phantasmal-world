@@ -75,6 +75,9 @@ class MenuState(
     /** Banked weapons -- everything picked up and not currently drawn. */
     val weaponsInventory: List<WeaponItem> = emptyList(),
     val treasures: List<TreasureType> = emptyList(),
+    /** Unused technique disks, as display labels; the use callback takes the index. */
+    val techDisks: List<String> = emptyList(),
+    val onUseDisk: (Int) -> Unit = {},
     /** Fired from the Items pane; the renderer applies the effect and reopens with fresh state. */
     val onUseTool: (ToolType) -> Unit = {},
     val onEquipWeapon: (WeaponItem) -> Unit = {},
@@ -463,7 +466,9 @@ row.disposableTap {
             header.appendChild(el)
         }
 
-        if (state.tools.isEmpty() && state.weaponsInventory.isEmpty() && state.treasures.isEmpty()) {
+        if (state.tools.isEmpty() && state.weaponsInventory.isEmpty() && state.treasures.isEmpty() &&
+            state.techDisks.isEmpty()
+        ) {
             note(
                 "The pack is empty. Enemies in the field drop tools, weapons and Meseta -- " +
                     "and the truly rare finds arrive as the red box."
@@ -498,6 +503,34 @@ row.disposableTap {
                 // asks before spending anything.
                 confirmPrompt.open("Use ${tool.uiName}?", confirmText = "USE") {
                     state.onUseTool(tool)
+                }
+            })
+        }
+
+        for ((index, label) in state.techDisks.withIndex()) {
+            val row = (document.createElement("div") as HTMLElement).also { el ->
+                el.className = "pw-menu-slot pw-menu-action-row"
+                content.appendChild(el)
+            }
+            (document.createElement("div") as HTMLElement).also { k ->
+                k.className = "pw-menu-slot-k"
+                k.textContent = "DISK"
+                row.appendChild(k)
+            }
+            (document.createElement("div") as HTMLElement).also { v ->
+                v.className = "pw-menu-slot-v"
+                v.textContent = label
+                row.appendChild(v)
+            }
+            (document.createElement("div") as HTMLElement).also { d ->
+                d.className = "pw-menu-slot-d"
+                d.textContent = "Learn the technique at this level"
+                row.appendChild(d)
+            }
+            listeners.add(row.disposableTap {
+                selectRow(row)
+                confirmPrompt.open("Use $label?", confirmText = "LEARN") {
+                    state.onUseDisk(index)
                 }
             })
         }
@@ -574,6 +607,13 @@ row.disposableTap {
         ToolType.POWER_MATERIAL -> "+2 ATP, permanent"
         ToolType.MIND_MATERIAL -> "+2 MST, permanent"
         ToolType.HP_MATERIAL -> "+2 max HP, permanent"
+        ToolType.EVADE_MATERIAL -> "+2 EVP, permanent"
+        ToolType.DEF_MATERIAL -> "+2 DFP, permanent"
+        ToolType.LUCK_MATERIAL -> "+2 LCK, permanent"
+        ToolType.TP_MATERIAL -> "+2 max TP, permanent"
+        ToolType.MONOGRINDER -> "Grinds the equipped weapon +1"
+        ToolType.DIGRINDER -> "Grinds the equipped weapon +2"
+        ToolType.TRIGRINDER -> "Grinds the equipped weapon +3"
     }
 
     private fun renderMag(state: MenuState) {

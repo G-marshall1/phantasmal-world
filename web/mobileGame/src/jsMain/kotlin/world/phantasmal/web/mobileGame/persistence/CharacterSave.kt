@@ -47,10 +47,18 @@ data class CharacterSave(
     val equippedWeapon: SavedWeapon? = null,
     /** Rare trophies, by [world.phantasmal.web.mobileGame.player.TreasureType] name. */
     val treasures: List<String> = emptyList(),
-    /** Stat Materials consumed -- each a permanent +2 ATP / +2 MST / +2 max HP. */
+    /** Stat Materials consumed -- each a permanent +2 to its stat. */
     val materialPower: Int = 0,
     val materialMind: Int = 0,
     val materialHp: Int = 0,
+    val materialEvade: Int = 0,
+    val materialDef: Int = 0,
+    val materialLuck: Int = 0,
+    val materialTp: Int = 0,
+    /** Learned techniques, by [Technique] name to level. Empty on legacy saves (see loader). */
+    val techLevels: Map<String, Int> = emptyMap(),
+    /** Unused technique disks, each "NAME:level". */
+    val techDisks: List<String> = emptyList(),
     /** The Mag's feed experience per stat (100 = one stat point), synchro and IQ. */
     val magDefExp: Int = 500,
     val magPowExp: Int = 0,

@@ -13,6 +13,32 @@ sealed class Drop(val rare: Boolean) {
     class FrameDrop(val item: FrameItem, rare: Boolean = false) : Drop(rare)
     class BarrierDrop(val item: BarrierItem, rare: Boolean = false) : Drop(rare)
     class UnitDrop(val unit: UnitType, rare: Boolean = false) : Drop(rare)
+    /** A technique disk: learn it and the technique casts at [level]. */
+    class DiskDrop(val technique: Technique, val level: Int) : Drop(false)
+}
+
+/**
+ * One technique disk, levelled to the area it fell in: the basics come easily, the Gi- and
+ * Ra- tiers less so, and the rarities (Grants, Megid, Ryuker, Reverser) close the table.
+ * [areaTier] is 1 for the Forest through 4 for the Ruins; disk levels ride it.
+ */
+fun rollTechDisk(areaTier: Int, random: Random = Random): Drop.DiskDrop {
+    val r = random.nextDouble()
+    val technique = when {
+        r < 0.38 -> listOf(Technique.FOIE, Technique.BARTA, Technique.ZONDE).random(random)
+        r < 0.58 -> listOf(Technique.GIFOIE, Technique.GIBARTA, Technique.GIZONDE).random(random)
+        r < 0.70 -> listOf(Technique.RAFOIE, Technique.RABARTA, Technique.RAZONDE).random(random)
+        r < 0.85 -> listOf(
+            Technique.SHIFTA, Technique.DEBAND, Technique.JELLEN, Technique.ZALURE,
+            Technique.ANTI,
+        ).random(random)
+        r < 0.94 -> Technique.RESTA
+        else -> listOf(
+            Technique.GRANTS, Technique.MEGID, Technique.RYUKER, Technique.REVERSER,
+        ).random(random)
+    }
+    val level = (areaTier + random.nextInt(2)).coerceIn(1, 5)
+    return Drop.DiskDrop(technique, level)
 }
 
 /** One cell of the rare chart: what drops and its 1-in-[denominator] chance. */
@@ -104,6 +130,7 @@ fun forestRareDropName(slug: String, sectionId: SectionId): String? =
             is Drop.FrameDrop -> drop.item.spec.name
             is Drop.BarrierDrop -> drop.item.spec.name
             is Drop.UnitDrop -> drop.unit.uiName
+            is Drop.DiskDrop -> "${drop.technique.uiName} Lv.${drop.level} disk"
         }
     }
 
@@ -116,7 +143,7 @@ fun forestRareDropName(slug: String, sectionId: SectionId): String? =
  * small recovery items, 30% meseta at Forest-Normal amounts -- with Yellowboze's "+ Meseta
  * drops" identity honoured as a bonus, its exact figure being unpublished.
  */
-fun rollEnemyDrop(slug: String, sectionId: SectionId, random: Random = Random): Drop? {
+fun rollEnemyDrop(slug: String, sectionId: SectionId, areaTier: Int = 1, random: Random = Random): Drop? {
     val stats = enemyStats(slug)
     if (random.nextDouble() * 100.0 >= stats.dropRate) return null
 
@@ -138,6 +165,7 @@ fun rollEnemyDrop(slug: String, sectionId: SectionId, random: Random = Random): 
 
     val r = random.nextDouble()
     return when {
+        r < 0.05 -> rollTechDisk(areaTier, random)
         r < 0.30 -> Drop.WeaponDrop(rollForestWeaponDrop(sectionId))
         r < 0.62 -> Drop.ToolDrop(rollCommonTool(random))
         r < 0.70 -> rollCommonArmor(random)
@@ -209,9 +237,10 @@ private fun rollCommonArmor(random: Random): Drop {
  * between-fights top-up, not a second drop table -- and unlike an enemy they always hold
  * something, since an empty crate would just read as a broken interaction.
  */
-fun rollBoxDrop(sectionId: SectionId, random: Random = Random): Drop {
+fun rollBoxDrop(sectionId: SectionId, areaTier: Int = 1, random: Random = Random): Drop {
     val r = random.nextDouble()
     return when {
+        r < 0.06 -> rollTechDisk(areaTier, random)
         r < 0.44 -> Drop.ToolDrop(rollCommonTool(random))
         r < 0.74 -> Drop.MesetaDrop(BOX_MESETA_MIN + random.nextInt(BOX_MESETA_MAX - BOX_MESETA_MIN + 1))
         r < 0.90 -> Drop.WeaponDrop(rollForestWeaponDrop(sectionId))
@@ -225,12 +254,23 @@ private const val BOX_MESETA_MAX = 30
 private fun rollCommonTool(random: Random): ToolType {
     val r = random.nextDouble()
     return when {
-        r < 0.45 -> ToolType.MONOMATE
-        r < 0.67 -> ToolType.MONOFLUID
-        r < 0.79 -> ToolType.DIMATE
-        r < 0.85 -> ToolType.DIFLUID
-        r < 0.925 -> ToolType.ANTIDOTE
-        else -> ToolType.ANTIPARALYSIS
+        r < 0.40 -> ToolType.MONOMATE
+        r < 0.58 -> ToolType.MONOFLUID
+        r < 0.70 -> ToolType.DIMATE
+        r < 0.76 -> ToolType.DIFLUID
+        r < 0.83 -> ToolType.ANTIDOTE
+        r < 0.88 -> ToolType.ANTIPARALYSIS
+        // The growth tools: grinders and the stat materials.
+        r < 0.91 -> ToolType.MONOGRINDER
+        r < 0.925 -> ToolType.DIGRINDER
+        r < 0.93 -> ToolType.TRIGRINDER
+        r < 0.94 -> ToolType.POWER_MATERIAL
+        r < 0.95 -> ToolType.MIND_MATERIAL
+        r < 0.96 -> ToolType.EVADE_MATERIAL
+        r < 0.97 -> ToolType.DEF_MATERIAL
+        r < 0.98 -> ToolType.LUCK_MATERIAL
+        r < 0.99 -> ToolType.HP_MATERIAL
+        else -> ToolType.TP_MATERIAL
     }
 }
 

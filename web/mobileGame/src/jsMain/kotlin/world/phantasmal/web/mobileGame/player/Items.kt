@@ -32,6 +32,27 @@ enum class ToolType(val uiName: String, val maxStack: Int = 10) {
 
     /** Permanently +2 max HP when consumed. */
     HP_MATERIAL("HP Material"),
+
+    /** Permanently +2 EVP when consumed. */
+    EVADE_MATERIAL("Evade Material"),
+
+    /** Permanently +2 DFP when consumed. */
+    DEF_MATERIAL("Def Material"),
+
+    /** Permanently +2 LCK when consumed. */
+    LUCK_MATERIAL("Luck Material"),
+
+    /** Permanently +2 max TP when consumed. */
+    TP_MATERIAL("TP Material"),
+
+    /** Grinds the equipped weapon +1 -- each grind point is +2 ATP. */
+    MONOGRINDER("Monogrinder"),
+
+    /** Grinds the equipped weapon +2. */
+    DIGRINDER("Digrinder"),
+
+    /** Grinds the equipped weapon +3. */
+    TRIGRINDER("Trigrinder"),
     ;
 
     /**

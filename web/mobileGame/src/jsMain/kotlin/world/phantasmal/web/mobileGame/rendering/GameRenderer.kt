@@ -593,7 +593,7 @@ class GameRenderer(
             return
         }
 
-        val drop = rollBoxDrop(appearance.sectionId)
+        val drop = rollBoxDrop(appearance.sectionId, areaTier)
         MainScope().launch {
             val mesh = ObjectAssetLoader(assetLoader).loadObject(dropModelSlug(drop))
             if (drop.rare) tintRare(mesh)
@@ -2910,7 +2910,7 @@ class GameRenderer(
      * drop; drops are spaced enough that the fetch (browser-cached after the first) never shows.
      */
     private fun maybeDrop(enemy: Enemy) {
-        val drop = rollEnemyDrop(enemy.slug, appearance.sectionId) ?: return
+        val drop = rollEnemyDrop(enemy.slug, appearance.sectionId, areaTier) ?: return
         val x = enemy.mesh.position.x
         val y = enemy.mesh.position.y
         val z = enemy.mesh.position.z
@@ -2990,6 +2990,11 @@ class GameRenderer(
             if (dx * dx + dz * dz > PICKUP_RADIUS * PICKUP_RADIUS) continue
 
             when (val drop = pickup.drop) {
+                is Drop.DiskDrop -> {
+                    p.techDisks.add(drop.technique to drop.level)
+                    showToast("Got ${drop.technique.uiName} Lv.${drop.level} disk")
+                }
+
                 is Drop.ToolDrop -> {
                     val held = p.tools[drop.tool] ?: 0
                     when {
@@ -5157,6 +5162,8 @@ class GameRenderer(
                 tools = ToolType.entries.mapNotNull { t -> p.tools[t]?.let { c -> t to c } },
                 weaponsInventory = inventory.toList(),
                 treasures = p.treasures.toList(),
+                techDisks = p.techDisks.map { "${it.first.uiName} Lv.${it.second}" },
+                onUseDisk = { index -> learnDisk(index); openMenu() },
                 onUseTool = { tool -> if (useTool(tool)) openMenu() },
                 onEquipWeapon = { item -> if (equipFromMenu(item)) openMenu() },
                 tp = p.tp,
@@ -5225,6 +5232,34 @@ class GameRenderer(
             ToolType.POWER_MATERIAL -> { p.materialPower++; used = true }
             ToolType.MIND_MATERIAL -> { p.materialMind++; used = true }
             ToolType.HP_MATERIAL -> { p.materialHp++; used = true }
+            ToolType.EVADE_MATERIAL -> { p.materialEvade++; used = true }
+            ToolType.DEF_MATERIAL -> { p.materialDef++; used = true }
+            ToolType.LUCK_MATERIAL -> { p.materialLuck++; used = true }
+            ToolType.TP_MATERIAL -> { p.materialTp++; used = true }
+
+            // The grinders: each point is +2 ATP on the weapon in hand, up to its own cap.
+            ToolType.MONOGRINDER, ToolType.DIGRINDER, ToolType.TRIGRINDER -> {
+                val item = equippedItem
+                if (item == null) {
+                    showToast("Nothing is equipped to grind")
+                } else if (item.grind >= item.tier.maxGrind) {
+                    showToast("${item.displayName} can't be ground further")
+                } else {
+                    val add = when (tool) {
+                        ToolType.MONOGRINDER -> 1
+                        ToolType.DIGRINDER -> 2
+                        else -> 3
+                    }
+                    val ground = WeaponItem(
+                        item.tier,
+                        grind = (item.grind + add).coerceAtMost(item.tier.maxGrind),
+                        specialAttack = item.specialAttack,
+                    )
+                    equippedItem = ground
+                    showToast("${ground.displayName}!")
+                    used = true
+                }
+            }
             ToolType.TELEPIPE -> used = openTelepipe(p)
 
             // The status cures. Each spends itself only when there is something to cure --
@@ -5370,6 +5405,27 @@ class GameRenderer(
             // TESTING: keep the never-empty tools topped up, so a fresh load starts stocked.
             for (tool in UNLIMITED_TOOLS) p.tools[tool] = tool.maxStack
             p.materialPower = s.materialPower
+            p.materialEvade = s.materialEvade
+            p.materialDef = s.materialDef
+            p.materialLuck = s.materialLuck
+            p.materialTp = s.materialTp
+            for ((name, level) in s.techLevels) {
+                Technique.entries.find { it.name == name }?.let { p.techLevels[it] = level }
+            }
+            for (encoded in s.techDisks) {
+                val parts = encoded.split(":")
+                val technique = Technique.entries.find { it.name == parts.getOrNull(0) }
+                val level = parts.getOrNull(1)?.toIntOrNull()
+                if (technique != null && level != null) p.techDisks.add(technique to level)
+            }
+            // Legacy saves predate learned techniques: a Force there has been casting the whole
+            // roster at level 1, so that's exactly what they keep. Everyone else starts blank
+            // and learns from disks, androids never.
+            if (s.techLevels.isEmpty() &&
+                professionOf(p.characterClass) == Profession.FORCE
+            ) {
+                for (technique in Technique.entries) p.techLevels[technique] = 1
+            }
             p.materialMind = s.materialMind
             p.materialHp = s.materialHp
             p.mag = Mag(
@@ -5425,6 +5481,12 @@ class GameRenderer(
                 equippedWeapon = equippedItem?.toSaved(),
                 treasures = p.treasures.map { it.name },
                 materialPower = p.materialPower,
+                materialEvade = p.materialEvade,
+                materialDef = p.materialDef,
+                materialLuck = p.materialLuck,
+                materialTp = p.materialTp,
+                techLevels = p.techLevels.entries.associate { it.key.name to it.value },
+                techDisks = p.techDisks.map { "${it.first.name}:${it.second}" },
                 materialMind = p.materialMind,
                 materialHp = p.materialHp,
                 magDefExp = p.mag.defExp,
@@ -6310,12 +6372,17 @@ class GameRenderer(
             return
         }
         if (p.hp <= 0 || gameMenu.isOpen) return
-        if (professionOf(p.characterClass) != Profession.FORCE) {
-            showToast("You haven't learned that technique")
+        if (isAndroid(p.characterClass)) {
+            showToast("Androids can't use techniques")
+            return
+        }
+        val techLevel = p.techLevel(technique)
+        if (techLevel < 1) {
+            showToast("You haven't learned ${technique.uiName}")
             return
         }
 
-        val cost = technique.tpCost(TECHNIQUE_LEVEL)
+        val cost = technique.tpCost(techLevel)
         if (!freeCasting) {
             if (p.tp < cost) {
                 showToast("Not enough TP")
@@ -6336,7 +6403,7 @@ class GameRenderer(
             }
         }
 
-        val power = technique.power(TECHNIQUE_LEVEL)
+        val power = technique.power(techLevel)
         val mst = p.stats.mst
         val yaw = faceFocusTarget(p) ?: p.mesh.rotation.y
         val dirX = sin(yaw)
@@ -6868,16 +6935,16 @@ class GameRenderer(
             }
 
             Technique.SHIFTA -> {
-                p.shiftaBoost = supportBoostFraction(TECHNIQUE_LEVEL)
-                p.shiftaRemaining = supportDurationSeconds(TECHNIQUE_LEVEL)
+                p.shiftaBoost = supportBoostFraction(techLevel)
+                p.shiftaRemaining = supportDurationSeconds(techLevel)
                 supportRing(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, "ring_red", SHIFTA_COLOR)
                 supportSwirl(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, SHIFTA_COLOR)
                 showToast("ATP up ${(p.shiftaBoost * 100).toInt()}%")
             }
 
             Technique.DEBAND -> {
-                p.debandBoost = supportBoostFraction(TECHNIQUE_LEVEL)
-                p.debandRemaining = supportDurationSeconds(TECHNIQUE_LEVEL)
+                p.debandBoost = supportBoostFraction(techLevel)
+                p.debandRemaining = supportDurationSeconds(techLevel)
                 supportRing(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, "ring_blue", DEBAND_COLOR)
                 supportSwirl(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, DEBAND_COLOR)
                 showToast("DFP up ${(p.debandBoost * 100).toInt()}%")
@@ -6886,8 +6953,8 @@ class GameRenderer(
             Technique.JELLEN -> {
                 val caught = enemiesWithin(p.mesh.position.x, p.mesh.position.z, SUPPORT_RADIUS_UNITS)
                 for (enemy in caught) {
-                    enemy.jellenFactor = 1.0 - supportBoostFraction(TECHNIQUE_LEVEL)
-                    enemy.jellenRemaining = supportDurationSeconds(TECHNIQUE_LEVEL)
+                    enemy.jellenFactor = 1.0 - supportBoostFraction(techLevel)
+                    enemy.jellenRemaining = supportDurationSeconds(techLevel)
                     supportRing(
                         enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
                         "ring_purple", JELLEN_COLOR,
@@ -6904,8 +6971,8 @@ class GameRenderer(
             Technique.ZALURE -> {
                 val caught = enemiesWithin(p.mesh.position.x, p.mesh.position.z, SUPPORT_RADIUS_UNITS)
                 for (enemy in caught) {
-                    enemy.zalureFactor = 1.0 - supportBoostFraction(TECHNIQUE_LEVEL)
-                    enemy.zalureRemaining = supportDurationSeconds(TECHNIQUE_LEVEL)
+                    enemy.zalureFactor = 1.0 - supportBoostFraction(techLevel)
+                    enemy.zalureRemaining = supportDurationSeconds(techLevel)
                     supportRing(
                         enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
                         "ring_purple", ZALURE_COLOR,
@@ -7279,6 +7346,37 @@ class GameRenderer(
         if (Random.nextDouble() > LILY_SCREECH_CHANCE) return
 
         applyParalysis(p)
+    }
+
+    /**
+     * Learning from a disk: androids never can, and a disk at or below the learned level
+     * teaches nothing. Success consumes the disk and the technique casts at its level from
+     * then on.
+     */
+    private fun learnDisk(index: Int) {
+        val p = player ?: return
+        val (technique, level) = p.techDisks.getOrNull(index) ?: return
+        if (isAndroid(p.characterClass)) {
+            showToast("Androids can't use technique disks")
+            return
+        }
+        val current = p.techLevel(technique)
+        if (level <= current) {
+            showToast("${technique.uiName} is already Lv.$current")
+            return
+        }
+        p.techLevels[technique] = level
+        p.techDisks.removeAt(index)
+        persistProgress()
+        showToast("Learned ${technique.uiName} Lv.$level!")
+    }
+
+    /** The drop tables level their technique disks to the zone: Forest 1 through Ruins 4. */
+    private val areaTier: Int = when {
+        mapSlug.startsWith("cave") || mapSlug == "bossArea2" -> 2
+        mapSlug.startsWith("mines") || mapSlug == "bossArea3" -> 3
+        mapSlug.startsWith("ruins") || mapSlug == "bossArea4" -> 4
+        else -> 1
     }
 
     /** Technique damage lands exactly like a weapon hit: numbers, flinch, and the kill payout. */
@@ -8363,16 +8461,16 @@ class GameRenderer(
                 val deband = if (debandRemaining > 0) 1.0 + debandBoost else 1.0
                 return BaseStats(
                     hp = base.hp + materialHp * 2 + equippedUnits.sumOf { it.hp },
-                    tp = base.tp + equippedUnits.sumOf { it.tp },
+                    tp = base.tp + materialTp * 2 + equippedUnits.sumOf { it.tp },
                     atp = ((base.atp + mag.bonusAtp + materialPower * 2 +
                         equippedUnits.sumOf { it.atp }) * shifta).toInt(),
-                    dfp = ((base.dfp + mag.bonusDfp + armorDfp +
+                    dfp = ((base.dfp + mag.bonusDfp + armorDfp + materialDef * 2 +
                         equippedUnits.sumOf { it.dfp }) * deband).toInt(),
                     mst = base.mst + mag.bonusMst + materialMind * 2 + equippedUnits.sumOf { it.mst },
                     ata = base.ata + mag.bonusAta + equippedUnits.sumOf { it.ata },
-                    lck = base.lck,
+                    lck = base.lck + materialLuck * 2,
                     // A barrier is mostly evasion -- this is what makes one worth raising.
-                    evp = base.evp + (equippedFrame?.evp ?: 0) + (equippedBarrier?.evp ?: 0) +
+                    evp = base.evp + materialEvade * 2 + (equippedFrame?.evp ?: 0) + (equippedBarrier?.evp ?: 0) +
                         equippedUnits.sumOf { it.evp },
                 )
             }
@@ -8395,6 +8493,18 @@ class GameRenderer(
         var materialPower: Int = 0
         var materialMind: Int = 0
         var materialHp: Int = 0
+        var materialEvade: Int = 0
+        var materialDef: Int = 0
+        var materialLuck: Int = 0
+        var materialTp: Int = 0
+
+        /** Learned techniques and their levels; absent means not learned. */
+        val techLevels: MutableMap<Technique, Int> = mutableMapOf()
+
+        /** Unused technique disks in the pack. */
+        val techDisks: MutableList<Pair<Technique, Int>> = mutableListOf()
+
+        fun techLevel(technique: Technique): Int = techLevels[technique] ?: 0
 
         var hp: Int = statsAtLevel(characterClass, 1).hp
         val maxHp: Int get() = stats.hp
@@ -8481,8 +8591,6 @@ class GameRenderer(
     }
 
     companion object {
-        /** Disks aren't dropping yet, so every known technique casts at level 1. */
-        private const val TECHNIQUE_LEVEL = 1
 
         /** Foie's fireball: modest at level 1, per its page ("travels slowly at lower levels"). */
         private const val FOIE_SPEED_UNITS = 22.0
