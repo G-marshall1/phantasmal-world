@@ -4649,7 +4649,14 @@ class GameRenderer(
                                 )
                                 val unassigned =
                                     obj.doorId == 255 || obj.paramsI.getOrNull(0) == -1
-                                if (unassigned) {
+                                if (!ENERGY_BARRIERS_BLOCK) {
+                                    // Powered down by request: these kept sealing the Forest 1
+                                    // spawn room. The posts stay standing so the room still
+                                    // reads as a checkpoint -- only the humming beam and its
+                                    // collision go. Never added to the gate lists, so nothing
+                                    // can re-close it.
+                                    gate.open()
+                                } else if (unassigned) {
                                     // Blocking + animation tick ride the fences list (whose
                                     // switch-linking is proximity-based and never reaches
                                     // these); opening is the render loop's section check.
@@ -9581,6 +9588,14 @@ class GameRenderer(
         private const val ZONDE_COLOR = 0xffe94a
         private const val BARTA_COLOR = 0x63d8ff
         private const val RESTA_COLOR = 0x6dffa0
+
+        /**
+         * Whether energy barriers are solid. Off: the beams repeatedly sealed the Forest 1
+         * spawn room, and a barrier whose Door ID never gets opened is a run-ending softlock
+         * rather than an obstacle. Turning this back on is the whole revert -- the door-driven
+         * logic below it is intact.
+         */
+        private const val ENERGY_BARRIERS_BLOCK = false
 
         private const val TECH_FLASH_SECONDS = 0.5
 
