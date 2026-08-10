@@ -110,6 +110,7 @@ import world.phantasmal.web.mobileGame.world.enemyStats
 import world.phantasmal.web.mobileGame.world.EnemyFragmentRef
 import world.phantasmal.web.mobileGame.world.FieldGates
 import world.phantasmal.web.mobileGame.world.MapAssetLoader
+import world.phantasmal.web.mobileGame.world.RICO_MESSAGES
 import world.phantasmal.web.mobileGame.world.RoomWaveDirector
 import world.phantasmal.web.mobileGame.world.TriggerVolume
 import world.phantasmal.web.mobileGame.world.SpawnLayout
@@ -4273,18 +4274,17 @@ class GameRenderer(
                                 mesh.position.set(obj.x, obj.y, obj.z)
                                 mesh.rotation.y = obj.yaw
                                 context.scene.add(mesh)
+                                // The pod's client message id (paramsI[2]) resolves against
+                                // Rico's transcribed logs -- her own words, area by area.
+                                val messageId = obj.paramsI.getOrNull(2) ?: -1
                                 fieldInteractables.add(
                                     FieldInteractable(
                                         mesh = mesh,
                                         prompt = "READ",
                                         title = "Rico's Message",
-                                        // PLACEHOLDER: Rico's real logs live in the quest
-                                        // scripts; until the quest system reads them, the pod
-                                        // acknowledges itself honestly rather than inventing
-                                        // lore.
-                                        text = "The capsule flickers -- the recording is too " +
-                                            "degraded to play back. (Rico's logs arrive with " +
-                                            "the quest system.)",
+                                        text = RICO_MESSAGES[messageId]
+                                            ?: "The capsule flickers -- this recording is too " +
+                                            "degraded to play back.",
                                     )
                                 )
                             }

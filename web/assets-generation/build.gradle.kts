@@ -98,3 +98,17 @@ tasks.register<JavaExec>("generateNewservRareDrops") {
         ).absolutePath,
     )
 }
+
+// Research tool: dumps one .qst (identity, placements, full disassembly). Pass -PquestFile=path.
+tasks.register<JavaExec>("dumpQuest") {
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("world.phantasmal.web.assetsGeneration.quests.DumpQuestKt")
+    args = listOf(requireNotNull(findProperty("questFile")) { "Pass -PquestFile=path" }.toString())
+}
+
+// Converts the authentic .qst quest set into the mobile game's quest JSON.
+tasks.register<JavaExec>("convertQuests") {
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("world.phantasmal.web.assetsGeneration.quests.ConvertQuestsKt")
+    args = listOf(rootDir.absolutePath)
+}

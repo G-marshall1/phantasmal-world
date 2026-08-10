@@ -1,0 +1,17 @@
+[
+  {"slug":"gov1_1","name":"1-1:Planet Ragol","short":"Go down to\nRagol's surface\nand report on\nthe conditions\nthere."},
+  {"slug":"gov1_2","name":"1-2:Torrential Woods","short":"Eliminate the\nhostile animals\nprowling around\nthe Central\nDome area!"},
+  {"slug":"gov1_3","name":"1-3:Subterranean Den","short":"Nobody has\ncome back from\nbeneath\nthe Central\nDome alive..."},
+  {"slug":"gov2_1","name":"2-1:Infernal Cavern","short":"A cave has been\nfound beneath\nRagol. Go and\ninvestigate."},
+  {"slug":"gov2_2","name":"2-2:Deep Within","short":"A bizarre\nmonument,\nhas been found\nwithin the\ncaverns…"},
+  {"slug":"gov2_3","name":"2-3:The Mutation","short":"Gather data on\nthe creatures\nthat live\nunderground."},
+  {"slug":"gov2_4","name":"2-4:Waterway Shadow","short":"Mysterious\n\"thing\" seen\nin the\nunderground\nwaterway."},
+  {"slug":"gov3_1","name":"3-1:The Facility","short":"Why is there a\nlarge-scale\nfacility\nunderneath\nRagol?"},
+  {"slug":"gov3_2","name":"3-2:Machines Attack","short":"Annihilate the\nmachines that\nare down in\nthe mines!"},
+  {"slug":"gov3_3","name":"3-3:Central Control","short":"Find the\ncontrol room\nto the\nunderground\nfacility!"},
+  {"slug":"gov4_1","name":"4-1:The Lost Ruins","short":"Break the\nseal to the\nruins and\nget inside!"},
+  {"slug":"gov4_2","name":"4-2:Buried Relics","short":"Get data on\nthe writing\nfrom the\nstone monument\nin the ruins!"},
+  {"slug":"gov4_3","name":"4-3:Hero & Daughter","short":"A secret\nrequest from\nthe Principal.\nWhat could\nhe want?"},
+  {"slug":"gov4_4","name":"4-4:The Tomb Stirs","short":"Exterminate the\nenemies and\nsecure a path\nthrough the\nruins!"},
+  {"slug":"gov4_5","name":"4-5:Dark Inheritance","short":"Get to the\nbottom of\nthe ruins!\nThe answers\nmust lie there!"}
+]
