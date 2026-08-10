@@ -2428,6 +2428,21 @@ class GameRenderer(
                 }
             }
 
+            NpcRole.TEKKER -> {
+                val unidentifiedItems = inventory.filter { it.unidentified }
+                if (unidentifiedItems.isEmpty()) {
+                    rows.add(DialogRow("", "Bring me anything marked ????, and I'll tell you what it truly is."))
+                } else {
+                    rows.add(DialogRow("", "-- APPRAISE ($TEKKER_FEE Meseta each) --"))
+                    for (item in unidentifiedItems) {
+                        rows.add(DialogRow("TEKK", "????", "an unappraised rare", icon = item.itemIcon) {
+                            tekkWeapon(item)
+                            openNpcDialog(active)
+                        })
+                    }
+                }
+            }
+
             NpcRole.BANK -> {
                 rows.add(DialogRow("", "carrying ${p.meseta}  ·  banked ${p.bankMeseta}"))
                 rows.add(DialogRow("MESETA", "Deposit 100", icon = ItemIcon.MESETA) { if (bankMesetaDeposit(100)) openNpcDialog(active) })
@@ -5307,8 +5322,29 @@ class GameRenderer(
      * Equip from the Items pane or the Equip dropdown. Any weapon class: equipping across
      * classes hot-swaps the model in hand and the whole motion set (see [switchWeaponClass]).
      */
+    /** The Tekker's work: the fee, then the reveal. */
+    private fun tekkWeapon(item: WeaponItem) {
+        val p = player ?: return
+        if (p.meseta < TEKKER_FEE) {
+            showToast("Not enough Meseta")
+            return
+        }
+        val index = inventory.indexOf(item)
+        if (index < 0) return
+        p.meseta -= TEKKER_FEE
+        val revealed = item.identified()
+        inventory[index] = revealed
+        persistProgress()
+        showToast("It's a ${revealed.displayName}!")
+    }
+
     private fun equipFromMenu(item: WeaponItem): Boolean {
         if (!inventory.remove(item)) return false
+        if (item.unidentified) {
+            inventory.add(item)
+            showToast("It must be appraised by the Tekker first")
+            return false
+        }
         equippedItem?.let { inventory.add(it) }
         val previousType = player?.weaponType
         equipItem(item)
@@ -9034,6 +9070,9 @@ class GameRenderer(
 
         /** How long a downed Dubchic lies before its pod puts it back up. */
         private const val DUBCHIC_REVIVE_SECONDS = 6.0
+
+        /** The Tekker's flat appraisal fee. */
+        private const val TEKKER_FEE = 100
 
         /** How much closer scenery must be than an enemy to steal the lock -- see findFocusTarget. */
         private const val FOCUS_ENEMY_BIAS = 0.6

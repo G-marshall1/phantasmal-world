@@ -16,6 +16,8 @@ enum class NpcRole {
     TOOL_SHOP,
     ARMS_SHOP,
     BANK,
+    /** Appraises ???? rares for a fee -- the hooded figure by the shops. */
+    TEKKER,
 }
 
 class Pioneer2Npc(
@@ -83,7 +85,7 @@ val PIONEER2_NPCS: List<Pioneer2Npc> = listOf(
         dialog = "The central dome exploded the moment we made orbit. They still won't tell us why."),
     Pioneer2Npc("Tekker", "GovStaff3", -121.29, 2.6, 254.782, 225.0,
         PlayerAnimations.Idles.BREATHING,
-        displayName = "Tekker", role = NpcRole.ARMS_SHOP,
+        displayName = "Tekker", role = NpcRole.TEKKER,
         dialog = "Weapons, friend. Buying or selling, nobody knows their worth better than I do."),
     // The shop district's own tool counter, like the real game -- the Nurse still stocks the
     // same list at the medical center, but this is where players go looking for it.

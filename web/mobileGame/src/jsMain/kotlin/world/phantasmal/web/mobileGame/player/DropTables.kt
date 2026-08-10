@@ -199,7 +199,10 @@ private fun resolveGeneratedRare(cell: GeneratedRareDrop): Drop? {
                 ?.let { Drop.UnitDrop(it, rare = true) }
 
         cell.code.startsWith("00") ->
-            weaponTierByName(titled)?.let { Drop.WeaponDrop(WeaponItem(it), rare = true) }
+            weaponTierByName(titled)?.let {
+                // A rare weapon lands unappraised: the red box holds "????" until the Tekker.
+                Drop.WeaponDrop(WeaponItem(it, unidentified = true), rare = true)
+            }
 
         cell.code.startsWith("03") -> {
             ToolType.entries.find { it.uiName.equals(cell.itemName, ignoreCase = true) }

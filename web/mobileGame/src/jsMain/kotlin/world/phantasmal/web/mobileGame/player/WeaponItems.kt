@@ -179,6 +179,8 @@ class WeaponItem(
     val tier: WeaponTier,
     val grind: Int = 0,
     val specialAttack: WeaponSpecial? = null,
+    /** A rare fresh off the ground: unappraised, unnamed, unequippable until the Tekker. */
+    val unidentified: Boolean = false,
 ) {
     val atpMin: Int get() = tier.atpMin + grind * 2
     val atpSpread: Int get() = tier.atpMax - tier.atpMin
@@ -187,11 +189,16 @@ class WeaponItem(
     fun rollAtp(random: Double): Int = atpMin + (random * (atpSpread + 1)).toInt()
 
     val displayName: String
-        get() = buildString {
-            specialAttack?.let { append(it.name); append(' ') }
-            append(tier.name)
-            if (grind > 0) append(" +").append(grind)
-        }
+        get() =
+            if (unidentified) "????"
+            else buildString {
+                specialAttack?.let { append(it.name); append(' ') }
+                append(tier.name)
+                if (grind > 0) append(" +").append(grind)
+            }
+
+    /** What the Tekker's appraisal reveals -- the same item, named. */
+    fun identified(): WeaponItem = WeaponItem(tier, grind, specialAttack, unidentified = false)
 }
 
 /**

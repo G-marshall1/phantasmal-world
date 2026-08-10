@@ -117,6 +117,7 @@ data class SavedWeapon(
     val grind: Int = 0,
     val specialFamily: String? = null,
     val specialTier: Int = 0,
+    val unidentified: Boolean = false,
 )
 
 /** Null if the save names a tier this build no longer ships -- the item is dropped, not crashed on. */
@@ -125,7 +126,7 @@ fun SavedWeapon.toWeaponItem(): WeaponItem? {
     val special = specialFamily
         ?.let { name -> SpecialFamily.entries.find { it.name == name } }
         ?.let { weaponSpecial(it, specialTier) }
-    return WeaponItem(tier, grind = grind, specialAttack = special)
+    return WeaponItem(tier, grind = grind, specialAttack = special, unidentified = unidentified)
 }
 
 fun WeaponItem.toSaved(): SavedWeapon = SavedWeapon(
@@ -133,6 +134,7 @@ fun WeaponItem.toSaved(): SavedWeapon = SavedWeapon(
     grind = grind,
     specialFamily = specialAttack?.family?.name,
     specialTier = specialAttack?.tier ?: 0,
+    unidentified = unidentified,
 )
 
 /** A frame in a save: the tier by name plus this copy's rolled stats and slots. */
