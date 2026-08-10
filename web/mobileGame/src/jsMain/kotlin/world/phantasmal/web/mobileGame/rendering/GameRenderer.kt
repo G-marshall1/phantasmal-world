@@ -7046,6 +7046,18 @@ class GameRenderer(
                 // Three arms of fire spiralling outward for the spell's whole turn: a train of
                 // short-lived flames whose orbit radius grows with time, so the eye sees fire
                 // travelling AND spreading.
+                // Crates in the ring's path burn on its arrival, same clock as the enemies.
+                for (box in fieldBoxes.filter { !it.broken }) {
+                    val bdx = box.x - p.mesh.position.x
+                    val bdz = box.z - p.mesh.position.z
+                    val distance = sqrt(bdx * bdx + bdz * bdz)
+                    if (distance <= GIFOIE_RADIUS_UNITS * worldUnit) {
+                        val arrival = distance / (GIFOIE_RADIUS_UNITS * worldUnit) * GIFOIE_SECONDS
+                        delayedTechActions.add(DelayedAction(arrival) {
+                            if (!box.broken) smashBox(box)
+                        })
+                    }
+                }
                 // The wheel itself is TechniqueFx's orbiters: solid flames visibly circling
                 // outward -- one clear visual instead of two competing ones.
                 techniqueFx?.gifoie(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z)
@@ -7055,7 +7067,19 @@ class GameRenderer(
                 // An explosion on the target. Without one the cast still spends its TP -- the
                 // wiki is explicit that this is how Rafoie behaves.
                 val target = focusedEnemy?.takeIf { !it.isDead }
-                if (target == null) {
+                val boxTarget = focusedTarget?.box?.takeIf { !it.broken }
+                if (target == null && boxTarget != null) {
+                    // The lock is on a crate: the explosion lands there instead.
+                    techniqueFx?.rafoie(boxTarget.x, boxTarget.y + 2.0 * worldUnit, boxTarget.z)
+                    spawnExplosionDome(
+                        boxTarget.x, boxTarget.y + 2.0 * worldUnit, boxTarget.z,
+                        RAFOIE_RADIUS_UNITS * worldUnit, FOIE_COLOR,
+                    )
+                    breakBoxNear(boxTarget.x, boxTarget.z, RAFOIE_RADIUS_UNITS * worldUnit)
+                    for (enemy in enemiesWithin(boxTarget.x, boxTarget.z, RAFOIE_RADIUS_UNITS)) {
+                        hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.fire))
+                    }
+                } else if (target == null) {
                     showToast("Rafoie needs a target")
                 } else {
                     val tx = target.mesh.position.x
@@ -7064,6 +7088,7 @@ class GameRenderer(
                         hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.fire))
                     }
                     techniqueFx?.rafoie(tx, centerMassHeight(target), tz)
+                    breakBoxNear(tx, tz, RAFOIE_RADIUS_UNITS * worldUnit)
                     spawnFoieImpact(tx, centerMassHeight(target), tz)
                     // The whole blast zone swells as one molten dome -- the reference's giant
                     // orange sphere -- with the starburst inside it.
@@ -7096,6 +7121,16 @@ class GameRenderer(
                 techniqueFx?.gibarta(
                     p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, dirX, dirZ,
                 )
+                for (box in fieldBoxes.filter { !it.broken }) {
+                    val bdx = box.x - p.mesh.position.x
+                    val bdz = box.z - p.mesh.position.z
+                    val along = bdx * dirX + bdz * dirZ
+                    val lateral = bdx * dirZ - bdz * dirX
+                    val halfWidth = GIBARTA_HALF_WIDTH_UNITS * worldUnit + box.radius
+                    if (along in 0.0..(GIBARTA_RANGE_UNITS * worldUnit) &&
+                        lateral in -halfWidth..halfWidth
+                    ) smashBox(box)
+                }
                 // A freezing breath: wider and shorter than Barta's line, and it can freeze.
                 for (enemy in enemies.filter { !it.isDead }) {
                     val dx = enemy.mesh.position.x - p.mesh.position.x
@@ -7121,6 +7156,12 @@ class GameRenderer(
 
             Technique.RABARTA -> {
                 techniqueFx?.rabarta(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z)
+                for (box in fieldBoxes.filter { !it.broken }) {
+                    val bdx = box.x - p.mesh.position.x
+                    val bdz = box.z - p.mesh.position.z
+                    val reach = RABARTA_RADIUS_UNITS * worldUnit + box.radius
+                    if (bdx * bdx + bdz * bdz <= reach * reach) smashBox(box)
+                }
                 // Ice bursting in a circle around the caster, freezing what it catches.
                 for (enemy in enemiesWithin(p.mesh.position.x, p.mesh.position.z, RABARTA_RADIUS_UNITS)) {
                     hurtEnemy(enemy, techniqueDamage(power, mst, enemy.resistances.ice))
@@ -7199,11 +7240,39 @@ class GameRenderer(
                 }
                 if (links == 0) showToast("Nothing in reach")
                 if (chainPoints.size > 1) techniqueFx?.gizonde(chainPoints)
+                if (links == 0) {
+                    val crate = focusedTarget?.box?.takeIf { !it.broken }
+                        ?: fieldBoxes.filter { !it.broken }.minByOrNull {
+                            val bdx = it.x - p.mesh.position.x
+                            val bdz = it.z - p.mesh.position.z
+                            bdx * bdx + bdz * bdz
+                        }?.takeIf {
+                            val bdx = it.x - p.mesh.position.x
+                            val bdz = it.z - p.mesh.position.z
+                            val reach = ZONDE_RANGE_UNITS * worldUnit
+                            bdx * bdx + bdz * bdz <= reach * reach
+                        }
+                    crate?.let { box ->
+                        techniqueFx?.gizonde(
+                            listOf(
+                                doubleArrayOf(fromX, fromY, fromZ),
+                                doubleArrayOf(box.x, box.y + 2.0 * worldUnit, box.z),
+                            )
+                        )
+                        smashBox(box)
+                    }
+                }
 
             }
 
             Technique.RAZONDE -> {
                 techniqueFx?.razonde(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z)
+                for (box in fieldBoxes.filter { !it.broken }) {
+                    val bdx = box.x - p.mesh.position.x
+                    val bdz = box.z - p.mesh.position.z
+                    val reach = RAZONDE_RADIUS_UNITS * worldUnit + box.radius
+                    if (bdx * bdx + bdz * bdz <= reach * reach) smashBox(box)
+                }
                 // The storm around the caster -- the one lightning technique that needs no target.
                 // The whole zone becomes the reference's crawling lightning field.
                 spawnLightningCrawl(
@@ -7247,7 +7316,13 @@ class GameRenderer(
 
             Technique.GRANTS -> {
                 val target = focusedEnemy?.takeIf { !it.isDead }
-                if (target == null) {
+                val boxTarget = focusedTarget?.box?.takeIf { !it.broken }
+                if (target == null && boxTarget != null) {
+                    // Judgment falls on the crate.
+                    techniqueFx?.grants(boxTarget.x, boxTarget.y, boxTarget.z)
+                    spawnLightPillar(boxTarget.x, boxTarget.y, boxTarget.z, GRANTS_COLOR)
+                    smashBox(boxTarget)
+                } else if (target == null) {
                     showToast("Grants needs a target")
                 } else {
                     hurtEnemy(target, techniqueDamage(power, mst, target.resistances.light))
@@ -7869,6 +7944,18 @@ class GameRenderer(
                 val sp = shot.sprite.position
                 if (kind == "foie") techniqueFx?.foieTrail(sp.x, sp.y, sp.z, shot.dirX, shot.dirZ)
                 else techniqueFx?.megidTrail(sp.x, sp.y, sp.z, shot.dirX, shot.dirZ)
+            }
+
+            // The curse doesn't roll against a crate -- it just takes it.
+            if (breakBoxNear(
+                    shot.sprite.position.x, shot.sprite.position.z,
+                    FOIE_RADIUS_UNITS * worldUnit,
+                )
+            ) {
+                shot.sprite.parent?.remove(shot.sprite)
+                projectileTrails.remove(shot.sprite)
+                shots.remove()
+                continue
             }
 
             // The curse's wake: violet residue hanging in the air where it passed.
