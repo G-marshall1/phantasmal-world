@@ -51,8 +51,8 @@ object Weapon {
      * barrel-down-Y under one convention fix, and two of the three are confirmed right under
      * it, so flipping the third would break what its own family proves.
      *
-     * The pistols are here for the other reason: they take an explicit correction of their own
-     * in [applyModelConvention] instead, which subsumes the half-turn (see the note there).
+     * The pistols are here for the other reason: they were authored correctly to begin with and
+     * the blanket turn is what put them wrong (see the note in [applyModelConvention]).
      */
     private val NO_FACING_FLIP: Set<WeaponType> = setOf(
         WeaponType.SABER, WeaponType.SWORD, WeaponType.DOUBLE_SABER,
@@ -184,18 +184,19 @@ object Weapon {
      *   its correct normalization: blades sweep down-forward through the target.
      * - The Dagger is authored blade-backwards (-Z, z in [-5.1, 2.0]), so it starts a half-turn
      *   about Y from the shared convention.
-     * - The pistols hung under the hand pointing backwards on device, wanting "180 on its x and
-     *   180 on its Y" on top of the blanket half-turn. Those three half-turns compose to a
-     *   single roll about X -- Ry(pi) . Rx(pi) . Ry(pi) = Rx(pi) -- which is what's applied
-     *   here, with the blanket turn dropped (see [NO_FACING_FLIP]). The Mechgun follows the
-     *   Handgun: both are authored on the same +Z convention and were flipped together.
+     * - The pistols need nothing, and the walk back to that is worth recording. They were
+     *   verified aiming dead at the target before any of this; the blanket half-turn then put
+     *   them under the hand facing backwards, a requested "180 on its x and 180 on its Y" took
+     *   them to a single roll about X (Ry(pi) . Rx(pi) . Ry(pi) = Rx(pi)), which stood them in
+     *   the grip but upside down, and the last half-turn about X asked for from there is
+     *   exactly Rx(pi) . Rx(pi) = identity. So the Handgun and Mechgun carry no rotation at all
+     *   and are excluded from the blanket turn -- the state they started in.
      */
     private fun applyModelConvention(mesh: Mesh, type: WeaponType) {
         when (type) {
             WeaponType.RIFLE, WeaponType.SHOT, WeaponType.LAUNCHER -> mesh.rotation.z = PI
             WeaponType.CLAW -> mesh.rotation.x = -PI / 2
             WeaponType.DAGGER -> mesh.rotation.y = PI
-            WeaponType.HANDGUN, WeaponType.MECHGUN -> mesh.rotation.x = PI
             else -> Unit
         }
     }
