@@ -204,6 +204,7 @@ class MiniMap(container: HTMLElement) : TrackedDisposable() {
     fun setMapGeometry(triangles: List<DoubleArray>) {
         this.triangles = triangles
         triangleRoom = IntArray(0)
+        doorSideRooms.clear()
         mapBitmap = null
         renderedRooms = emptySet()
 
@@ -234,29 +235,129 @@ class MiniMap(container: HTMLElement) : TrackedDisposable() {
     fun setRooms(rooms: List<MapRoom>) {
         this.rooms = rooms
         triangleRoom = IntArray(0)
+        doorSideRooms.clear()
         mapBitmap = null
         renderedRooms = emptySet()
     }
 
-    /** Nearest room origin per triangle -- the wave director's own "which room is this" rule. */
+    /** The doorway lines the flood fill below must not cross, each [ax, az, bx, bz]. */
+    private var doorBarriers: List<DoubleArray> = emptyList()
+
+    /**
+     * Records the map's doorways as hard boundaries for room attribution, invalidating the
+     * current assignment if they weren't known yet. Doors exist by the time the first frame
+     * draws, so in practice this runs once per map.
+     */
+    private fun rememberDoorBarriers(doors: List<MapDoor>) {
+        if (doorBarriers.isNotEmpty() || doors.isEmpty()) return
+        doorSideRooms.clear()
+        doorBarriers = doors.map { door ->
+            // Extended past each end so links squeezing around a doorpost still count as
+            // crossing -- the seam between wall and door isn't pixel-tight in the data.
+            val ex = (door.bx - door.ax) * DOOR_BARRIER_EXTENSION
+            val ez = (door.bz - door.az) * DOOR_BARRIER_EXTENSION
+            doubleArrayOf(door.ax - ex, door.az - ez, door.bx + ex, door.bz + ez)
+        }
+        triangleRoom = IntArray(0)
+        mapBitmap = null
+    }
+
+    /**
+     * Which room each triangle belongs to. Grown by flood fill from each room's origin, never
+     * expanding across a doorway: a room the player hasn't entered stays dark right up to its
+     * gate, instead of its near half leaking into the corridor's fog simply for being closer
+     * to the corridor's origin -- which is exactly what let the old nearest-origin rule show
+     * half a locked room through its door. Isolated leftovers fall back to nearest-origin.
+     */
     private fun assignTriangles() {
         if (triangles.isEmpty() || rooms.isEmpty()) return
-        triangleRoom = IntArray(triangles.size) { index ->
-            val t = triangles[index]
-            val cx = (t[0] + t[2] + t[4]) / 3
-            val cz = (t[1] + t[3] + t[5]) / 3
-            var best = -1
-            var bestD = Double.MAX_VALUE
-            for (room in rooms) {
-                val dx = cx - room.x
-                val dz = cz - room.z
+        val n = triangles.size
+
+        val centroidX = DoubleArray(n)
+        val centroidZ = DoubleArray(n)
+        for (i in 0 until n) {
+            val t = triangles[i]
+            centroidX[i] = (t[0] + t[2] + t[4]) / 3
+            centroidZ[i] = (t[1] + t[3] + t[5]) / 3
+        }
+
+        // Adjacency through shared edges, keyed on rounded endpoints so mesh seams that agree
+        // to within half a unit still connect.
+        fun vertexKey(x: Double, z: Double) = "${(x * 2).toInt()},${(z * 2).toInt()}"
+        val edgeToTriangles = HashMap<String, MutableList<Int>>()
+        for (i in 0 until n) {
+            val t = triangles[i]
+            for (e in 0 until 3) {
+                val ax = t[e * 2]; val az = t[e * 2 + 1]
+                val bx = t[(e * 2 + 2) % 6]; val bz = t[(e * 2 + 3) % 6]
+                val ka = vertexKey(ax, az); val kb = vertexKey(bx, bz)
+                val key = if (ka < kb) "$ka|$kb" else "$kb|$ka"
+                edgeToTriangles.getOrPut(key) { mutableListOf() }.add(i)
+            }
+        }
+
+        fun crossesDoor(x1: Double, z1: Double, x2: Double, z2: Double): Boolean {
+            for (seg in doorBarriers) {
+                val o1 = (seg[0] - x1) * (z2 - z1) - (seg[1] - z1) * (x2 - x1)
+                val o2 = (seg[2] - x1) * (z2 - z1) - (seg[3] - z1) * (x2 - x1)
+                if (o1 * o2 >= 0) continue
+                val o3 = (x1 - seg[0]) * (seg[3] - seg[1]) - (z1 - seg[1]) * (seg[2] - seg[0])
+                val o4 = (x2 - seg[0]) * (seg[3] - seg[1]) - (z2 - seg[1]) * (seg[2] - seg[0])
+                if (o3 * o4 < 0) return true
+            }
+            return false
+        }
+
+        // Every room claims its nearest triangle as a seed, then the claims grow outward
+        // together, halting at doorways.
+        val owner = IntArray(n) { -1 }
+        val queue = ArrayDeque<Int>()
+        for (room in rooms) {
+            var seed = -1
+            var seedD = Double.MAX_VALUE
+            for (i in 0 until n) {
+                val dx = centroidX[i] - room.x
+                val dz = centroidZ[i] - room.z
                 val d = dx * dx + dz * dz
-                if (d < bestD) {
-                    bestD = d
-                    best = room.id
+                if (d < seedD) { seedD = d; seed = i }
+            }
+            if (seed >= 0 && owner[seed] == -1) {
+                owner[seed] = room.id
+                queue.add(seed)
+            }
+        }
+
+        while (queue.isNotEmpty()) {
+            val i = queue.removeFirst()
+            val t = triangles[i]
+            for (e in 0 until 3) {
+                val ax = t[e * 2]; val az = t[e * 2 + 1]
+                val bx = t[(e * 2 + 2) % 6]; val bz = t[(e * 2 + 3) % 6]
+                val ka = vertexKey(ax, az); val kb = vertexKey(bx, bz)
+                val key = if (ka < kb) "$ka|$kb" else "$kb|$ka"
+                for (j in edgeToTriangles[key] ?: continue) {
+                    if (owner[j] != -1) continue
+                    if (crossesDoor(centroidX[i], centroidZ[i], centroidX[j], centroidZ[j])) continue
+                    owner[j] = owner[i]
+                    queue.add(j)
                 }
             }
-            best
+        }
+
+        // Anything the fill couldn't reach keeps the old nearest-origin rule.
+        triangleRoom = IntArray(n) { i ->
+            if (owner[i] != -1) owner[i]
+            else {
+                var best = -1
+                var bestD = Double.MAX_VALUE
+                for (room in rooms) {
+                    val dx = centroidX[i] - room.x
+                    val dz = centroidZ[i] - room.z
+                    val d = dx * dx + dz * dz
+                    if (d < bestD) { bestD = d; best = room.id }
+                }
+                best
+            }
         }
     }
 
@@ -313,6 +414,7 @@ class MiniMap(container: HTMLElement) : TrackedDisposable() {
         visitedRooms: Set<Int> = emptySet(),
     ) {
         if (triangles.isEmpty()) return
+        rememberDoorBarriers(doors)
         if (mapBitmap == null || renderedRooms != visitedRooms) renderBitmap(visitedRooms)
         val bitmap = mapBitmap ?: return
 
@@ -342,7 +444,7 @@ class MiniMap(container: HTMLElement) : TrackedDisposable() {
         val viewScale = size / WINDOW_WORLD_UNITS
         drawMarkers(
             ctx, size, playerX, playerZ, playerYaw, enemies,
-            doors.filter { isRoomVisited(it.x, it.z) },
+            doors.filter { isDoorVisible(it) },
             toScreenX = { x -> (x - playerX) * viewScale + size / 2 },
             toScreenZ = { z -> (z - playerZ) * viewScale + size / 2 },
         )
@@ -385,28 +487,66 @@ class MiniMap(container: HTMLElement) : TrackedDisposable() {
         val fit = size / srcSize * worldScale
         drawMarkers(
             fullCtx, size, playerX, playerZ, playerYaw, enemies,
-            doors.filter { isRoomVisited(it.x, it.z) },
+            doors.filter { isDoorVisible(it) },
             toScreenX = { x -> (x - viewMinX) * fit },
             toScreenZ = { z -> (z - viewMinZ) * fit },
             fullMap = true,
         )
     }
 
-    /** True when the room nearest this spot is one the player has walked into. */
-    private fun isRoomVisited(x: Double, z: Double): Boolean {
+    /** Which rooms a door joins, cached per door -- found by sampling either side of it. */
+    private val doorSideRooms = HashMap<String, Pair<Int, Int>>()
+
+    /**
+     * A door shows once *either* of its rooms has been walked -- standing before a locked room
+     * you see the gate and its colour, and nothing past it. Hiding doors whose nearest room
+     * was unvisited kept exactly the wrong ones dark.
+     */
+    private fun isDoorVisible(door: MapDoor): Boolean {
         if (rooms.isEmpty()) return true
-        var best = -1
-        var bestD = Double.MAX_VALUE
-        for (room in rooms) {
-            val dx = x - room.x
-            val dz = z - room.z
+        if (renderedRooms.isEmpty()) return false
+        val key = "${(door.x * 10).toInt()},${(door.z * 10).toInt()}"
+        val sides = doorSideRooms.getOrPut(key) {
+            // Perpendicular to the doorway, a short step out on each side.
+            val dx = door.bx - door.ax
+            val dz = door.bz - door.az
+            val length = kotlin.math.sqrt(dx * dx + dz * dz)
+            if (length < 1e-6) return@getOrPut roomAt(door.x, door.z).let { it to it }
+            val nx = -dz / length * DOOR_SIDE_SAMPLE
+            val nz = dx / length * DOOR_SIDE_SAMPLE
+            roomAt(door.x + nx, door.z + nz) to roomAt(door.x - nx, door.z - nz)
+        }
+        return sides.first in renderedRooms || sides.second in renderedRooms
+    }
+
+    /**
+     * The room owning the floor at this point -- the flood fill's own attribution. Containment
+     * first: floor triangles vary wildly in size, so the nearest *centroid* is routinely a
+     * small triangle in the wrong room while the point stands inside a huge one. Falls back to
+     * nearest centroid only off the floor entirely.
+     */
+    private fun roomAt(x: Double, z: Double): Int {
+        if (triangleRoom.isEmpty() || triangles.isEmpty()) return -1
+        var nearest = -1
+        var nearestD = Double.MAX_VALUE
+        for ((index, t) in triangles.withIndex()) {
+            val o1 = (t[2] - t[0]) * (z - t[1]) - (t[3] - t[1]) * (x - t[0])
+            val o2 = (t[4] - t[2]) * (z - t[3]) - (t[5] - t[3]) * (x - t[2])
+            val o3 = (t[0] - t[4]) * (z - t[5]) - (t[1] - t[5]) * (x - t[4])
+            if ((o1 >= 0 && o2 >= 0 && o3 >= 0) || (o1 <= 0 && o2 <= 0 && o3 <= 0)) {
+                return triangleRoom[index]
+            }
+            val cx = (t[0] + t[2] + t[4]) / 3
+            val cz = (t[1] + t[3] + t[5]) / 3
+            val dx = x - cx
+            val dz = z - cz
             val d = dx * dx + dz * dz
-            if (d < bestD) {
-                bestD = d
-                best = room.id
+            if (d < nearestD) {
+                nearestD = d
+                nearest = triangleRoom[index]
             }
         }
-        return best in renderedRooms
+        return nearest
     }
 
     /** The moving parts both maps share: doors, enemies, and the player's arrow. */
@@ -495,6 +635,12 @@ class MiniMap(container: HTMLElement) : TrackedDisposable() {
         private const val FULL_ARROW_SIZE = 18.0
         /** Breathing room around the explored area when the full map frames it, in world units. */
         private const val FULL_MAP_PADDING_UNITS = 60.0
+
+        /** How far past each end a doorway extends as a flood-fill barrier. */
+        private const val DOOR_BARRIER_EXTENSION = 0.35
+
+        /** How far to each side of a doorway to sample for the rooms it joins, world units. */
+        private const val DOOR_SIDE_SAMPLE = 8.0
 
         /** How far the full map's pinch zoom ranges. */
         private const val ZOOM_MIN = 0.6

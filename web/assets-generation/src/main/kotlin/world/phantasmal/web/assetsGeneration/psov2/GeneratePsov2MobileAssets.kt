@@ -319,8 +319,12 @@ private fun generateGslObjects(sourceDir: File, outputDir: File) {
     for (spec in GSL_OBJECT_SPECS) {
         logger.info("Generating objects/${spec.slug}.*.")
 
-        val gsl = readGsl(File(sourceDir, spec.archive).readBytes())
-        val bml = readBml(gsl.getValue(spec.bmlEntry))
+        val gsl =
+            if (spec.topLevelBml) emptyMap()
+            else readGsl(File(sourceDir, spec.archive).readBytes())
+        val bml =
+            if (spec.topLevelBml) readBml(File(sourceDir, spec.archive).readBytes())
+            else readBml(gsl.getValue(spec.bmlEntry))
 
         write(outputDir, "objects/${spec.slug}.nj", bml.getValue(spec.njEntry))
 
@@ -558,6 +562,15 @@ private val EMITTED_OBJECT_TYPES = setOf(
     // models), plus the floor switch (323) and the Ruins' own in-map warp (321), whose record
     // is parameter-for-parameter the standard warp's (dest xyz in the floats, yaw in the ints).
     321, 323, 324, 325, 326,
+    // The Ruins' own crates (353 fixed, 354 random), and the true heal ring (19) everywhere --
+    // 13, long mistaken for the heal ring, is psolib's LargeElementalTrap.
+    353, 354, 19,
+    // The Ruins' remaining mechanisms: teleporter (320), standing door switch (322), the
+    // 4-button (330) and 2-button (331) doors, fence switch (333), laser fences (334/335),
+    // and the poison blob (338).
+    320, 322, 330, 331, 333, 334, 335, 338,
+    // The ceiling pillar trap and the crystal monument.
+    339, 341,
 )
 private const val OBJECT_RECORD_SIZE = 68
 

@@ -16,8 +16,18 @@ class FieldBox(
     val x: Double,
     val y: Double,
     val z: Double,
-    /** Radius the player's swing has to reach, in world units. */
+    /**
+     * Radius the player's swing has to reach, in world units -- the crate's widest half-extent,
+     * not its half-diagonal. The diagonal covered the corners but made every crate read fat:
+     * you'd bump into air and break boxes the blade visibly missed.
+     */
     val radius: Double,
+    /** The crate's own half-extents and yaw, for the exact walk-into-it rectangle test. */
+    val halfX: Double = radius,
+    val halfZ: Double = radius,
+    val yaw: Double = 0.0,
+    /** How tall the crate stands, world units -- where its reticle floats. */
+    val height: Double = 0.0,
 ) {
     var broken = false
 

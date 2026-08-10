@@ -71,6 +71,14 @@ class Enemy(
     var untargetable: Boolean = false
 
     /**
+     * The Dubwitch loop: while positive, this corpse is a downed Dubchic waiting to get back
+     * up. Counted down by the death pass; at zero it revives if its room's Dubwitch still
+     * stands, and dies for real if not. The getting-up clip rides along from the clip set.
+     */
+    var reviveRemaining: Double = 0.0
+    var reviveMotion: world.phantasmal.psolib.fileFormats.ninja.NjMotion? = null
+
+    /**
      * The body's visible bounding radius in world units, model scale included -- what the
      * lock-on reticle squeezes down onto. Set at spawn; 0 falls back to the hitbox.
      */
@@ -223,6 +231,12 @@ class CombatController(
          * damage dealt and whether it was a critical.
          */
         onHit: (Enemy, damage: Int, critical: Boolean) -> Unit = { _, _, _ -> },
+        /**
+         * Called once when the swing's strike resolves, with how many enemies the blade
+         * reached (hit or miss). The caller spends the rest of the weapon's target budget on
+         * crates and traps -- the fix for a one-target saber smashing a whole row of boxes.
+         */
+        onStrikeResolved: (reached: Int) -> Unit = {},
     ): Boolean {
         if (isAttacking) return false
 
@@ -284,6 +298,9 @@ class CombatController(
         // arrives, instead of testing once on one frame and silently whiffing while the sword
         // passes visibly through them.
         strikeWindowRemaining = currentSwingOccupancy * STRIKE_WINDOW_SHARE
+        // The strike retries frames while its window is open (to catch an enemy walking in
+        // late), but the caller's crate/trap budget must be spent exactly once -- on contact.
+        var strikeResolvedReported = false
         pendingStrike = {
             val forwardX = sin(playerYaw)
             val forwardZ = cos(playerYaw)
@@ -320,6 +337,11 @@ class CombatController(
 
                 // A quarter of the target's health in one blow puts it on the floor.
                 if (isKnockdown(damage, enemy.maxHp)) onKnockdown(enemy)
+            }
+
+            if (!strikeResolvedReported) {
+                strikeResolvedReported = true
+                onStrikeResolved(inReach.size)
             }
 
             // Whether the blade found anything at all this frame -- a miss roll still counts,

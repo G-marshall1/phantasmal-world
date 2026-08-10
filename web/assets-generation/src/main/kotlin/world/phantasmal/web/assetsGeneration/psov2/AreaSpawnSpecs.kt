@@ -160,9 +160,10 @@ fun forestEnemySlug(typeId: Int, skin: Int, special: Boolean): String? = when (t
     0x082 -> if (special) "SinowGold" else "SinowBeat"
     0x083 -> "Canadine"
     0x084 -> "Canane"
-    // The Dubswitch pod that revives downed Dubchics: psov2 has no model for it at all (checked
-    // AssetEnemies.js), so it and the revival mechanic it powers are skipped.
-    0x085 -> null
+    // The Dubwitch pod that revives downed Dubchics. psov2 has no model for it (checked
+    // AssetEnemies.js), so the game synthesizes a pod body for the slug at spawn -- the
+    // placements themselves are real, and the revival mechanic hangs off them.
+    0x085 -> "Dubwitch"
     // The Ruins.
     0x0A0 -> "Delsaber"
     0x0A1 -> "ChaosSorcerer"

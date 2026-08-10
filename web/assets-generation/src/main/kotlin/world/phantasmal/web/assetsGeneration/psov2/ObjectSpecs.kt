@@ -48,6 +48,11 @@ class GslObjectSpec(
     val lockedPvmEntry: String? = null,
     /** Which texture of the model's own set the locked variant replaces. */
     val lockedTextureIndex: Int = 0,
+    /**
+     * The archive is a plain top-level .bml rather than a .gsl -- the Ruins' container box
+     * ships that way. pvm reads come from the bml; [pvmFromGsl] must be false.
+     */
+    val topLevelBml: Boolean = false,
 )
 
 /**
@@ -545,6 +550,103 @@ val GSL_OBJECT_SPECS: List<GslObjectSpec> = listOf(
         njEntry = "fe_obj_switch_laz.nj",
         pvmEntry = "fe_obj_switch_laz.pvm",
         njmEntry = "fe_obj_switch_laz.njm",
+        pvmFromGsl = true,
+    ),
+
+    // The Ruins' laser fences, their pedestal switch, the standing door switch, and the
+    // poison blob jar -- the area's remaining interactive set.
+    GslObjectSpec(
+        slug = "RuinsFence4x2",
+        archive = "gsl_ancient01.gsl",
+        bmlEntry = "bm_fd_obj_n_saku_4x2.bml",
+        njEntry = "fd_obj_n_saku_4x2.nj",
+        pvmEntry = "fd_obj_n_saku_4x2.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsFence6x2",
+        archive = "gsl_ancient01.gsl",
+        bmlEntry = "bm_fd_obj_n_saku_6x2.bml",
+        njEntry = "fd_obj_n_saku_6x2.nj",
+        pvmEntry = "fd_obj_n_saku_6x2.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsFenceSwitch",
+        archive = "gsl_ancient01.gsl",
+        bmlEntry = "bm_fd_obj_n_switch.bml",
+        njEntry = "fd_obj_n_switch.nj",
+        pvmEntry = "fd_obj_n_switch.pvm",
+        pvmFromGsl = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsDoorSwitch",
+        archive = "bm_fs_obj_o_doorswitch01.bml",
+        bmlEntry = "bm_fs_obj_o_doorswitch01.bml",
+        njEntry = "fs_obj_o_doorswitch01.nj",
+        pvmEntry = "fs_obj_o_doorswitch01.pvm",
+        topLevelBml = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsBlobJar",
+        archive = "gsl_ancient01.gsl",
+        bmlEntry = "fe_obj_h_s_konte.bml",
+        njEntry = "fe_obj_h_s_konte.nj",
+        pvmEntry = "fe_obj_h_s_konte.pvm",
+    ),
+
+    // The Ruins' ceiling pillar trap (turigane -- the hanging bell), and the stone monument
+    // crystal, both from top-level bmls.
+    GslObjectSpec(
+        slug = "RuinsPillarTrap",
+        archive = "bm_o_trap_ancient01.bml",
+        bmlEntry = "bm_o_trap_ancient01.bml",
+        njEntry = "fs_obj_o_turigane.nj",
+        pvmEntry = "fs_obj_o_turigane.pvm",
+        topLevelBml = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsCrystal",
+        archive = "bm_fs_obj_o_sekihi01.bml",
+        bmlEntry = "bm_fs_obj_o_sekihi01.bml",
+        njEntry = "fs_obj_o_sekihi01.nj",
+        pvmEntry = "fs_obj_o_sekihi01.pvm",
+        topLevelBml = true,
+    ),
+
+    // The Ruins' breakable container, plus its two fragments -- from a top-level bml.
+    GslObjectSpec(
+        slug = "RuinsBox",
+        archive = "bm_o_container_ancient.bml",
+        bmlEntry = "bm_o_container_ancient.bml",
+        njEntry = "fe_obj_o_container.nj",
+        pvmEntry = "fe_obj_o_container.pvm",
+        topLevelBml = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsBoxShardA",
+        archive = "bm_o_container_ancient.bml",
+        bmlEntry = "bm_o_container_ancient.bml",
+        njEntry = "fe_obj_o_container_hahen01.nj",
+        pvmEntry = "fe_obj_o_container_hahen01.pvm",
+        topLevelBml = true,
+    ),
+    GslObjectSpec(
+        slug = "RuinsBoxShardB",
+        archive = "bm_o_container_ancient.bml",
+        bmlEntry = "bm_o_container_ancient.bml",
+        njEntry = "fe_obj_o_container_hahen02.nj",
+        pvmEntry = "fe_obj_o_container_hahen02.pvm",
+        topLevelBml = true,
+    ),
+
+    // The heal ring's true model, shared by every area that stands one (type 19 placements).
+    GslObjectSpec(
+        slug = "HealRing",
+        archive = "gsl_forest01.gsl",
+        bmlEntry = "bm_fe_obj_kaifuku_moto.bml",
+        njEntry = "fe_obj_kaifuku_moto.nj",
+        pvmEntry = "fe_obj_kaifuku_moto.pvm",
         pvmFromGsl = true,
     ),
 

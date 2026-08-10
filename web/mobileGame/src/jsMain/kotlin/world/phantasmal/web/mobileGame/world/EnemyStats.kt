@@ -206,6 +206,14 @@ val FOREST_ENEMY_STATS: Map<String, EnemyStats> = mapOf(
 
     // The Mines. Combat numbers ride in from the battle params like the caves'; these carry
     // the bodies and the fighting styles.
+    // The Dubwitch: the pod that keeps a room's Dubchics getting back up. It neither moves nor
+    // fights -- its threat is every revival it powers -- and the room only truly quiets when
+    // it's found and broken.
+    "Dubwitch" to EnemyStats(
+        hp = 45, atp = 0, dfp = 0, ata = 0, evp = 0, lck = 0,
+        hitboxRadius = 1.0, attackRange = 0.0, isStationary = true,
+        experience = 1, dropRate = 0,
+    ),
     "Dubchic" to EnemyStats(
         hp = 150, atp = 55, dfp = 10, ata = 55, evp = 0, lck = 5,
         hitboxRadius = 1.2, attackRange = 1.6, experience = 3, dropRate = 30,

@@ -142,6 +142,10 @@ private fun init() {
             // DEBUG: ?face=<degrees> turns the character at spawn -- 180 faces the camera,
             // for judging how a weapon sits in the hand from the front.
             facingOverride = params.get("face")?.toDoubleOrNull()?.let { it * kotlin.math.PI / 180.0 },
+            // DEBUG: ?geom=<slug> pins the random geometry variant (pair with ?layout=).
+            geometryOverride = params.get("geom"),
+            // DEBUG: ?camyaw=<degrees> turns the camera itself, which ?face does not.
+            cameraYawOverride = params.get("camyaw")?.toDoubleOrNull()?.let { it * kotlin.math.PI / 180.0 },
             // DEBUG: ?pose=<clip>,<frame> freezes the character mid-animation -- the way to
             // inspect how a weapon sits at an attack's contact frame.
             boneScan = params.get("bonescan") != null,

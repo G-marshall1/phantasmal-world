@@ -304,6 +304,27 @@ class EnemyAI(
         cancelSwing()
     }
 
+    /**
+     * A revived Dubchic getting back on its feet: plays the getting-up clip and clears every
+     * combat timer so the machine comes back calm rather than mid-swing.
+     */
+    fun onRevived(reviveMotion: NjMotion?) {
+        attackAnimRemaining = 0.0
+        attackContactRemaining = 0.0
+        attackCooldownRemaining = ATTACK_COOLDOWN
+        stunRemaining = 0.0
+        wakeUpRemaining = 0.0
+        inMeleeStance = false
+        val motion = reviveMotion
+        if (motion != null) {
+            // Held briefly as a one-shot so the rise plays out before the brain resumes.
+            wakeUpRemaining = (motion.frameCount - 1) / PSO_FRAME_RATE_DOUBLE
+            playClip(motion, oneShot = true)
+        } else {
+            playClip(waitMotion ?: walkMotion, timeScale = IDLE_ANIM_SCALE)
+        }
+    }
+
     /** Switches to the death clip, if this enemy has one. */
     fun onDeath() {
         // One-shot with clamp, so the body holds its final collapsed pose until it's removed

@@ -63,6 +63,11 @@ class ThirdPersonCameraController(
 
     private var userYawOffset = 0.0
 
+    /** DEBUG (rig): points the camera at an absolute yaw, as the drag would. */
+    fun debugSetYawOffset(offset: Double) {
+        userYawOffset = offset
+    }
+
     /** Camera elevation above the horizontal, in radians. Dragging vertically moves it. */
     private var pitch = DEFAULT_PITCH
 

@@ -144,6 +144,8 @@ class EnemyClipSet(
     val appear: NjMotion?,
     /** Only the hives have these -- see HiveClips. */
     val hive: HiveClips? = null,
+    /** The Dubchic's getting-up clip, for the Dubwitch revival loop. Null elsewhere. */
+    val revive: NjMotion? = null,
 )
 
 /** A hive's deploy-and-collapse clips, loaded only for the species that has them. */
@@ -183,6 +185,9 @@ suspend fun EnemyAssetLoader.loadClipSet(kind: AreaEnemy, njObject: NjObject): E
             null
         },
         wakeUp = extra?.wakeUp?.let { clip(it) },
+        // Dubchics get back up as long as their room's Dubwitch stands -- the clip ships in
+        // their own bml, it was simply never played.
+        revive = if (kind.slug == "Dubchic") clip("revival_f_me2_y_me2.njm") else null,
         attackAlt = extra?.attackAlt?.let { clip(it) },
         stun = extra?.stun?.let { clip(it) },
         appear = extra?.appear?.let { clip(it) },

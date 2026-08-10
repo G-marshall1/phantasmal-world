@@ -238,6 +238,8 @@ class GameRenderer(
     private val spawnYOverride: Double? = null,
     /** DEBUG: spawn facing in radians -- pi shows the character's front to the camera. */
     private val facingOverride: Double? = null,
+    /** DEBUG (rig): absolute camera yaw in radians -- the camera's own facing, not the character's. */
+    private val cameraYawOverride: Double? = null,
     /** DEBUG: freeze the character at (clip index, frame) -- weapon-orientation inspection. */
     private val poseOverride: Pair<Int, Int>? = null,
     /** DEBUG: log every bone's world position once posed -- finds the hand bone per class. */
@@ -285,6 +287,8 @@ class GameRenderer(
      * particular room's waves can be walked through repeatedly. See ?layout= in Main.kt.
      */
     private val layoutOverride: String? = null,
+    /** DEBUG (rig): pins the area's random geometry roll so ?layout= and the world agree. */
+    private val geometryOverride: String? = null,
     /**
      * Which weapon to equip, by model slug -- see WEAPON_TYPES for everything shipped. Decides
      * both the model in the character's hand and the whole motion set they use. There's no
@@ -424,6 +428,9 @@ class GameRenderer(
     private val fieldBoxes = mutableListOf<FieldBox>()
     private val boxShards = mutableListOf<BoxShard>()
 
+    /** The fragments the current area's crates burst into -- set with the box model. */
+    private var boxShardSlugs: List<String> = listOf("ForestBoxShardA", "ForestBoxShardB")
+
     /**
      * Stands the map's own crates. One mesh is loaded and cloned per placement rather than
      * fetched fifty times -- Forest 1 carries about fifty boxes a layout.
@@ -432,15 +439,24 @@ class GameRenderer(
         val placements = layout.objects.filter { it.typeId in SpawnObject.BREAKABLE_BOX_TYPES }
         if (placements.isEmpty()) return
 
-        val prototype = ObjectAssetLoader(assetLoader).loadObject("ForestBox")
+        // Each area breaks its own crates: the Ruins' dark containers come apart into their
+        // own fragments, everything else still uses the Forest's wooden box.
+        val boxSlug = if (mapSlug.startsWith("ruins")) "RuinsBox" else "ForestBox"
+        boxShardSlugs =
+            if (mapSlug.startsWith("ruins")) listOf("RuinsBoxShardA", "RuinsBoxShardB")
+            else listOf("ForestBoxShardA", "ForestBoxShardB")
+        val prototype = ObjectAssetLoader(assetLoader).loadObject(boxSlug)
 
         // Measured off the crate itself rather than guessed: the model's own footprint is what
-        // decides where its sides are. A hand-picked radius sat near the centre, so a crate
-        // could only be hit or blocked from almost on top of it -- you had to be standing in
-        // the box to break it. Half the diagonal covers the corners of a square crate, so the
-        // whole outside is solid.
-        val measured = boxFootprintRadius(prototype)
-        val radius = measured ?: (BOX_HIT_RADIUS_UNITS * unitScale)
+        // decides where its sides are. The *half-extents*, not the half-diagonal -- an earlier
+        // pass used the diagonal to cover the corners, which made every crate read 40% fatter
+        // than it looks: you'd bump into air and break boxes the blade visibly missed. Walking
+        // collision now tests the true rectangle; the strike test uses the widest half-extent.
+        val extents = boxFootprintExtents(prototype)
+        val halfX = extents?.first ?: (BOX_HIT_RADIUS_UNITS * unitScale)
+        val halfZ = extents?.second ?: (BOX_HIT_RADIUS_UNITS * unitScale)
+        val height = extents?.third ?: 0.0
+        val radius = maxOf(halfX, halfZ)
 
         for (placement in placements) {
             val mesh = prototype.clone() as Mesh
@@ -448,61 +464,105 @@ class GameRenderer(
             mesh.rotation.y = placement.yaw
             context.scene.add(mesh)
             fieldBoxes.add(
-                FieldBox(mesh, placement.typeId, placement.x, placement.y, placement.z, radius)
+                FieldBox(
+                    mesh, placement.typeId, placement.x, placement.y, placement.z, radius,
+                    halfX = halfX, halfZ = halfZ, yaw = placement.yaw, height = height,
+                )
             )
         }
     }
 
-    /**
-     * Half the diagonal of the crate's own footprint, in world units, so its corners are
-     * covered rather than just the middle of each face. Null if the mesh can't be measured.
-     */
-    private fun boxFootprintRadius(mesh: Object3D): Double? {
+    /** The crate's half-extents (x, z) and full height, world units. Null if unmeasurable. */
+    private fun boxFootprintExtents(mesh: Object3D): Triple<Double, Double, Double>? {
         val geometry = mesh.asDynamic().geometry ?: return null
         if (geometry.boundingBox == null) geometry.computeBoundingBox()
         val box = geometry.boundingBox ?: return null
         val halfX = ((box.max.x as Double) - (box.min.x as Double)) / 2
         val halfZ = ((box.max.z as Double) - (box.min.z as Double)) / 2
+        val height = (box.max.y as Double) - (box.min.y as Double)
         if (halfX <= 0.0 || halfZ <= 0.0) return null
-        return sqrt(halfX * halfX + halfZ * halfZ)
+        return Triple(halfX, halfZ, height)
     }
 
     /**
-     * A swing that lands near a crate smashes it. Boxes take one hit in PSO, so this is a reach
-     * test rather than a damage exchange -- run from [swing] with the weapon's own cone, so a
-     * partisan sweeps crates it passes and a handgun has to be pointed at one.
+     * A swing that lands near a crate smashes it; a swing that lands on a visible trap sets it
+     * off where it stands -- destroying traps from outside their blast is exactly how the real
+     * game's androids clear them. Boxes take one hit in PSO, so this is a reach test rather
+     * than a damage exchange, run with the weapon's own cone.
+     *
+     * [budget] is what's left of the weapon's target count after the enemies it reached -- a
+     * saber that struck a Booma has spent its single target and passes through crates behind
+     * it, and a saber that hit nothing breaks exactly one box, not the whole row.
      */
-    private fun breakBoxesInSwing(p: Player) {
-        if (fieldBoxes.isEmpty()) return
+    private fun breakBoxesInSwing(p: Player, budget: Int) {
+        if (budget <= 0) return
+        if (fieldBoxes.isEmpty() && fieldTraps.isEmpty()) return
 
         val yaw = p.mesh.rotation.y
         val forwardX = sin(yaw)
         val forwardZ = cos(yaw)
         val reach = (p.weaponType.effectiveReach + PLAYER_HITBOX_UNITS_FOR_BOXES) * worldUnit
+        val angleTan = tan(p.weaponType.angleDegrees * PI / 180.0)
 
-        for (box in fieldBoxes) {
-            if (box.broken) continue
-            val dx = box.x - p.mesh.position.x
-            val dz = box.z - p.mesh.position.z
+        fun inCone(x: Double, z: Double, radius: Double): Double? {
+            val dx = x - p.mesh.position.x
+            val dz = z - p.mesh.position.z
             val along = dx * forwardX + dz * forwardZ
-            if (along < 0 || along > reach + box.radius) continue
-
+            if (along < 0 || along > reach + radius) return null
             val lateral = dx * forwardZ - dz * forwardX
-            val halfWidth = tan(p.weaponType.angleDegrees * PI / 180.0) * along + box.radius
-            if (lateral < -halfWidth || lateral > halfWidth) continue
+            val halfWidth = angleTan * along + radius
+            if (lateral < -halfWidth || lateral > halfWidth) return null
+            return dx * dx + dz * dz
+        }
 
-            smashBox(box)
+        // Everything the blade could touch, nearest first, cut to the remaining budget.
+        val struckBoxes = fieldBoxes.mapNotNull { box ->
+            if (box.broken) null else inCone(box.x, box.z, box.radius)?.let { box to it }
+        }
+        val struckTraps = fieldTraps.mapNotNull { trap ->
+            if (trap.spent || !trapVisibleTo(p, trap)) null
+            else inCone(trap.x, trap.z, TRAP_MARKER_RADIUS_UNITS * worldUnit)?.let { trap to it }
+        }
+        val ordered = (struckBoxes.map { Triple(it.second, it.first, null as FieldTrap?) } +
+            struckTraps.map { Triple(it.second, null as FieldBox?, it.first) })
+            .sortedBy { it.first }
+            .take(budget)
+
+        for ((_, box, trap) in ordered) {
+            box?.let { smashBox(it) }
+            trap?.let { detonateTrap(it, p) }
         }
     }
+
+    /** Whether this player can see (and so target) an unarmed trap -- android trap vision. */
+    private fun trapVisibleTo(p: Player, trap: FieldTrap): Boolean =
+        trap.armed || isAndroid(p.characterClass)
 
     /** Bursts a crate: fragments thrown clear, and whatever it was holding left behind. */
     private fun smashBox(box: FieldBox) {
         box.broken = true
         box.mesh.parent?.remove(box.mesh)
 
+        // The Ruins' blob jar: breaking it splashes venom over whoever stands close. No
+        // fragments, no loot -- the jar is the trap.
+        if (box.typeId == SpawnObject.TYPE_RUINS_POISON_BLOB) {
+            val burst = effectSprite(
+                "burst_bright", BLOB_SPLASH_RADIUS_UNITS * 1.5, colorHex = LILY_SPIT_COLOR,
+            )
+            burst.position.set(box.x, box.y + 2.0 * worldUnit, box.z)
+            addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 3.0))
+            player?.let { p ->
+                val dx = p.mesh.position.x - box.x
+                val dz = p.mesh.position.z - box.z
+                val reach = BLOB_SPLASH_RADIUS_UNITS * worldUnit
+                if (dx * dx + dz * dz <= reach * reach && p.hp > 0) applyPoison(p)
+            }
+            return
+        }
+
         MainScope().launch {
             val loader = ObjectAssetLoader(assetLoader)
-            for (slug in listOf("ForestBoxShardA", "ForestBoxShardB")) {
+            for (slug in boxShardSlugs) {
                 val shard = loader.loadObject(slug)
                 shard.position.set(box.x, box.y + 0.5 * worldUnit, box.z)
                 context.scene.add(shard)
@@ -550,19 +610,33 @@ class GameRenderer(
             if (box.broken) continue
             val dx = p.controller.position.x - box.x
             val dz = p.controller.position.z - box.z
-            val minimum = playerRadius + box.radius
-            val distanceSq = dx * dx + dz * dz
-            if (distanceSq >= minimum * minimum) continue
 
-            // Dead centre has no direction to push along; nudge along +x rather than divide by 0.
-            val distance = sqrt(distanceSq)
-            if (distance < 1e-6) {
-                p.controller.position.x += minimum
+            // Into the crate's own frame, so the test is against its actual rectangle rather
+            // than a circle drawn round it -- the circle made square crates block at their
+            // corners' distance on every side.
+            val cosYaw = cos(box.yaw)
+            val sinYaw = sin(box.yaw)
+            val localX = dx * cosYaw - dz * sinYaw
+            val localZ = dx * sinYaw + dz * cosYaw
+
+            val limitX = box.halfX + playerRadius
+            val limitZ = box.halfZ + playerRadius
+            if (localX <= -limitX || localX >= limitX) continue
+            if (localZ <= -limitZ || localZ >= limitZ) continue
+
+            // Push out through the nearest face.
+            val pushX = if (localX >= 0) limitX - localX else -limitX - localX
+            val pushZ = if (localZ >= 0) limitZ - localZ else -limitZ - localZ
+            val outX: Double
+            val outZ: Double
+            if (kotlin.math.abs(pushX) <= kotlin.math.abs(pushZ)) {
+                outX = pushX; outZ = 0.0
             } else {
-                val push = minimum - distance
-                p.controller.position.x += dx / distance * push
-                p.controller.position.z += dz / distance * push
+                outX = 0.0; outZ = pushZ
             }
+            // Back to world axes.
+            p.controller.position.x += outX * cosYaw + outZ * sinYaw
+            p.controller.position.z += -outX * sinYaw + outZ * cosYaw
         }
     }
 
@@ -781,6 +855,7 @@ class GameRenderer(
     /** Runs the player's own status clocks: venom ticks, paralysis wearing off. */
     private fun updatePlayerStatuses(p: Player, deltaTime: Double) {
         if (p.paralysisRemaining > 0) p.paralysisRemaining -= deltaTime
+        if (p.confusedRemaining > 0) p.confusedRemaining -= deltaTime
 
         if (p.poisonRemaining > 0) {
             p.poisonRemaining -= deltaTime
@@ -798,6 +873,302 @@ class GameRenderer(
                         POISON_TICK_DAMAGE,
                         false,
                     )
+                }
+            }
+        }
+    }
+
+    /**
+     * One armed floor trap. PSO's elemental traps are invisible until they trigger -- only
+     * androids, with their permanent trap vision, see them beforehand. Stepping into the
+     * trigger radius starts the arm timer (blinking all the while); when it runs out the trap
+     * detonates: fire traps burn, the Mines' freeze traps hold you in place, its confuse traps
+     * turn your controls around. Traps sharing a link id detonate together, which is what makes
+     * the Caves' corridor chains go off as one.
+     */
+    private class FieldTrap(
+        val mesh: Mesh,
+        val x: Double,
+        val y: Double,
+        val z: Double,
+        /** 0 = fire, 17 = freeze, 18 = confuse (the subtype byte the map data carries). */
+        val subtype: Int,
+        /** Traps with the same non-zero link detonate as one chain. */
+        val link: Int,
+        val triggerRadius: Double,
+        val armSeconds: Double,
+        /** The large floor traps blast half again as wide. */
+        val blastScale: Double = 1.0,
+    ) {
+        var armed = false
+        var armRemaining = 0.0
+        var spent = false
+    }
+
+    private val fieldTraps = mutableListOf<FieldTrap>()
+
+    /** Builds the trap's marker mesh: hidden from humans, a faint red disc to an android. */
+    private fun spawnFieldTrap(obj: SpawnObject, blastScale: Double = 1.0) {
+        val subtype = obj.paramsI.getOrNull(1) ?: 0
+        val radiusParam = (obj.paramsI.getOrNull(0) ?: 0).toDouble()
+        // The radius parameter is stored at 10x scale; clamp odd data to something playable.
+        val triggerUnits = (radiusParam / 10.0).coerceIn(2.5, 8.0)
+        val delayFrames = (obj.paramsI.getOrNull(2) ?: 20).toDouble()
+        val armSeconds = (delayFrames / 30.0).coerceIn(0.5, 2.0)
+
+        val mesh = Mesh(
+            SphereGeometry(TRAP_MARKER_RADIUS_UNITS * worldUnit, 12, 8),
+            MeshBasicMaterial(obj {
+                color = Color(trapColor(subtype))
+                transparent = true
+            }).also { it.depthWrite = false },
+        )
+        mesh.scale.y = 0.35
+        mesh.position.set(obj.x, obj.y + TRAP_MARKER_RADIUS_UNITS * worldUnit * 0.3, obj.z)
+        // Invisible to everyone but an android until it arms.
+        val material: dynamic = mesh.material
+        material.opacity = 0.0
+        context.scene.add(mesh)
+
+        fieldTraps.add(
+            FieldTrap(
+                mesh,
+                obj.x, obj.y, obj.z,
+                subtype = subtype,
+                link = obj.doorId,
+                triggerRadius = triggerUnits * worldUnit,
+                armSeconds = armSeconds,
+                blastScale = blastScale,
+            )
+        )
+    }
+
+    private fun trapColor(subtype: Int): Int = when (subtype) {
+        TRAP_SUBTYPE_FREEZE -> 0x66ccff
+        TRAP_SUBTYPE_CONFUSE -> 0xcc66ff
+        else -> 0xff5533
+    }
+
+    /** Arms, blinks, and detonates the field's traps. */
+    private fun updateFieldTraps(p: Player, deltaTime: Double) {
+        if (fieldTraps.isEmpty()) return
+        val androidVision = isAndroid(p.characterClass)
+
+        for (trap in fieldTraps) {
+            if (trap.spent) continue
+            val material: dynamic = trap.mesh.material
+
+            if (!trap.armed) {
+                // Android trap vision: the marker sits faintly visible before it arms.
+                material.opacity = if (androidVision) 0.4 else 0.0
+
+                val dx = p.mesh.position.x - trap.x
+                val dz = p.mesh.position.z - trap.z
+                if (dx * dx + dz * dz <= trap.triggerRadius * trap.triggerRadius) {
+                    armTrapChain(trap)
+                }
+            } else {
+                trap.armRemaining -= deltaTime
+                // The blink accelerates as the timer runs down.
+                val phase = trap.armRemaining * (10.0 + (trap.armSeconds - trap.armRemaining) * 14.0)
+                material.opacity = if (phase.toInt() % 2 == 0) 1.0 else 0.35
+                if (trap.armRemaining <= 0) detonateTrap(trap, p)
+            }
+        }
+
+        fieldTraps.removeAll { trap ->
+            if (trap.spent) trap.mesh.parent?.remove(trap.mesh) != null || true else false
+        }
+    }
+
+    /** Arming one trap arms its whole chain -- linked traps detonate together. */
+    private fun armTrapChain(trap: FieldTrap) {
+        val chain =
+            if (trap.link != 0) fieldTraps.filter { !it.spent && it.link == trap.link }
+            else listOf(trap)
+        for (t in chain) {
+            if (t.armed) continue
+            t.armed = true
+            t.armRemaining = t.armSeconds
+        }
+    }
+
+    /** The detonation: a burst at the trap, and its effect on anyone standing in the blast. */
+    private fun detonateTrap(trap: FieldTrap, p: Player) {
+        trap.spent = true
+
+        val color = trapColor(trap.subtype)
+        val blastUnits = TRAP_BLAST_RADIUS_UNITS * trap.blastScale
+        val burst = effectSprite("burst_orange", blastUnits * 1.6, colorHex = color)
+        burst.position.set(trap.x, trap.y + 2.0 * worldUnit, trap.z)
+        addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 4.0))
+        spawnExplosionDome(trap.x, trap.y, trap.z, blastUnits * worldUnit * 0.7, color)
+
+        val dx = p.mesh.position.x - trap.x
+        val dz = p.mesh.position.z - trap.z
+        val blast = blastUnits * worldUnit
+        if (dx * dx + dz * dz > blast * blast || p.hp <= 0) return
+
+        when (trap.subtype) {
+            TRAP_SUBTYPE_FREEZE -> {
+                // Freeze holds androids too -- it's mechanical, not neural.
+                if (p.paralysisRemaining <= 0) showToast("Frozen!")
+                p.paralysisRemaining = TRAP_FREEZE_SECONDS
+            }
+            TRAP_SUBTYPE_CONFUSE -> {
+                if (!isAndroid(p.characterClass)) {
+                    if (p.confusedRemaining <= 0) showToast("Confused!")
+                    p.confusedRemaining = TRAP_CONFUSE_SECONDS
+                }
+            }
+            else -> {
+                if (p.invulnerableRemaining <= 0) hurtPlayerFlat(p, TRAP_FIRE_DAMAGE)
+            }
+        }
+    }
+
+    /**
+     * The slimes' two lives. A Pofuilly Slime slides the floor as a puddle -- flattened,
+     * untargetable, immune to everything but traps -- and rises to its full body to strike
+     * when it reaches its prey, which is the only window it can be hurt in. Struck without
+     * being killed, it splits: the room fills with slimes until they're put down properly.
+     */
+    private class SlimeState(
+        var risen: Boolean = false,
+        var risenRemaining: Double = 0.0,
+    )
+
+    private val slimeStates = HashMap<Enemy, SlimeState>()
+
+    private fun isSlime(slug: String) = slug == "PofuillySlimeBlue" || slug == "PouillySlimeRed"
+
+    /** Runs every slime's puddle-and-rise cycle. */
+    private fun updateSlimes(p: Player, deltaTime: Double) {
+        for (enemy in enemies) {
+            if (!isSlime(enemy.slug) || enemy.isDead) continue
+            val state = slimeStates.getOrPut(enemy) { SlimeState() }
+            val baseScale = enemyStats(enemy.slug).modelScale
+
+            if (!state.risen) {
+                // The puddle: flat on the stone and impossible to pin down.
+                enemy.mesh.scale.set(baseScale * 1.3, baseScale * SLIME_PUDDLE_FLATTEN, baseScale * 1.3)
+                enemy.untargetable = true
+
+                val dx = p.mesh.position.x - enemy.mesh.position.x
+                val dz = p.mesh.position.z - enemy.mesh.position.z
+                val rise = (SLIME_RISE_RANGE_UNITS + enemy.hitboxRadius / worldUnit) * worldUnit
+                if (dx * dx + dz * dz <= rise * rise) {
+                    state.risen = true
+                    state.risenRemaining = SLIME_RISEN_SECONDS
+                    enemy.mesh.scale.set(baseScale, baseScale, baseScale)
+                    enemy.untargetable = false
+                }
+            } else {
+                state.risenRemaining -= deltaTime
+                if (state.risenRemaining <= 0) {
+                    state.risen = false
+                }
+            }
+        }
+    }
+
+    /**
+     * A slime hit without being killed divides. Capped by how many slimes already crowd the
+     * spot, so a careless sword can't farm a room into a flood.
+     */
+    private fun trySplitSlime(enemy: Enemy) {
+        if (!isSlime(enemy.slug) || enemy.isDead) return
+
+        val nearby = enemies.count { other ->
+            isSlime(other.slug) && !other.isDead &&
+                run {
+                    val dx = other.mesh.position.x - enemy.mesh.position.x
+                    val dz = other.mesh.position.z - enemy.mesh.position.z
+                    val range = SLIME_CAP_RANGE_UNITS * worldUnit
+                    dx * dx + dz * dz <= range * range
+                }
+        }
+        if (nearby >= SLIME_CAP) return
+
+        val angle = Random.nextDouble() * 2 * PI
+        val offset = SLIME_SPLIT_OFFSET_UNITS * worldUnit
+        spawnEnemy?.invoke(
+            enemy.slug,
+            enemy.mesh.position.x + sin(angle) * offset,
+            enemy.mesh.position.y,
+            enemy.mesh.position.z + cos(angle) * offset,
+            Random.nextDouble() * 2 * PI,
+        )
+    }
+
+    /**
+     * The Ruins' ceiling pillar: it hangs high over its spot until someone walks underneath,
+     * then comes down like a hammer -- crushing damage in a small circle -- rests a moment,
+     * and winds back up to do it again. Never disarmed, only avoided.
+     */
+    private class FieldPillar(
+        val mesh: Object3D,
+        val x: Double,
+        val groundY: Double,
+        val z: Double,
+        val hangY: Double,
+    ) {
+        var state = STATE_HANGING
+        var restRemaining = 0.0
+
+        companion object {
+            const val STATE_HANGING = 0
+            const val STATE_FALLING = 1
+            const val STATE_RESTING = 2
+            const val STATE_RISING = 3
+        }
+    }
+
+    private val fieldPillars = mutableListOf<FieldPillar>()
+
+    private fun updateFieldPillars(p: Player, deltaTime: Double) {
+        for (pillar in fieldPillars) {
+            when (pillar.state) {
+                FieldPillar.STATE_HANGING -> {
+                    val dx = p.mesh.position.x - pillar.x
+                    val dz = p.mesh.position.z - pillar.z
+                    val trigger = PILLAR_TRIGGER_UNITS * worldUnit
+                    if (dx * dx + dz * dz <= trigger * trigger && p.hp > 0) {
+                        pillar.state = FieldPillar.STATE_FALLING
+                    }
+                }
+                FieldPillar.STATE_FALLING -> {
+                    pillar.mesh.position.y -= PILLAR_FALL_UNITS_PER_SECOND * worldUnit * deltaTime
+                    if (pillar.mesh.position.y <= pillar.groundY) {
+                        pillar.mesh.position.y = pillar.groundY
+                        pillar.state = FieldPillar.STATE_RESTING
+                        pillar.restRemaining = PILLAR_REST_SECONDS
+
+                        // The slam: dust, and crushing damage to anyone under it.
+                        val burst = effectSprite("burst_orange", PILLAR_CRUSH_RADIUS_UNITS * 1.6, colorHex = 0xc9b18a)
+                        burst.position.set(pillar.x, pillar.groundY + 1.5 * worldUnit, pillar.z)
+                        addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 3.5))
+
+                        val dx = p.mesh.position.x - pillar.x
+                        val dz = p.mesh.position.z - pillar.z
+                        val crush = PILLAR_CRUSH_RADIUS_UNITS * worldUnit
+                        if (dx * dx + dz * dz <= crush * crush && p.hp > 0 &&
+                            p.invulnerableRemaining <= 0
+                        ) {
+                            hurtPlayerFlat(p, PILLAR_CRUSH_DAMAGE)
+                        }
+                    }
+                }
+                FieldPillar.STATE_RESTING -> {
+                    pillar.restRemaining -= deltaTime
+                    if (pillar.restRemaining <= 0) pillar.state = FieldPillar.STATE_RISING
+                }
+                FieldPillar.STATE_RISING -> {
+                    pillar.mesh.position.y += PILLAR_RISE_UNITS_PER_SECOND * worldUnit * deltaTime
+                    if (pillar.mesh.position.y >= pillar.hangY) {
+                        pillar.mesh.position.y = pillar.hangY
+                        pillar.state = FieldPillar.STATE_HANGING
+                    }
                 }
             }
         }
@@ -1790,6 +2161,9 @@ class GameRenderer(
      */
     private var focusedEnemy: Enemy? = null
 
+    /** The lock, of any kind -- [focusedEnemy] mirrors it when the lock is on an enemy. */
+    private var focusedTarget: FocusTarget? = null
+
     // --- The Mag, floating at its owner's left shoulder ---
 
     private var magMesh: Mesh? = null
@@ -1876,38 +2250,68 @@ class GameRenderer(
      * point up and inward.
      */
     /** The darts with the unit offsets they sit at -- repositioned per frame to fit the lock. */
-    private val reticleCorners = mutableListOf<Triple<HTMLElement, Double, Double>>()
+    /** One on-screen lock: the root div and its three darts with their unit offsets. */
+    private class ReticleElement(
+        val root: HTMLElement,
+        val corners: List<Triple<HTMLElement, Double, Double>>,
+    )
 
-    private val focusReticle = (document.createElement("div") as HTMLElement).also { el ->
-        el.style.cssText = "position:fixed;width:0;height:0;" +
-            "pointer-events:none;z-index:12;display:none;" +
-            "filter:drop-shadow(0 0 4px rgba(80,255,140,.7));"
+    /**
+     * The reticle pool. One lock used to be the whole story; a sword or shot puts a reticle on
+     * every target its sweep can reach, so locks are pooled and grown on demand.
+     */
+    private val reticlePool = mutableListOf<ReticleElement>()
 
-        // Narrow darts, not equilateral triangles: an equilateral piece has 120-degree
-        // rotational symmetry, so rotated to aim at the centre it *reads* as pointing down
-        // regardless -- verified in a standalone render. A long thin dart is unambiguous.
-        val triangle =
-            "width:0;height:0;position:absolute;" +
-                "border-left:6px solid transparent;border-right:6px solid transparent;" +
-                "border-bottom:18px solid rgba(80,255,140,.95);" +
-                "margin-left:-6px;margin-top:-9px;"
-        // (unit offset around the target, tip rotation): corners at 90/210/330 degrees, each
-        // rotated so its point crosses to the centre. The actual pixel distance is written per
-        // frame by updateFocusReticle, squeezing the lock onto the target's silhouette.
-        listOf(
-            Triple(0.0, -1.0, 180.0),
-            Triple(-0.866, 0.5, 60.0),
-            Triple(0.866, 0.5, -60.0),
-        ).forEach { (ux, uy, rotation) ->
-            (document.createElement("div") as HTMLElement).also { corner ->
-                corner.style.cssText = triangle +
-                    "left:${ux * RETICLE_RADIUS_PX}px;top:${uy * RETICLE_RADIUS_PX}px;" +
-                    "transform:rotate(${rotation}deg);"
-                el.appendChild(corner)
-                reticleCorners.add(Triple(corner, ux, uy))
+    private fun reticleElement(index: Int): ReticleElement {
+        while (reticlePool.size <= index) {
+            val el = (document.createElement("div") as HTMLElement).also { el ->
+                el.style.cssText = "position:fixed;width:0;height:0;" +
+                    "pointer-events:none;z-index:12;display:none;" +
+                    "filter:drop-shadow(0 0 4px rgba(80,255,140,.7));"
             }
+            // Narrow darts, not equilateral triangles: an equilateral piece has 120-degree
+            // rotational symmetry, so rotated to aim at the centre it *reads* as pointing down
+            // regardless -- verified in a standalone render. A long thin dart is unambiguous.
+            val triangle =
+                "width:0;height:0;position:absolute;" +
+                    "border-left:6px solid transparent;border-right:6px solid transparent;" +
+                    "border-bottom:18px solid rgba(80,255,140,.95);" +
+                    "margin-left:-6px;margin-top:-9px;"
+            val corners = mutableListOf<Triple<HTMLElement, Double, Double>>()
+            // (unit offset around the target, tip rotation): corners at 90/210/330 degrees,
+            // each rotated so its point crosses to the centre. The pixel distance is written
+            // per frame, squeezing the lock onto the target's silhouette.
+            listOf(
+                Triple(0.0, -1.0, 180.0),
+                Triple(-0.866, 0.5, 60.0),
+                Triple(0.866, 0.5, -60.0),
+            ).forEach { (ux, uy, rotation) ->
+                (document.createElement("div") as HTMLElement).also { corner ->
+                    corner.style.cssText = triangle +
+                        "left:${ux * RETICLE_RADIUS_PX}px;top:${uy * RETICLE_RADIUS_PX}px;" +
+                        "transform:rotate(${rotation}deg);"
+                    el.appendChild(corner)
+                    corners.add(Triple(corner, ux, uy))
+                }
+            }
+            document.body!!.appendChild(el)
+            reticlePool.add(ReticleElement(el, corners))
         }
-        document.body!!.appendChild(el)
+        return reticlePool[index]
+    }
+
+    /**
+     * Anything the lock can settle on: an enemy, a crate, a visible trap, or a drop waiting to
+     * be picked up. Exactly one of the four is set.
+     */
+    private class FocusTarget(
+        val enemy: Enemy? = null,
+        val box: FieldBox? = null,
+        val trap: FieldTrap? = null,
+        val pickup: DropPickup? = null,
+    ) {
+        /** Drops are pointed at, not swung at -- they never join a swing's target list. */
+        val attackable: Boolean get() = pickup == null
     }
 
     /** The BB-style numbered bar's layout, per device like the palette's. */
@@ -2329,7 +2733,8 @@ class GameRenderer(
                 // resolved slug is kept: the caves' encounter tables are per-terrain, so the
                 // spawn layout pick below must match the geometry that actually loaded.
                 mapAssetLoader.loadArea(
-                    randomAreaLayoutSlug(mapSlug).also { resolvedGeometrySlug = it }
+                    (geometryOverride ?: randomAreaLayoutSlug(mapSlug))
+                        .also { resolvedGeometrySlug = it }
                 )
             }
             context.scene.add(map.renderObject)
@@ -2398,6 +2803,9 @@ class GameRenderer(
             // arrival point around the rim keeps the camera opening onto the fight.
             (facingOverride ?: if (bossEncounter != null) atan2(-spawnX, -spawnZ) else null)
                 ?.let { mesh.rotation.y = it }
+            cameraYawOverride?.let {
+                (inputManager as? ThirdPersonCameraController)?.debugSetYawOffset(it)
+            }
             context.scene.add(mesh)
 
             inputManager.setScale(bSphereRadius)
@@ -2577,6 +2985,12 @@ class GameRenderer(
                     // loaded too even though no placement ever names it.
                     val speciesToLoad = layout.enemies.mapTo(mutableSetOf()) { it.slug }
                     if ("Monest" in speciesToLoad) speciesToLoad.add("Mothmant")
+                    // Every rare twin of anything placed, so a 1-in-512 roll at spawn time
+                    // always has its model warm -- a roll that had to fetch first would
+                    // silently produce nothing.
+                    for ((base, rare) in RARE_TWINS) {
+                        if (base in speciesToLoad) speciesToLoad.add(rare)
+                    }
                     // The area's boss too: it belongs to the area, not to whichever encounter
                     // layout was rolled, so it is almost never in the layout's own roster. Left
                     // out, its spawn silently fails and the boss room can never be cleared.
@@ -2591,13 +3005,59 @@ class GameRenderer(
                     // One enemy, fully assembled and added to the world -- shared by the wave
                     // director's placements and the Monest hives' runtime Mothmant production.
                     fun spawnFieldEnemy(
-                        slug: String,
+                        placedSlug: String,
                         x: Double,
                         y: Double,
                         z: Double,
                         yaw: Double,
                         section: Int = -1,
                     ): Enemy? {
+                        // The rare roll: every placement of a rare-capable species has a
+                        // 1-in-512 chance of arriving as its rare form, the real game's rate.
+                        val slug = RARE_TWINS[placedSlug]
+                            ?.takeIf { Random.nextInt(RARE_ROLL_ONE_IN) == 0 }
+                            ?: placedSlug
+
+                        // The Dubwitch has no model anywhere in the source data, so its pod is
+                        // built here: a squat machine column with a red running light. Killing
+                        // it is what makes a Dubchic room stay down.
+                        if (slug == "Dubwitch") {
+                            val stats = enemyStats(slug)
+                            val pod = Mesh(
+                                CylinderGeometry(
+                                    1.1 * worldUnit, 1.4 * worldUnit, 2.4 * worldUnit, 10,
+                                ),
+                                MeshBasicMaterial(obj { color = Color(0x3a4048) }),
+                            )
+                            val light = Mesh(
+                                SphereGeometry(0.5 * worldUnit, 10, 8),
+                                MeshBasicMaterial(obj {
+                                    color = Color(0xff3b30)
+                                    blending = AdditiveBlending
+                                    transparent = true
+                                }).also { it.depthWrite = false },
+                            )
+                            light.position.y = 1.5 * worldUnit
+                            pod.add(light)
+                            pod.position.set(x, y + 1.2 * worldUnit, z)
+                            pod.rotation.y = yaw
+                            context.scene.add(pod)
+
+                            val enemy = Enemy(
+                                pod.unsafeCast<SkinnedMesh>(),
+                                hp = stats.hp,
+                                name = enemyDisplayName(slug),
+                                hitboxRadius = stats.hitboxRadius * unitScale,
+                                maxHp = stats.hp,
+                                slug = slug,
+                                section = section,
+                            )
+                            enemy.visualRadius = 1.4 * worldUnit
+                            enemy.visualTop = 1.9 * worldUnit
+                            enemies.add(enemy)
+                            return enemy
+                        }
+
                         val prototype = enemyLoader.prototype(slug)
                         val clips = clipSets[slug]
 
@@ -2692,6 +3152,7 @@ class GameRenderer(
                         // is at model scale; apply the species' own multiplier by hand.
                         enemy.visualRadius = boundingSphere(mesh).radius * stats.modelScale
                         enemy.visualTop = (geometryTopY(mesh) ?: 0.0) * stats.modelScale
+                        enemy.reviveMotion = clips.revive
 
                         // Now that the body exists, give its AI something to fire. The Nano
                         // Dragon's nano laser crosses the room; a Lily spits venom.
@@ -2883,11 +3344,15 @@ class GameRenderer(
 
                             SpawnObject.TYPE_LASER_FENCE,
                             SpawnObject.TYPE_SQUARE_LASER_FENCE,
+                            SpawnObject.TYPE_RUINS_FENCE_4X2,
+                            SpawnObject.TYPE_RUINS_FENCE_6X2,
                             -> {
-                                val slug =
-                                    if (obj.typeId == SpawnObject.TYPE_SQUARE_LASER_FENCE)
-                                        "SquareLaserFence4M"
-                                    else "LaserFence4M"
+                                val slug = when (obj.typeId) {
+                                    SpawnObject.TYPE_SQUARE_LASER_FENCE -> "SquareLaserFence4M"
+                                    SpawnObject.TYPE_RUINS_FENCE_4X2 -> "RuinsFence4x2"
+                                    SpawnObject.TYPE_RUINS_FENCE_6X2 -> "RuinsFence6x2"
+                                    else -> "LaserFence4M"
+                                }
                                 val mesh = gateLoader.loadObject(slug)
                                 mesh.position.set(obj.x, obj.y, obj.z)
                                 mesh.rotation.y = obj.yaw
@@ -2913,6 +3378,8 @@ class GameRenderer(
                             SpawnObject.TYPE_CAVE_FLOOR_PANEL,
                             SpawnObject.TYPE_MINE_FLOOR_PANEL,
                             SpawnObject.TYPE_RUINS_SWITCH,
+                            SpawnObject.TYPE_RUINS_DOOR_SWITCH,
+                            SpawnObject.TYPE_RUINS_FENCE_SWITCH,
                             -> switchPlacements.add(obj)
 
                             // The Caves' doors. All three models are plain gates keyed by door
@@ -2928,6 +3395,8 @@ class GameRenderer(
                             SpawnObject.TYPE_RUINS_DOOR_A1,
                             SpawnObject.TYPE_RUINS_DOOR_A2,
                             SpawnObject.TYPE_RUINS_DOOR_A3,
+                            SpawnObject.TYPE_RUINS_4_BUTTON_DOOR,
+                            SpawnObject.TYPE_RUINS_2_BUTTON_DOOR,
                             -> {
                                 // Both twins are loaded: the red one is what stands there
                                 // while the door is locked, the green one takes over the
@@ -2943,6 +3412,14 @@ class GameRenderer(
                                     SpawnObject.TYPE_RUINS_DOOR_A1 -> "RuinsDoor01"
                                     SpawnObject.TYPE_RUINS_DOOR_A2 -> "RuinsDoor02"
                                     SpawnObject.TYPE_RUINS_DOOR_A3 -> "RuinsDoor03"
+                                    // The button doors wear the area's own door model.
+                                    SpawnObject.TYPE_RUINS_4_BUTTON_DOOR,
+                                    SpawnObject.TYPE_RUINS_2_BUTTON_DOOR,
+                                    -> when {
+                                        mapSlug.startsWith("ruins02") -> "RuinsDoor02"
+                                        mapSlug.startsWith("ruins03") -> "RuinsDoor03"
+                                        else -> "RuinsDoor01"
+                                    }
                                     else -> "CaveDoor01"
                                 }
 
@@ -2969,18 +3446,75 @@ class GameRenderer(
                                 )
                                 gates.doors.add(gate)
                                 if (obj.typeId == SpawnObject.TYPE_CAVE_4_BUTTON_DOOR ||
-                                    obj.typeId == SpawnObject.TYPE_MINE_4_BUTTON_DOOR
+                                    obj.typeId == SpawnObject.TYPE_MINE_4_BUTTON_DOOR ||
+                                    obj.typeId == SpawnObject.TYPE_RUINS_4_BUTTON_DOOR ||
+                                    obj.typeId == SpawnObject.TYPE_RUINS_2_BUTTON_DOOR
                                 ) {
                                     buttonDoors.add(obj.doorId to gate)
                                 }
+                            }
+
+                            // The elemental floor traps: invisible mines that arm and burst.
+                            SpawnObject.TYPE_ELEMENTAL_TRAP,
+                            SpawnObject.TYPE_MINE_TRAP,
+                            SpawnObject.TYPE_LARGE_ELEMENTAL_TRAP,
+                            SpawnObject.TYPE_LARGE_ELEMENTAL_TRAP_B,
+                            -> spawnFieldTrap(
+                                obj,
+                                blastScale =
+                                    if (obj.typeId == SpawnObject.TYPE_ELEMENTAL_TRAP ||
+                                        obj.typeId == SpawnObject.TYPE_MINE_TRAP
+                                    ) 1.0 else LARGE_TRAP_BLAST_SCALE,
+                            )
+
+                            // The ceiling pillar: hangs at its authored height (paramsF[1],
+                            // ~100 units up) over the walkway it guards.
+                            SpawnObject.TYPE_RUINS_PILLAR_TRAP -> {
+                                val pillar = gateLoader.loadObject("RuinsPillarTrap")
+                                val hangY = obj.y + (obj.paramsF.getOrNull(1) ?: 100.0)
+                                pillar.position.set(obj.x, hangY, obj.z)
+                                pillar.rotation.y = obj.yaw
+                                context.scene.add(pillar)
+                                fieldPillars.add(
+                                    FieldPillar(pillar, obj.x, obj.y, obj.z, hangY)
+                                )
+                            }
+
+                            // The crystal monument: scenery with presence, nothing more.
+                            SpawnObject.TYPE_RUINS_CRYSTAL -> {
+                                val crystal = gateLoader.loadObject("RuinsCrystal")
+                                crystal.position.set(obj.x, obj.y, obj.z)
+                                crystal.rotation.y = obj.yaw
+                                context.scene.add(crystal)
+                            }
+
+                            // The poison blob's jar: breakable like a crate, but what it
+                            // holds is a faceful of venom, not loot.
+                            SpawnObject.TYPE_RUINS_POISON_BLOB -> {
+                                val jar = gateLoader.loadObject("RuinsBlobJar")
+                                jar.position.set(obj.x, obj.y, obj.z)
+                                jar.rotation.y = obj.yaw
+                                context.scene.add(jar)
+                                val extents = boxFootprintExtents(jar)
+                                val halfX = extents?.first ?: worldUnit
+                                val halfZ = extents?.second ?: worldUnit
+                                fieldBoxes.add(
+                                    FieldBox(
+                                        jar, obj.typeId, obj.x, obj.y, obj.z,
+                                        radius = maxOf(halfX, halfZ),
+                                        halfX = halfX, halfZ = halfZ, yaw = obj.yaw,
+                                        height = extents?.third ?: 0.0,
+                                    )
+                                )
                             }
 
                             // A heal ring restores anyone who steps into it, once.
                             SpawnObject.TYPE_HEAL_RING -> {
                                 val healSlug = when {
                                     mapSlug.startsWith("mines") -> "MineHealRing"
-                                    mapSlug.startsWith("ruins") -> "RuinsHealRing"
-                                    else -> "CaveHealRing"
+                                    mapSlug.startsWith("cave") -> "CaveHealRing"
+                                    // The forest GSL's kaifuku model, the ring's true look.
+                                    else -> "HealRing"
                                 }
                                 val mesh = gateLoader.loadObject(healSlug)
                                 mesh.position.set(obj.x, obj.y, obj.z)
@@ -3078,6 +3612,7 @@ class GameRenderer(
                             }
 
                             SpawnObject.TYPE_TELEPORTER,
+                            SpawnObject.TYPE_RUINS_TELEPORTER,
                             SpawnObject.TYPE_BOSS_TELEPORTER,
                             -> {
                                 val isBoss = obj.typeId == SpawnObject.TYPE_BOSS_TELEPORTER
@@ -3181,11 +3716,15 @@ class GameRenderer(
                     // Group each cave/mine floor panel with the four-button door it belongs to.
                     for (panel in switchPlacements) {
                         if (panel.typeId != SpawnObject.TYPE_CAVE_FLOOR_PANEL &&
-                            panel.typeId != SpawnObject.TYPE_MINE_FLOOR_PANEL
+                            panel.typeId != SpawnObject.TYPE_MINE_FLOOR_PANEL &&
+                            panel.typeId != SpawnObject.TYPE_RUINS_SWITCH &&
+                            panel.typeId != SpawnObject.TYPE_RUINS_DOOR_SWITCH
                         ) continue
                         val switchId = panel.paramsI.getOrNull(0) ?: panel.doorId
+                        // The Caves number their panels doorId+1..4; the Ruins start at the
+                        // door's own number (a 2-button door 104 reads switches 104 and 105).
                         val door = buttonDoors.firstOrNull { (doorId, _) ->
-                            switchId - doorId in 1..4
+                            switchId - doorId in 0..4
                         }
                         if (door != null) {
                             buttonDoorPanels.getOrPut(door.first) { mutableListOf() }.add(panel)
@@ -3200,33 +3739,43 @@ class GameRenderer(
                             SpawnObject.TYPE_CAVE_FLOOR_PANEL -> "CaveFloorPanel"
                             SpawnObject.TYPE_MINE_FLOOR_PANEL -> "MineFloorPanel"
                             SpawnObject.TYPE_RUINS_SWITCH -> "RuinsFloorPanel"
+                            SpawnObject.TYPE_RUINS_DOOR_SWITCH -> "RuinsDoorSwitch"
                             else -> null
                         }
                         if (panelSlug != null) {
                             val switchId = obj.paramsI.getOrNull(0) ?: obj.doorId
-                            val door =
-                                if (obj.typeId == SpawnObject.TYPE_RUINS_SWITCH) null
-                                else buttonDoors.firstOrNull { (doorId, _) ->
-                                    switchId - doorId in 1..4
-                                }
+                            // Every panel first looks for a button door its number belongs to
+                            // -- the Ruins' 2- and 4-button doors count panels exactly like
+                            // the Caves' -- and a Ruins panel with no such door simply opens
+                            // the door carrying its own number.
+                            val door = buttonDoors.firstOrNull { (doorId, _) ->
+                                switchId - doorId in 0..4
+                            }
                             door?.let { switchDoorIds.add(it.first) }
 
                             val directDoor =
-                                if (obj.typeId == SpawnObject.TYPE_RUINS_SWITCH) {
+                                if (door == null &&
+                                    (obj.typeId == SpawnObject.TYPE_RUINS_SWITCH ||
+                                        obj.typeId == SpawnObject.TYPE_RUINS_DOOR_SWITCH)
+                                ) {
                                     switchDoorIds.add(obj.doorId)
                                     gates.doors.find { it.doorId == obj.doorId }
                                 } else null
 
                             // Red until it's stood on, then green -- the same twin-model trick
-                            // the doors use.
+                            // the doors use. The Ruins' standing switch is one body with no
+                            // red variant in the data, so it presses without changing colour.
+                            val hasTwin = obj.typeId != SpawnObject.TYPE_RUINS_DOOR_SWITCH
                             val pressedMesh = gateLoader.loadObject(panelSlug)
-                            val unpressedMesh = gateLoader.loadObject("${panelSlug}Locked")
-                            for (mesh in listOf(pressedMesh, unpressedMesh)) {
+                            val unpressedMesh =
+                                if (hasTwin) gateLoader.loadObject("${panelSlug}Locked")
+                                else pressedMesh
+                            for (mesh in setOf(pressedMesh, unpressedMesh)) {
                                 mesh.position.set(obj.x, obj.y, obj.z)
                                 mesh.rotation.y = obj.yaw
                                 context.scene.add(mesh)
                             }
-                            pressedMesh.visible = false
+                            if (hasTwin) pressedMesh.visible = false
 
                             gates.switches.add(
                                 FieldGates.FloorSwitch(
@@ -3236,8 +3785,10 @@ class GameRenderer(
                                     linked = null,
                                     x = obj.x, y = obj.y, z = obj.z,
                                     onPressed = {
-                                        pressedMesh.visible = true
-                                        unpressedMesh.visible = false
+                                        if (hasTwin) {
+                                            pressedMesh.visible = true
+                                            unpressedMesh.visible = false
+                                        }
                                         directDoor?.let {
                                             it.open()
                                             showToast("The door grinds open")
@@ -3289,7 +3840,23 @@ class GameRenderer(
                                     }
                         }
 
-                        if (obj.typeId == SpawnObject.TYPE_LASER_FENCE_SWITCH) {
+                        if (obj.typeId == SpawnObject.TYPE_RUINS_FENCE_SWITCH) {
+                            // The Ruins' fence pedestal switch.
+                            val mesh = gateLoader.loadObject("RuinsFenceSwitch").also { m ->
+                                m.position.set(obj.x, obj.y, obj.z)
+                                m.rotation.y = obj.yaw
+                                context.scene.add(m)
+                            }
+                            gates.switches.add(
+                                FieldGates.FloorSwitch(
+                                    meshes = listOf(mesh),
+                                    mixers = emptyList(),
+                                    pressActions = emptyList(),
+                                    linked = linked,
+                                    x = obj.x, y = obj.y, z = obj.z,
+                                )
+                            )
+                        } else if (obj.typeId == SpawnObject.TYPE_LASER_FENCE_SWITCH) {
                             val base = animatedPart("LaserFenceSwitch", obj)
                             val beam = animatedPart("LaserFenceSwitchBeam", obj)
                             gates.switches.add(
@@ -4080,6 +4647,36 @@ class GameRenderer(
             ToolType.MIND_MATERIAL -> { p.materialMind++; used = true }
             ToolType.HP_MATERIAL -> { p.materialHp++; used = true }
             ToolType.TELEPIPE -> used = openTelepipe(p)
+
+            // The status cures. Each spends itself only when there is something to cure --
+            // matching the heal items above, which don't burn a Monomate at full health.
+            ToolType.ANTIDOTE -> {
+                if (p.poisonRemaining > 0) {
+                    p.poisonRemaining = 0.0
+                    showToast("Poison cured")
+                    used = true
+                }
+            }
+            ToolType.ANTIPARALYSIS -> {
+                if (p.paralysisRemaining > 0) {
+                    p.paralysisRemaining = 0.0
+                    showToast("Paralysis cured")
+                    used = true
+                }
+            }
+            // The Sol Atomizer clears every status abnormality at once -- the wiki's own advice
+            // for humans facing Lilies.
+            ToolType.SOL_ATOMIZER -> {
+                if (p.poisonRemaining > 0 || p.paralysisRemaining > 0 ||
+                    p.confusedRemaining > 0
+                ) {
+                    p.poisonRemaining = 0.0
+                    p.paralysisRemaining = 0.0
+                    p.confusedRemaining = 0.0
+                    showToast("Status cured")
+                    used = true
+                }
+            }
             else -> Unit
         }
 
@@ -4352,9 +4949,36 @@ class GameRenderer(
             }
         }
 
+        // A Dubchic with its room's Dubwitch still standing doesn't die -- it collapses, and
+        // the pod puts it back on its feet shortly. Experience is paid per down (the collapse
+        // is real), but the drop waits for the death that sticks.
+        if (enemy.slug == "Dubchic" && dubwitchAlive(enemy.section)) {
+            enemy.reviveRemaining = DUBCHIC_REVIVE_SECONDS
+            persistProgress()
+            return
+        }
+
+        // Breaking the Dubwitch kills every Dubchic it was keeping alive, on the spot. The
+        // ones already lying down simply never get up: their revival check finds no pod.
+        if (enemy.slug == "Dubwitch") {
+            for (other in enemies) {
+                if (other.slug == "Dubchic" && other.section == enemy.section && !other.isDead) {
+                    other.hp = 0
+                    onEnemyKilled(other)
+                }
+            }
+            showToast("The Dubwitch is destroyed!")
+        }
+
         maybeDrop(enemy)
         persistProgress()
     }
+
+    /** Whether this room's revival pod still stands -- what keeps its Dubchics coming back. */
+    private fun dubwitchAlive(section: Int): Boolean =
+        section >= 0 && enemies.any {
+            it.slug == "Dubwitch" && !it.isDead && it.section == section
+        }
 
     /**
      * Tapping the HUD's PB dial: with a full gauge it arms the blast (the overlay covers the
@@ -4488,12 +5112,12 @@ class GameRenderer(
             // The round flies at the lock's aim point -- the focused Dragon part, or head
             // level on an ordinary enemy -- so what you see leave the barrel goes where the
             // reticle says it will.
-            val target = focusedEnemy?.takeIf { !it.isDead && !it.untargetable }
+            val target = focusedTarget?.takeIf { focusTargetValid(it) }
             var flightX = dirX
             var flightY = 0.0
             var flightZ = dirZ
             if (target != null) {
-                focusAimPoint(target, reticleAimScratch)
+                focusTargetAimPoint(target, reticleAimScratch)
                 val dx = reticleAimScratch.x - mesh.position.x
                 val dy = reticleAimScratch.y - mesh.position.y
                 val dz = reticleAimScratch.z - mesh.position.z
@@ -4819,7 +5443,7 @@ class GameRenderer(
      * margin, so melee locks what's engaging you and a gun locks down its sightline. No facing
      * requirement: locking is what *gives* the facing.
      */
-    private fun findFocusTarget(p: Player): Enemy? {
+    private fun findFocusTarget(p: Player): FocusTarget? {
         // A caster's engagement range is their techniques, not the cane in their hand -- a
         // Force locks at spell distance the way a Ranger locks down a gun's sightline. And
         // nobody's lock stops at their weapon's edge: the real game's reticle finds targets
@@ -4831,27 +5455,149 @@ class GameRenderer(
             FOCUS_RANGE_FLOOR_UNITS,
         )
         val rangeWorld = (engagementReach + FOCUS_MARGIN_UNITS) * worldUnit
-        var best: Enemy? = null
+        var best: FocusTarget? = null
         var bestD2 = Double.MAX_VALUE
+
+        fun consider(target: FocusTarget, x: Double, z: Double, radius: Double) {
+            val dx = x - p.mesh.position.x
+            val dz = z - p.mesh.position.z
+            val d2 = dx * dx + dz * dz
+            val reach = rangeWorld + radius
+            if (d2 <= reach * reach && d2 < bestD2) {
+                best = target
+                bestD2 = d2
+            }
+        }
+
+        // Enemies get a head start in the race for the lock: standing between a crate and a
+        // Booma, the fight matters more than the loot. (An earlier strict-nearest pick kept
+        // stealing the lock onto scenery mid-combat.) The bias is on the compared distance
+        // only; range checks stay honest.
         for (enemy in enemies) {
             if (enemy.isDead || enemy.untargetable) continue
             val dx = enemy.mesh.position.x - p.mesh.position.x
             val dz = enemy.mesh.position.z - p.mesh.position.z
-            val d2 = dx * dx + dz * dz
+            val d2 = (dx * dx + dz * dz) * FOCUS_ENEMY_BIAS
             val reach = rangeWorld + enemy.hitboxRadius
-            if (d2 <= reach * reach && d2 < bestD2) {
-                best = enemy
+            if (dx * dx + dz * dz <= reach * reach && d2 < bestD2) {
+                best = FocusTarget(enemy = enemy)
                 bestD2 = d2
             }
+        }
+        for (box in fieldBoxes) {
+            if (box.broken) continue
+            consider(FocusTarget(box = box), box.x, box.z, box.radius)
+        }
+        for (trap in fieldTraps) {
+            if (trap.spent || !trapVisibleTo(p, trap)) continue
+            consider(
+                FocusTarget(trap = trap),
+                trap.x, trap.z, TRAP_MARKER_RADIUS_UNITS * worldUnit,
+            )
+        }
+        for (pickup in pickups) {
+            consider(
+                FocusTarget(pickup = pickup),
+                pickup.mesh.position.x, pickup.mesh.position.z,
+                PICKUP_FOCUS_RADIUS_UNITS * worldUnit,
+            )
         }
         return best
     }
 
+    /** True while this lock still points at something that exists. */
+    private fun focusTargetValid(target: FocusTarget): Boolean = when {
+        target.enemy != null -> !target.enemy.isDead && !target.enemy.untargetable
+        target.box != null -> !target.box.broken
+        target.trap != null -> !target.trap.spent
+        target.pickup != null -> target.pickup in pickups
+        else -> false
+    }
+
+    private fun focusTargetX(target: FocusTarget): Double =
+        target.enemy?.mesh?.position?.x ?: target.box?.x ?: target.trap?.x
+            ?: target.pickup!!.mesh.position.x
+
+    private fun focusTargetZ(target: FocusTarget): Double =
+        target.enemy?.mesh?.position?.z ?: target.box?.z ?: target.trap?.z
+            ?: target.pickup!!.mesh.position.z
+
+    /** The lock's aim point and silhouette radius for any target kind -- see [focusAimPoint]. */
+    private fun focusTargetAimPoint(target: FocusTarget, out: Vector3): Double = when {
+        target.enemy != null -> focusAimPoint(target.enemy, out)
+        target.box != null -> {
+            out.set(target.box.x, target.box.y + target.box.height * 0.55, target.box.z)
+            target.box.radius
+        }
+        target.trap != null -> {
+            out.set(target.trap.x, target.trap.y + TRAP_MARKER_RADIUS_UNITS * worldUnit, target.trap.z)
+            TRAP_MARKER_RADIUS_UNITS * worldUnit * 1.4
+        }
+        else -> {
+            val mesh = target.pickup!!.mesh
+            out.set(mesh.position.x, mesh.position.y + PICKUP_FOCUS_RADIUS_UNITS * worldUnit, mesh.position.z)
+            PICKUP_FOCUS_RADIUS_UNITS * worldUnit
+        }
+    }
+
+    /**
+     * Every attackable target the equipped weapon's sweep would reach right now, nearest
+     * first, capped at its target count -- what the extra locks of a sword or shot sit on.
+     * Measured with the weapon's own cone from the yaw the swing would actually use (facing
+     * the primary lock), so the reticles show exactly what one tap would hit.
+     */
+    private fun swingTargets(p: Player, primary: FocusTarget): List<FocusTarget> {
+        if (p.combat.maxTargets <= 1) return listOf(primary)
+
+        val yaw = atan2(
+            focusTargetX(primary) - p.mesh.position.x,
+            focusTargetZ(primary) - p.mesh.position.z,
+        )
+        val forwardX = sin(yaw)
+        val forwardZ = cos(yaw)
+        val reach = (p.combat.reach + PLAYER_HITBOX_UNITS_FOR_BOXES) * worldUnit
+        val angleTan = tan(p.weaponType.angleDegrees * PI / 180.0)
+
+        fun coneDistance(x: Double, z: Double, radius: Double): Double? {
+            val dx = x - p.mesh.position.x
+            val dz = z - p.mesh.position.z
+            val along = dx * forwardX + dz * forwardZ
+            if (along < 0 || along > reach + radius) return null
+            val lateral = dx * forwardZ - dz * forwardX
+            val halfWidth = angleTan * along + radius
+            if (lateral < -halfWidth || lateral > halfWidth) return null
+            return dx * dx + dz * dz
+        }
+
+        val found = mutableListOf<Pair<Double, FocusTarget>>()
+        for (enemy in enemies) {
+            if (enemy.isDead || enemy.untargetable) continue
+            coneDistance(enemy.mesh.position.x, enemy.mesh.position.z, enemy.hitboxRadius)
+                ?.let { found.add(it to FocusTarget(enemy = enemy)) }
+        }
+        for (box in fieldBoxes) {
+            if (box.broken) continue
+            coneDistance(box.x, box.z, box.radius)?.let { found.add(it to FocusTarget(box = box)) }
+        }
+        for (trap in fieldTraps) {
+            if (trap.spent || !trapVisibleTo(p, trap)) continue
+            coneDistance(trap.x, trap.z, TRAP_MARKER_RADIUS_UNITS * worldUnit)
+                ?.let { found.add(it to FocusTarget(trap = trap)) }
+        }
+
+        val primaryIdentity = { t: FocusTarget ->
+            t.enemy === primary.enemy && t.box === primary.box && t.trap === primary.trap &&
+                t.pickup === primary.pickup
+        }
+        val extras = found.sortedBy { it.first }.map { it.second }.filterNot(primaryIdentity)
+        return (listOf(primary) + extras).take(p.combat.maxTargets)
+    }
+
     /** Snaps the character to face the focus target; returns its yaw, or null with no lock. */
     private fun faceFocusTarget(p: Player): Double? {
-        val target = focusedEnemy?.takeIf { !it.isDead } ?: return null
-        val dx = target.mesh.position.x - p.mesh.position.x
-        val dz = target.mesh.position.z - p.mesh.position.z
+        val target = focusedTarget?.takeIf { focusTargetValid(it) } ?: return null
+        val dx = focusTargetX(target) - p.mesh.position.x
+        val dz = focusTargetZ(target) - p.mesh.position.z
         val yawToTarget = atan2(dx, dz)
         p.mesh.rotation.y = yawToTarget
         p.controller.faceToward(yawToTarget)
@@ -4865,18 +5611,35 @@ class GameRenderer(
      */
     private fun updateFocusReticle() {
         val p = player
-        val target = focusedEnemy?.takeIf { !it.isDead && !it.untargetable }
-        if (target == null || p == null || p.hp <= 0 || gameMenu.isOpen) {
-            focusReticle.style.display = "none"
+        val primary = focusedTarget?.takeIf { focusTargetValid(it) }
+        if (primary == null || p == null || p.hp <= 0 || gameMenu.isOpen) {
+            for (reticle in reticlePool) reticle.root.style.display = "none"
             return
         }
 
-        val radiusWorld = focusAimPoint(target, reticleAimScratch)
+        // The primary lock, plus one lock per extra target a sweeping weapon would reach.
+        val targets =
+            if (primary.attackable) swingTargets(p, primary)
+            else listOf(primary)
+
+        var shown = 0
+        for (target in targets) {
+            if (drawReticleAt(shown, target)) shown++
+        }
+        for (index in shown until reticlePool.size) {
+            reticlePool[index].root.style.display = "none"
+        }
+    }
+
+    /** Projects one lock onto [target]; false if it's behind the camera. */
+    private fun drawReticleAt(index: Int, target: FocusTarget): Boolean {
+        val reticle = reticleElement(index)
+        val radiusWorld = focusTargetAimPoint(target, reticleAimScratch)
         reticleProjection.copy(reticleAimScratch)
         reticleProjection.project(context.camera)
         if (reticleProjection.z > 1.0) {
-            focusReticle.style.display = "none"
-            return
+            reticle.root.style.display = "none"
+            return false
         }
         val x = (reticleProjection.x + 1) / 2 * context.canvas.clientWidth
         val y = (1 - reticleProjection.y) / 2 * context.canvas.clientHeight
@@ -4897,14 +5660,15 @@ class GameRenderer(
         val radiusPx = (sqrt(dx * dx + dy * dy) + RETICLE_GAP_PX)
             .coerceIn(RETICLE_MIN_RADIUS_PX, RETICLE_MAX_RADIUS_PX)
 
-        for ((corner, ux, uy) in reticleCorners) {
+        for ((corner, ux, uy) in reticle.corners) {
             corner.style.left = "${ux * radiusPx}px"
             corner.style.top = "${uy * radiusPx}px"
         }
 
-        focusReticle.style.display = "block"
-        focusReticle.style.left = "${x}px"
-        focusReticle.style.top = "${y}px"
+        reticle.root.style.display = "block"
+        reticle.root.style.left = "${x}px"
+        reticle.root.style.top = "${y}px"
+        return true
     }
 
     /** A player or NPC clip, parsed against the player skeleton's real bone count. */
@@ -5947,7 +6711,10 @@ class GameRenderer(
             damage, false,
         )
         maybeLilyScreech(enemy)
-        if (enemy.isDead) onEnemyKilled(enemy) else enemy.ai?.onDamaged()
+        if (enemy.isDead) onEnemyKilled(enemy) else {
+            enemy.ai?.onDamaged()
+            trySplitSlime(enemy)
+        }
     }
 
     private fun updateTechEffects(deltaTime: Double) {
@@ -6257,7 +7024,6 @@ class GameRenderer(
 
         // The focus lock aims the swing before anything else reads the yaw.
         faceFocusTarget(p)
-        breakBoxesInSwing(p)
 
         // The clip for this combo step, chosen before the swing so it matches the step the
         // frame data is about to be looked up for.
@@ -6294,7 +7060,12 @@ class GameRenderer(
             damageModifierOverride = if (berserk) SACRIFICIAL_DAMAGE_MODIFIER else null,
             onKnockdown = { it.ai?.onKnockedDown() },
             onMiss = { damageNumbers.showMiss(it.mesh.position.x, labelHeight(it), it.mesh.position.z) },
-        ) { enemy, damage, critical ->
+            // Whatever the blade didn't spend on enemies goes to crates and traps, at the
+            // same contact frame -- one budget for everything a swing touches.
+            onStrikeResolved = { reached ->
+                breakBoxesInSwing(p, p.combat.maxTargets - reached)
+            },
+            onHit = { enemy, damage, critical ->
             // Special attacks don't feed the blast gauge -- their payoff is the weapon's own
             // effect (wiki: "Special attacks also do not contribute to the Photon Blast gauge").
             if (type != AttackType.SPECIAL) {
@@ -6310,6 +7081,7 @@ class GameRenderer(
             )
 
             if (p.weaponType.isRanged) maybeLilyScreech(enemy)
+            if (!enemy.isDead) trySplitSlime(enemy)
 
             // The weapon's special effect, applied on a connected special swing before the death
             // check so an effect kill flows into the ordinary death handling below.
@@ -6328,7 +7100,8 @@ class GameRenderer(
                     AttackType.SPECIAL -> Unit
                 }
             }
-        }
+        },
+        )
 
         // A firearm puts a round down the barrel on every swing that actually starts.
         if (started && p.weaponType.itemIcon == ItemIcon.RANGED) {
@@ -6616,12 +7389,14 @@ class GameRenderer(
                 // visual output.
                 // The menu pauses the world: the stick is ignored, and the enemy/room updates
                 // below are skipped, so reading it can't get you killed.
-                // Paralysis freezes the stick as surely as the menu does.
+                // Paralysis freezes the stick as surely as the menu does; confusion turns
+                // it around instead -- push forward and the character backs away.
                 val movementLocked = gameMenu.isOpen || p.paralysisRemaining > 0
+                val stickSign = if (p.confusedRemaining > 0) -1.0 else 1.0
                 p.controller.update(
                     deltaTime,
-                    if (movementLocked) .0 else joystick.x,
-                    if (movementLocked) .0 else joystick.y,
+                    if (movementLocked) .0 else joystick.x * stickSign,
+                    if (movementLocked) .0 else joystick.y * stickSign,
                     inputManager.effectiveYaw,
                     p.combat.isAttacking,
                     flightVerticalControls.ascending,
@@ -6659,6 +7434,9 @@ class GameRenderer(
                     }
                 }
                 updateHealRings(p)
+                updateSlimes(p, deltaTime)
+                updateFieldTraps(p, deltaTime)
+                updateFieldPillars(p, deltaTime)
                 updatePlayerStatuses(p, deltaTime)
                 updateEnemyShots(deltaTime)
                 // PSO wakes a room when you walk into it: everything placed there comes for
@@ -6677,7 +7455,8 @@ class GameRenderer(
                 updateBossProgress()
                 updateReturnWarp(p)
 
-                focusedEnemy = if (isPeacefulHub) null else findFocusTarget(p)
+                focusedTarget = if (isPeacefulHub) null else findFocusTarget(p)
+                focusedEnemy = focusedTarget?.enemy
                 focusedEnemy.let { target ->
                     if (target != null) targetInfoPanel?.setTarget(target.name, target.hp, target.maxHp)
                     else targetInfoPanel?.clear()
@@ -6809,6 +7588,23 @@ class GameRenderer(
             enemy.animationMixer?.update(deltaTime)
 
             if (enemy.dyingRemaining <= 0) {
+                // A downed Dubchic lies where it fell until its revival timer answers: pod
+                // still standing means back on its feet at full health; pod broken means the
+                // death finally sticks, drop and all.
+                if (enemy.reviveRemaining > 0) {
+                    enemy.reviveRemaining -= deltaTime
+                    if (enemy.reviveRemaining <= 0) {
+                        if (dubwitchAlive(enemy.section)) {
+                            enemy.hp = enemy.maxHp
+                            enemy.ai?.onRevived(enemy.reviveMotion)
+                        } else {
+                            maybeDrop(enemy)
+                            enemy.mesh.parent?.remove(enemy.mesh)
+                            deadEnemies.remove()
+                        }
+                    }
+                    continue
+                }
                 enemy.mesh.parent?.remove(enemy.mesh)
                 deadEnemies.remove()
             }
@@ -7073,6 +7869,12 @@ class GameRenderer(
          */
         var paralysisRemaining: Double = 0.0
 
+        /**
+         * Confusion: the Mines' confuse traps. Reverses the stick while it runs -- PSO's
+         * confusion inverts your controls rather than freezing you. Androids are immune.
+         */
+        var confusedRemaining: Double = 0.0
+
         /** The emote currently playing, and how long is left of it -- see playEmote. */
         var emoteMotion: NjMotion? = null
         var emoteRemaining: Double = 0.0
@@ -7083,7 +7885,7 @@ class GameRenderer(
         window.removeEventListener("error", windowErrorListener)
         window.removeEventListener("unhandledrejection", windowErrorListener)
         toastContainer.remove()
-        focusReticle.remove()
+        for (reticle in reticlePool) reticle.root.remove()
         talkBubble.remove()
         super.dispose()
     }
@@ -7519,9 +8321,60 @@ class GameRenderer(
         /** How often a Lily answers a ranged hit with its paralysing screech. */
         private const val LILY_SCREECH_CHANCE = 0.35
 
-        /** The Lily's dying act: how far its burst reaches and what it costs to be there. */
+        /** The rare roll: each placement of a rare-capable species, at the real game's rate. */
+        private const val RARE_ROLL_ONE_IN = 512
+        private val RARE_TWINS = mapOf(
+            "Rappy" to "AlRappy",
+            "Hildebear" to "Hildeblue",
+            "PoisonLily" to "NarLily",
+            "PofuillySlimeBlue" to "PouillySlimeRed",
+        )
+
+        /** How long a downed Dubchic lies before its pod puts it back up. */
+        private const val DUBCHIC_REVIVE_SECONDS = 6.0
+
+        /** How much closer scenery must be than an enemy to steal the lock -- see findFocusTarget. */
+        private const val FOCUS_ENEMY_BIAS = 0.6
+
+        /** A dropped item's silhouette for the lock, in PSO units. */
+        private const val PICKUP_FOCUS_RADIUS_UNITS = 1.0
+
+        // The elemental floor traps. Fixed damage, PSO style: no defense roll softens a trap.
+        private const val TRAP_SUBTYPE_FREEZE = 17
+        private const val TRAP_SUBTYPE_CONFUSE = 18
+        private const val TRAP_MARKER_RADIUS_UNITS = 1.1
+        private const val TRAP_BLAST_RADIUS_UNITS = 7.0
+        private const val TRAP_FIRE_DAMAGE = 30
+        private const val TRAP_FREEZE_SECONDS = 3.0
+        private const val TRAP_CONFUSE_SECONDS = 8.0
+
+                /** The Lily's dying act: how far its burst reaches and what it costs to be there. */
         private const val LILY_BURST_RADIUS_UNITS = 6.0
         private const val LILY_BURST_DAMAGE = 30
+
+        // The ceiling pillar: how close underneath sets it off, how hard it comes down and
+        // returns, how wide the crush lands, and what standing under it costs.
+        private const val PILLAR_TRIGGER_UNITS = 3.5
+        private const val PILLAR_FALL_UNITS_PER_SECOND = 90.0
+        private const val PILLAR_RISE_UNITS_PER_SECOND = 12.0
+        private const val PILLAR_REST_SECONDS = 2.5
+        private const val PILLAR_CRUSH_RADIUS_UNITS = 4.5
+        private const val PILLAR_CRUSH_DAMAGE = 40
+
+        /** How far the blob jar's venom splashes when it breaks, in PSO units. */
+        private const val BLOB_SPLASH_RADIUS_UNITS = 5.0
+
+        /** How much wider the large floor traps (types 12/13) blast than the standard ones. */
+        private const val LARGE_TRAP_BLAST_SCALE = 1.5
+
+        // The slimes' cycle: how flat the puddle lies, how close prey must come before it
+        // rises, how long it stays up, and how thickly a spot can crowd with splits.
+        private const val SLIME_PUDDLE_FLATTEN = 0.16
+        private const val SLIME_RISE_RANGE_UNITS = 7.0
+        private const val SLIME_RISEN_SECONDS = 3.2
+        private const val SLIME_CAP = 5
+        private const val SLIME_CAP_RANGE_UNITS = 40.0
+        private const val SLIME_SPLIT_OFFSET_UNITS = 2.5
 
         /** The Telepipe beam, at a fraction of the city pads' size. */
         private const val TELEPIPE_SCALE = 0.55

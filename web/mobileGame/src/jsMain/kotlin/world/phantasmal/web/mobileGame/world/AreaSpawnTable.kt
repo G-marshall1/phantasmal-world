@@ -108,7 +108,8 @@ class SpawnObject(
 
         val ITEM_BOX_TYPES = setOf(TYPE_RANDOM_BOX, TYPE_FIXED_BOX, TYPE_EMPTY_BOX)
         val ENEMY_BOX_TYPES = setOf(TYPE_ENEMY_BOX_GREY, TYPE_ENEMY_BOX_BROWN)
-        val BREAKABLE_BOX_TYPES = ITEM_BOX_TYPES + ENEMY_BOX_TYPES
+        val BREAKABLE_BOX_TYPES =
+            ITEM_BOX_TYPES + ENEMY_BOX_TYPES + TYPE_RUINS_FIXED_BOX + TYPE_RUINS_RANDOM_BOX
 
         /** The Forest's remaining furniture -- see the prop model specs in ObjectSpecs.kt. */
         const val TYPE_PROBE = 135
@@ -134,7 +135,13 @@ class SpawnObject(
         const val TYPE_CAVE_SWITCH_DOOR = 206
         const val TYPE_ELEMENTAL_TRAP = 10
         const val TYPE_LARGE_ELEMENTAL_TRAP = 12
-        const val TYPE_HEAL_RING = 13
+        // 19 is psolib's HealRing. 13 -- long mistaken for it -- is a second large trap.
+        const val TYPE_HEAL_RING = 19
+        const val TYPE_LARGE_ELEMENTAL_TRAP_B = 13
+
+        // The Ruins' own crates.
+        const val TYPE_RUINS_FIXED_BOX = 353
+        const val TYPE_RUINS_RANDOM_BOX = 354
 
         // The Mines: the same door family as the caves under its own numbers, plus the Mines'
         // trap variant.
@@ -148,6 +155,18 @@ class SpawnObject(
         // and one normal-door type per area (324/325/326 belong to Ruins 1/3/2's own models).
         const val TYPE_RUINS_WARP = 321
         const val TYPE_RUINS_SWITCH = 323
+
+        // The Ruins' remaining mechanisms.
+        const val TYPE_RUINS_TELEPORTER = 320
+        const val TYPE_RUINS_DOOR_SWITCH = 322
+        const val TYPE_RUINS_4_BUTTON_DOOR = 330
+        const val TYPE_RUINS_2_BUTTON_DOOR = 331
+        const val TYPE_RUINS_FENCE_SWITCH = 333
+        const val TYPE_RUINS_FENCE_4X2 = 334
+        const val TYPE_RUINS_FENCE_6X2 = 335
+        const val TYPE_RUINS_POISON_BLOB = 338
+        const val TYPE_RUINS_PILLAR_TRAP = 339
+        const val TYPE_RUINS_CRYSTAL = 341
         const val TYPE_RUINS_DOOR_A1 = 324
         const val TYPE_RUINS_DOOR_A3 = 325
         const val TYPE_RUINS_DOOR_A2 = 326
