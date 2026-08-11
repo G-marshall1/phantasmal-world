@@ -53,6 +53,10 @@ fun main(args: Array<String>) {
         0x09 to "SHOT", 0x0A to "CANE", 0x0B to "ROD", 0x0C to "WAND",
         0x0D to "CLAW", 0x0E to "DOUBLE_SABER", 0x0F to "CLAW", 0x10 to "KATANA",
         0x29 to "KATANA", 0x4E to "LAUNCHER", 0x5C to "TWIN_SWORD",
+        // The Force rares: Psycho Wand (the game's best technique weapon) and the
+        // Caduceus/Mercurius Rod line. Both series swing with the Rod motion set, and both
+        // ship their own models -- see the technique-boost table in ClassRules.kt.
+        0x1D to "ROD", 0x22 to "ROD",
     )
 
     class W(

@@ -64,6 +64,8 @@ import world.phantasmal.web.mobileGame.player.iconCell
 import world.phantasmal.web.mobileGame.player.PlayerTrapKind
 import world.phantasmal.web.mobileGame.player.maxTechniqueLevel
 import world.phantasmal.web.mobileGame.player.techniqueBoost
+import world.phantasmal.web.mobileGame.player.weaponTechniqueBoost
+import world.phantasmal.web.mobileGame.player.weaponTierByName
 import world.phantasmal.web.mobileGame.player.trapCapacity
 import world.phantasmal.web.mobileGame.player.usableBy
 import world.phantasmal.web.mobileGame.player.isKnockdown
@@ -213,6 +215,8 @@ import world.phantasmal.web.mobileGame.persistence.toItem
 import world.phantasmal.web.mobileGame.player.BarrierItem
 import world.phantasmal.web.mobileGame.player.BarrierSpec
 import world.phantasmal.web.mobileGame.player.FrameItem
+import world.phantasmal.web.mobileGame.player.frameSpecByName
+import world.phantasmal.web.mobileGame.player.barrierSpecByName
 import world.phantasmal.web.mobileGame.player.FRAME_SPECS
 import world.phantasmal.web.mobileGame.player.BARRIER_SPECS
 import world.phantasmal.web.mobileGame.player.FrameSpec
@@ -6065,6 +6069,12 @@ class GameRenderer(
                     ?.takeIf { it.type == weaponType(weaponSlug) }
                     ?.let { equipItem(WeaponItem(it, grind = 0, specialAttack = null)) }
             }
+
+            // Last, so it writes over what the save just restored rather than under it: the
+            // Mag in particular is rebuilt from the save several lines above.
+            if (!s.endgameKitGranted && s.name.trim().equals(ENDGAME_KIT_CHARACTER, ignoreCase = true)) {
+                grantEndgameKit(p, s)
+            }
         }
         playerStatusPanel.setHealth(p.hp, p.maxHp)
         playerStatusPanel.setLevel(p.level)
@@ -6115,9 +6125,84 @@ class GameRenderer(
                 bankBarriers = p.bankBarriers.map { it.toSaved() },
                 bankUnits = p.bankUnits.map { it.name },
                 bankKitGranted = true,
+                endgameKitGranted = endgameKitGranted,
                 trapCounts = p.trapsLeft.entries.associate { it.key.name to it.value },
             )
         )
+    }
+
+    /** Set once [grantEndgameKit] has run, so the gift is handed over exactly once. */
+    private var endgameKitGranted = false
+
+    /**
+     * A named character's endgame outfitting, by request: level 200, a Mag raised to 200 and
+     * evolved down the Force line, and the best gear a Force can hold waiting in the bank.
+     *
+     * The weapon is the Psycho Wand -- the highest-ATP rod in the game at 395-400 and the only
+     * one carrying +30% on the whole Ra family (see weaponTechniqueBoost). The frame is Aura
+     * Field and the barrier a Red Ring, the wiki's own "best barrier in the game", both of which
+     * this character is now high enough to wear. Everything goes to the bank rather than into
+     * their hands, as asked.
+     *
+     * The Mag is raised the way a Force's is: every point that isn't holding it together goes
+     * to MIND, which is worth 2 MST apiece, and the evolution is then whatever the wiki's own
+     * level-50 table makes of that spread for this character's profession, sex and Section ID --
+     * granted, not faked.
+     */
+    private fun grantEndgameKit(p: Player, s: CharacterSave) {
+        endgameKitGranted = true
+
+        p.totalExp = totalExpForLevel(MAX_LEVEL)
+        p.level = MAX_LEVEL
+
+        // A Force's Mag: 5 DEF to keep it fed and standing, the other 195 in MIND (+390 MST).
+        val raised = Mag(
+            defExp = 5 * Mag.EXP_PER_LEVEL,
+            mindExp = 195 * Mag.EXP_PER_LEVEL,
+            synchro = Mag.MAX_SYNCHRO,
+            iq = Mag.MAX_IQ,
+            form = "Kalki",
+        )
+        // Walk the real evolution chain rather than naming a form outright, so the Mag it ends
+        // as is the one this character's own table gives.
+        val second = raised.secondEvolutionForm() ?: "Tapas"
+        val evolved = Mag(
+            defExp = raised.defExp, powExp = raised.powExp,
+            dexExp = raised.dexExp, mindExp = raised.mindExp,
+            synchro = raised.synchro, iq = raised.iq, form = second,
+        )
+        val third = evolved.thirdEvolutionForm(
+            profession = professionOf(p.characterClass),
+            femaleCharacter = isFemaleCharacter(p.characterClass),
+            sectionGroupA = s.sectionId in SECTION_GROUP_A,
+        ) ?: second
+        p.mag = Mag(
+            defExp = evolved.defExp, powExp = evolved.powExp,
+            dexExp = evolved.dexExp, mindExp = evolved.mindExp,
+            synchro = evolved.synchro, iq = evolved.iq, form = third,
+        )
+
+        weaponTierByName("Psycho Wand")?.let { p.bankWeapons.add(WeaponItem(it)) }
+        frameSpecByName("Aura Field")?.let { spec ->
+            p.bankFrames.add(FrameItem(spec, dfp = spec.dfpMax, evp = spec.evpMax, slots = 4))
+        }
+        barrierSpecByName("Red Ring")?.let { p.bankBarriers.add(rollBarrier(it)) }
+        p.bankUnits.addAll(
+            listOf(
+                UnitType.GENERAL_MIND, UnitType.GENERAL_MIND,
+                UnitType.GENERAL_TP, UnitType.GENERAL_HP,
+            )
+        )
+        p.bankMeseta = MAX_MESETA
+
+        // The panels and the TP pool were sized off the level this character had a moment ago.
+        p.hp = p.maxHp
+        p.tp = p.stats.tp
+        playerStatusPanel.setHealth(p.hp, p.maxHp)
+        playerStatusPanel.setTp(p.tp, p.stats.tp)
+        playerStatusPanel.setLevel(p.level)
+
+        showToast("Lv.200. The checkroom is holding your commission, ${s.name}")
     }
 
     /**
@@ -7052,8 +7137,10 @@ class GameRenderer(
 
         val power = technique.power(techLevel)
         val mst = p.stats.mst
-        // The formula's Boosts term: a Force's class amplifies its own signature techniques.
-        val boost = techniqueBoost(technique, p.characterClass)
+        // The formula's Boosts term: the caster's class and the weapon in hand both amplify
+        // their own signature techniques, and they stack.
+        val boost = techniqueBoost(technique, p.characterClass) +
+            weaponTechniqueBoost(equippedItem?.tier?.name, technique)
         val yaw = faceFocusTarget(p) ?: p.mesh.rotation.y
         val dirX = sin(yaw)
         val dirZ = cos(yaw)
@@ -8383,7 +8470,8 @@ class GameRenderer(
                             proj.power,
                             player?.stats?.mst ?: 0,
                             enemy.resistances.fire,
-                            player?.let { techniqueBoost(Technique.FOIE, it.characterClass) } ?: 0.0,
+                            (player?.let { techniqueBoost(Technique.FOIE, it.characterClass) } ?: 0.0) +
+                                weaponTechniqueBoost(equippedItem?.tier?.name, Technique.FOIE),
                         ),
                         proj.sprite.position.x, proj.sprite.position.y, proj.sprite.position.z,
                     )
@@ -9647,6 +9735,18 @@ class GameRenderer(
          * logic below it is intact.
          */
         private const val ENERGY_BARRIERS_BLOCK = false
+
+        /** Whose save the endgame outfitting is for -- see grantEndgameKit. */
+        private const val ENDGAME_KIT_CHARACTER = "Chief"
+
+        /**
+         * The five Section IDs the wiki's Mag evolution tables treat as one group; the other
+         * five take the second column.
+         */
+        private val SECTION_GROUP_A: Set<SectionId> = setOf(
+            SectionId.Viridia, SectionId.Skyly, SectionId.Purplenum,
+            SectionId.Redria, SectionId.Yellowboze,
+        )
 
         private const val TECH_FLASH_SECONDS = 0.5
 

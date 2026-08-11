@@ -113,6 +113,40 @@ fun techniqueBoost(technique: Technique, characterClass: CharacterClass): Double
     else -> 0.0
 }
 
+/**
+ * The weapon half of the formula's `Boosts` term: a technique weapon amplifies the techniques it
+ * was built for (wiki.pioneer2.net/w/Techniques, "Equipment-based boosts" -> Weapons). This is
+ * what separates the Force rares from one another -- a Psycho Wand is the best technique weapon
+ * in the game because it carries both the highest ATP of any rod and +30% on the whole Ra
+ * family, and Fire Scepter: Agni is a fire specialist rather than a strictly better cane.
+ *
+ * Keyed on the item's name with punctuation and case stripped, so "FIRE SCEPTER:AGNI" out of the
+ * client's table and "Fire Scepter: Agni" off the wiki both land on the same row. Only weapons
+ * this game actually ships are listed; the boosts stack additively with the caster's class
+ * boost, exactly as the formula's single Boosts term implies.
+ */
+private val WEAPON_TECHNIQUE_BOOSTS: Map<String, Pair<Set<Technique>, Double>> = mapOf(
+    "cluboflaconium" to (setOf(Technique.FOIE) to 0.40),
+    "maceofadaman" to (setOf(Technique.BARTA) to 0.40),
+    "clubofzumiuran" to (setOf(Technique.ZONDE) to 0.40),
+    "firescepteragni" to (setOf(Technique.FOIE, Technique.GIFOIE, Technique.RAFOIE) to 0.20),
+    "icestaffdagon" to (setOf(Technique.BARTA, Technique.GIBARTA, Technique.RABARTA) to 0.20),
+    "stormwandindra" to (setOf(Technique.ZONDE, Technique.GIZONDE, Technique.RAZONDE) to 0.20),
+    "twinklestar" to (setOf(Technique.FOIE, Technique.BARTA, Technique.ZONDE) to 0.20),
+    "caduceus" to (setOf(Technique.GRANTS) to 0.20),
+    "mercuriusrod" to (setOf(Technique.GRANTS) to 0.30),
+    "psychowand" to (setOf(Technique.RAFOIE, Technique.RABARTA, Technique.RAZONDE) to 0.30),
+)
+
+private fun normalizedItemName(name: String): String =
+    name.filter { it.isLetterOrDigit() }.lowercase()
+
+/** The boost the weapon in hand lends [technique], or zero for a weapon that lends none. */
+fun weaponTechniqueBoost(weaponName: String?, technique: Technique): Double {
+    val row = WEAPON_TECHNIQUE_BOOSTS[normalizedItemName(weaponName ?: return 0.0)] ?: return 0.0
+    return if (technique in row.first) row.second else 0.0
+}
+
 /** The three traps every android class deploys. */
 enum class PlayerTrapKind(val uiName: String) {
     DAMAGE("Damage Trap"),

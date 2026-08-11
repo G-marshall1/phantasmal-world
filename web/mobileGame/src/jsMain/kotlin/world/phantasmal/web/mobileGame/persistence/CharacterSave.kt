@@ -95,6 +95,9 @@ data class CharacterSave(
 
     /** An android's remaining traps by kind name; missing means full (see trapCapacity). */
     val trapCounts: Map<String, Int> = emptyMap(),
+
+    /** Whether the endgame outfitting has already been handed over -- see grantEndgameKit. */
+    val endgameKitGranted: Boolean = false,
     /** Bosses this character has felled ("dragon", ...) -- the Ragol teleporter gates on these. */
     val defeatedBosses: List<String> = emptyList(),
 ) {
