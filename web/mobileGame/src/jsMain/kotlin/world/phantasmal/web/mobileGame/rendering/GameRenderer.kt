@@ -589,22 +589,52 @@ class GameRenderer(
             return
         }
 
+        // The crate goes off from the inside: a flash at its heart, a shell of sparks pushing
+        // out through where the walls were, and the panels themselves thrown clear.
+        val heartY = box.y + box.height * 0.5
+        val flash = effectSprite("burst_bright", BOX_BURST_UNITS, colorHex = BOX_BURST_COLOR)
+        flash.position.set(box.x, heartY, box.z)
+        addEffect(
+            TimedEffect(flash, BOX_BURST_SECONDS, BOX_BURST_SECONDS, growPerSecond = BOX_BURST_GROWTH)
+        )
+        spawnHitSpray(
+            box.x, heartY, box.z,
+            colorHex = BOX_BURST_COLOR,
+            count = BOX_BURST_MOTES,
+            speedUnits = BOX_BURST_SPEED_UNITS,
+            sizeWorld = BOX_BURST_MOTE_SIZE,
+            seconds = BOX_BURST_SECONDS * 1.6,
+        )
+
         MainScope().launch {
             val loader = ObjectAssetLoader(assetLoader)
+            // Several of each panel rather than one, thrown on their own arcs -- one shard
+            // apiece read as a crate splitting in half, not as one coming apart.
             for (slug in boxShardSlugs) {
-                val shard = loader.loadObject(slug)
-                shard.position.set(box.x, box.y + 0.5 * worldUnit, box.z)
-                context.scene.add(shard)
-                boxShards.add(
-                    BoxShard(
-                        shard,
-                        velocityX = (Random.nextDouble() - 0.5) * SHARD_SPREAD_UNITS * worldUnit,
-                        velocityY = SHARD_RISE_UNITS * worldUnit,
-                        velocityZ = (Random.nextDouble() - 0.5) * SHARD_SPREAD_UNITS * worldUnit,
-                        spin = (Random.nextDouble() - 0.5) * SHARD_SPIN,
-                        remaining = SHARD_SECONDS,
+                for (piece in 0 until SHARD_PIECES_PER_SLUG) {
+                    val shard = loader.loadObject(slug)
+                    shard.position.set(box.x, heartY, box.z)
+                    shard.rotation.set(
+                        Random.nextDouble() * 2 * PI,
+                        Random.nextDouble() * 2 * PI,
+                        Random.nextDouble() * 2 * PI,
                     )
-                )
+                    context.scene.add(shard)
+                    // Outward on a fresh bearing each time, so the pieces leave the box on
+                    // every side instead of along one axis.
+                    val bearing = Random.nextDouble() * 2 * PI
+                    val push = (0.45 + Random.nextDouble()) * SHARD_SPREAD_UNITS * worldUnit
+                    boxShards.add(
+                        BoxShard(
+                            shard,
+                            velocityX = cos(bearing) * push,
+                            velocityY = SHARD_RISE_UNITS * worldUnit * (0.6 + Random.nextDouble() * 0.9),
+                            velocityZ = sin(bearing) * push,
+                            spin = (Random.nextDouble() - 0.5) * SHARD_SPIN,
+                            remaining = SHARD_SECONDS,
+                        )
+                    )
+                }
             }
         }
 
@@ -914,7 +944,8 @@ class GameRenderer(
         p.hp = (p.hp - damage).coerceAtLeast(0)
         p.photonBlast.onDamageTaken(damage, p.level)
         p.invulnerableRemaining = INVULNERABILITY_DURATION
-        p.hitReactionRemaining = HIT_REACTION_DURATION
+        p.hitReactionRemaining = clipSeconds(p.hitMotion, HIT_REACTION_DURATION)
+        spawnPlayerHitSpray(p)
         playerStatusPanel.setHealth(p.hp, p.maxHp)
         if (p.hp <= 0) handlePlayerDowned(p)
     }
@@ -1718,7 +1749,8 @@ class GameRenderer(
             p.knockedDownRemaining = KNOCKDOWN_DURATION
         }
         p.invulnerableRemaining = INVULNERABILITY_DURATION
-        p.hitReactionRemaining = HIT_REACTION_DURATION
+        p.hitReactionRemaining = clipSeconds(p.hitMotion, HIT_REACTION_DURATION)
+        spawnPlayerHitSpray(p)
         playerStatusPanel.setHealth(p.hp, p.maxHp)
 
         if (p.hp <= 0) handlePlayerDowned(p)
@@ -1739,7 +1771,8 @@ class GameRenderer(
             p.knockedDownRemaining = KNOCKDOWN_DURATION
         }
         p.invulnerableRemaining = INVULNERABILITY_DURATION
-        p.hitReactionRemaining = HIT_REACTION_DURATION
+        p.hitReactionRemaining = clipSeconds(p.hitMotion, HIT_REACTION_DURATION)
+        spawnPlayerHitSpray(p)
         playerStatusPanel.setHealth(p.hp, p.maxHp)
 
         if (p.hp <= 0) handlePlayerDowned(p)
@@ -8006,6 +8039,68 @@ class GameRenderer(
 
     private val particles = mutableListOf<Particle>()
 
+    /**
+     * The burst thrown off a body when something lands on it: a tight spray of motes leaving the
+     * point of contact in every direction, arcing back down as it fades. Red off the character,
+     * orange off whatever they hit -- PSO's hit spark is coloured light rather than gore, which
+     * is why these are additive.
+     */
+    private fun spawnHitSpray(
+        x: Double,
+        y: Double,
+        z: Double,
+        colorHex: Int,
+        count: Int,
+        speedUnits: Double,
+        sizeWorld: Double,
+        seconds: Double,
+    ) {
+        for (k in 0 until count) {
+            // A cone of directions around the upward axis rather than a flat ring, so the
+            // spray reads as coming out of a body instead of off a turntable.
+            val theta = Random.nextDouble() * 2 * PI
+            val lift = 0.35 + Random.nextDouble() * 0.9
+            val speed = (0.55 + Random.nextDouble() * 0.75) * speedUnits * worldUnit
+            spawnParticle(
+                if (Random.nextDouble() < 0.5) "burst_bright" else "burst_orange",
+                x, y, z,
+                sizeWorld = sizeWorld * (0.7 + Random.nextDouble() * 0.6),
+                colorHex = colorHex,
+                vx = cos(theta) * speed,
+                vy = lift * speed,
+                vz = sin(theta) * speed,
+                gravity = HIT_SPRAY_GRAVITY,
+                seconds = seconds * (0.7 + Random.nextDouble() * 0.5),
+            )
+        }
+    }
+
+    /** The red that comes off the character when something connects with them. */
+    private fun spawnPlayerHitSpray(p: Player) {
+        spawnHitSpray(
+            p.mesh.position.x,
+            p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit,
+            p.mesh.position.z,
+            colorHex = PLAYER_HIT_SPRAY_COLOR,
+            count = PLAYER_HIT_SPRAY_COUNT,
+            speedUnits = PLAYER_HIT_SPRAY_SPEED_UNITS,
+            sizeWorld = PLAYER_HIT_SPRAY_SIZE_WORLD,
+            seconds = HIT_SPRAY_SECONDS,
+        )
+    }
+
+    /** The orange that comes off an enemy where a blow lands on it. */
+    private fun spawnEnemyHitSpray(x: Double, y: Double, z: Double) {
+        spawnHitSpray(
+            x, y, z,
+            colorHex = ENEMY_HIT_SPRAY_COLOR,
+            count = ENEMY_HIT_SPRAY_COUNT,
+            speedUnits = ENEMY_HIT_SPRAY_SPEED_UNITS,
+            sizeWorld = ENEMY_HIT_SPRAY_SIZE_WORLD,
+            seconds = HIT_SPRAY_SECONDS,
+        )
+    }
+
     private fun spawnParticle(
         texture: String,
         x: Double, y: Double, z: Double,
@@ -8508,6 +8603,7 @@ class GameRenderer(
         }
 
         enemy.hp -= landed
+        spawnEnemyHitSpray(x, y, z)
         damageNumbers.showDamage(x, y, z, landed, false)
         maybeLilyScreech(enemy)
         if (enemy.isDead) onEnemyKilled(enemy) else {
@@ -8911,6 +9007,9 @@ class GameRenderer(
                 p.photonBlast.onDamageDealt(damage, p.level)
             }
 
+            spawnEnemyHitSpray(
+                enemy.mesh.position.x, centerMassHeight(enemy), enemy.mesh.position.z,
+            )
             // On a multi-part boss the numbers rise off the struck region (jittered so a
             // pellet spread reads as several hits), not stacked on the body's centre.
             if (multiPartFightOf(enemy) != null) {
@@ -9554,6 +9653,7 @@ class GameRenderer(
                     shovePlayerBack(p, enemy.mesh.position.x, enemy.mesh.position.z, critical)
                     p.invulnerableRemaining = INVULNERABILITY_DURATION
                     p.hitReactionRemaining = clipSeconds(p.hitMotion, HIT_REACTION_DURATION)
+                    spawnPlayerHitSpray(p)
                     playerStatusPanel.setHealth(p.hp, p.maxHp)
 
                     if (p.hp <= 0) handlePlayerDowned(p)
@@ -9861,6 +9961,31 @@ class GameRenderer(
 
         /** Dropped loot only takes the lock within reach of picking it up. */
         private const val PICKUP_FOCUS_RANGE_UNITS = 6.0
+
+        /**
+         * The hit sprays. Red off the character, orange off what they hit; both arc back down
+         * rather than hanging, which is what keeps a flurry of hits from fogging the screen.
+         */
+        private const val PLAYER_HIT_SPRAY_COLOR = 0xd21b2c
+        private const val PLAYER_HIT_SPRAY_COUNT = 14
+        private const val PLAYER_HIT_SPRAY_SPEED_UNITS = 7.0
+        private const val PLAYER_HIT_SPRAY_SIZE_WORLD = 1.5
+        private const val ENEMY_HIT_SPRAY_COLOR = 0xff7a1e
+        private const val ENEMY_HIT_SPRAY_COUNT = 16
+        private const val ENEMY_HIT_SPRAY_SPEED_UNITS = 8.0
+        private const val ENEMY_HIT_SPRAY_SIZE_WORLD = 1.7
+        private const val HIT_SPRAY_SECONDS = 0.45
+        private const val HIT_SPRAY_GRAVITY = 55.0
+
+        /** The crate's own detonation, from the inside out. */
+        private const val BOX_BURST_COLOR = 0xffcf6a
+        private const val BOX_BURST_UNITS = 3.0
+        private const val BOX_BURST_SECONDS = 0.35
+        private const val BOX_BURST_GROWTH = 7.0
+        private const val BOX_BURST_MOTES = 22
+        private const val BOX_BURST_SPEED_UNITS = 11.0
+        private const val BOX_BURST_MOTE_SIZE = 1.6
+        private const val SHARD_PIECES_PER_SLUG = 4
 
         private const val TECH_FLASH_SECONDS = 0.5
 
