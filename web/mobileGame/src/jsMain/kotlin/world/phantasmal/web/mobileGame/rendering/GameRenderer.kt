@@ -2243,6 +2243,29 @@ class GameRenderer(
         }
     }
 
+    /**
+     * The ground a blow takes from you: the character slides directly away from whatever hit
+     * them. A knockdown throws them further than a flinch does. Kept to the walkable surface
+     * by the same collision the controller walks with, so a shove can't post the character
+     * through a wall or off a ledge.
+     */
+    private fun shovePlayerBack(p: Player, fromX: Double, fromZ: Double, knockedDown: Boolean) {
+        var dx = p.mesh.position.x - fromX
+        var dz = p.mesh.position.z - fromZ
+        val length = sqrt(dx * dx + dz * dz)
+        if (length < 1e-3) {
+            // Struck from exactly on top: give ground the way the character is facing.
+            dx = -sin(p.mesh.rotation.y)
+            dz = -cos(p.mesh.rotation.y)
+        } else {
+            dx /= length
+            dz /= length
+        }
+        val distance =
+            (if (knockedDown) KNOCKDOWN_SHOVE_UNITS else HIT_SHOVE_UNITS) * worldUnit
+        p.controller.displace(dx * distance, dz * distance)
+    }
+
     private fun handlePlayerDowned(p: Player) {
         val dolls = p.tools[ToolType.SCAPE_DOLL] ?: 0
         if (dolls > 0) {
@@ -6829,21 +6852,38 @@ class GameRenderer(
             }
         }
 
-        // Enemies get a head start in the race for the lock: standing between a crate and a
-        // Booma, the fight matters more than the loot. (An earlier strict-nearest pick kept
-        // stealing the lock onto scenery mid-combat.) The bias is on the compared distance
-        // only; range checks stay honest.
+        // A trap you are standing on top of outranks everything, the fight included: it is
+        // about to go off underneath you and nothing else matters until it doesn't.
+        val underfoot = TRAP_PRIORITY_UNITS * worldUnit
+        var closestTrap: FocusTarget? = null
+        var closestTrapD2 = underfoot * underfoot
+        for (trap in fieldTraps) {
+            if (trap.spent || !trapVisibleTo(p, trap)) continue
+            val dx = trap.x - p.mesh.position.x
+            val dz = trap.z - p.mesh.position.z
+            val d2 = dx * dx + dz * dz
+            if (d2 <= closestTrapD2) {
+                closestTrapD2 = d2
+                closestTrap = FocusTarget(trap = trap)
+            }
+        }
+        if (closestTrap != null) return closestTrap
+
+        // Then the fight, outright rather than by a bias: while anything alive is in range the
+        // lock belongs to it, and no crate, trap or dropped item can take it away.
         for (enemy in enemies) {
             if (enemy.isDead || enemy.untargetable) continue
             val dx = enemy.mesh.position.x - p.mesh.position.x
             val dz = enemy.mesh.position.z - p.mesh.position.z
-            val d2 = (dx * dx + dz * dz) * FOCUS_ENEMY_BIAS
+            val d2 = dx * dx + dz * dz
             val reach = rangeWorld + enemy.hitboxRadius
-            if (dx * dx + dz * dz <= reach * reach && d2 < bestD2) {
+            if (d2 <= reach * reach && d2 < bestD2) {
                 best = FocusTarget(enemy = enemy)
                 bestD2 = d2
             }
         }
+        if (best != null) return best
+
         for (box in fieldBoxes) {
             if (box.broken) continue
             consider(FocusTarget(box = box), box.x, box.z, box.radius)
@@ -6855,7 +6895,13 @@ class GameRenderer(
                 trap.x, trap.z, TRAP_MARKER_RADIUS_UNITS * worldUnit,
             )
         }
+        // Loot is picked up at arm's length, not sighted across the room: a dropped item only
+        // takes the lock once you are practically standing over it.
         for (pickup in pickups) {
+            val dx = pickup.mesh.position.x - p.mesh.position.x
+            val dz = pickup.mesh.position.z - p.mesh.position.z
+            val reach = PICKUP_FOCUS_RANGE_UNITS * worldUnit
+            if (dx * dx + dz * dz > reach * reach) continue
             consider(
                 FocusTarget(pickup = pickup),
                 pickup.mesh.position.x, pickup.mesh.position.z,
@@ -9482,11 +9528,12 @@ class GameRenderer(
                     // Taking damage fills the blast gauge twenty times faster than dealing it.
                     p.photonBlast.onDamageTaken(damage, p.level)
 
-                    // A single blow taking a quarter of the player's health puts them on the
-                    // floor, which holds far longer than an ordinary flinch.
-                    if (isKnockdown(damage, p.maxHp)) {
+                    // Only a critical puts the character on the floor. Everything else is a
+                    // flinch with a shove: an ordinary blow gives ground without taking it.
+                    if (critical) {
                         p.knockedDownRemaining = KNOCKDOWN_DURATION
                     }
+                    shovePlayerBack(p, enemy.mesh.position.x, enemy.mesh.position.z, critical)
                     p.invulnerableRemaining = INVULNERABILITY_DURATION
                     p.hitReactionRemaining = HIT_REACTION_DURATION
                     playerStatusPanel.setHealth(p.hp, p.maxHp)
@@ -9786,6 +9833,16 @@ class GameRenderer(
             SectionId.Viridia, SectionId.Skyly, SectionId.Purplenum,
             SectionId.Redria, SectionId.Yellowboze,
         )
+
+        /** How far a blow gives ground, and how far a critical throws you. */
+        private const val HIT_SHOVE_UNITS = 0.7
+        private const val KNOCKDOWN_SHOVE_UNITS = 2.2
+
+        /** A trap this close is about to go off underneath you and owns the lock. */
+        private const val TRAP_PRIORITY_UNITS = 4.0
+
+        /** Dropped loot only takes the lock within reach of picking it up. */
+        private const val PICKUP_FOCUS_RANGE_UNITS = 6.0
 
         private const val TECH_FLASH_SECONDS = 0.5
 

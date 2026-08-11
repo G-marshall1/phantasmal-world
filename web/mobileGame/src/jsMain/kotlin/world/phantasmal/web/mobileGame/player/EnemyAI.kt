@@ -207,13 +207,23 @@ class EnemyAI(
     fun onDamaged() {
         // A hive that has been knocked over flinches from the floor, not on its feet.
         val motion = (if (hiveIsDown) hiveClips?.downDamage else null) ?: damageMotion ?: return
-        if (damageRemaining > 0 || stunRemaining > 0 || flinchLockoutRemaining > 0) return
+        // A full stagger owns the body; a flinch does not.
+        if (stunRemaining > 0) return
 
-        damageRemaining = (motion.frameCount - 1) / PSO_FRAME_RATE_DOUBLE
-        flinchLockoutRemaining = damageRemaining + FLINCH_RECOVERY
+        // Every hit shows a reaction, even one landing mid-flinch. A weapon faster than the
+        // clip used to be swallowed by a lockout, so the enemy stood there absorbing hits
+        // silently -- the original instead *quickens* the reaction so it can play again, which
+        // is what reads as being hit twice in quick succession. Speeding it up rather than
+        // restarting it at full length is also what stops a fast weapon from freezing an enemy
+        // in place forever.
+        val clipSeconds = (motion.frameCount - 1) / PSO_FRAME_RATE_DOUBLE
+        val repeat = damageRemaining > 0
+        val speed = if (repeat) FLINCH_REPEAT_SPEEDUP else 1.0
+        damageRemaining = clipSeconds / speed
+        flinchLockoutRemaining = .0
         // Taking a hit interrupts a swing in progress -- the windup is lost along with the turn.
         cancelSwing()
-        playClip(motion, oneShot = true)
+        playClip(motion, oneShot = true, timeScale = speed)
     }
 
     /**
@@ -741,6 +751,13 @@ class EnemyAI(
 
         /** Breathing room after a reaction before the enemy can be made to flinch again. */
         private const val FLINCH_RECOVERY = 0.4
+
+        /**
+         * How much faster the flinch replays when a hit lands while one is already running.
+         * See onDamaged: this is what lets a fast weapon show a second reaction without the
+         * enemy being stunlocked by an ever-restarting clip.
+         */
+        private const val FLINCH_REPEAT_SPEEDUP = 2.0
 
         /** Ranged fire: the pause between shots, and the grace before the first one. */
         private const val RANGED_COOLDOWN = 3.0

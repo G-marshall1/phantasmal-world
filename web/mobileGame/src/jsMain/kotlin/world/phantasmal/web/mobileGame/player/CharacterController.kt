@@ -51,6 +51,17 @@ class CharacterController(
      * doesn't inherit whatever downward speed had built up before the warp -- otherwise warping
      * while airborne lands you at the destination already falling fast.
      */
+    /**
+     * Shoves the character bodily across the ground -- the ground a blow takes from them. The
+     * wall collider resolves it exactly as it resolves walking, so being hit against a wall
+     * presses you into it instead of through it, and the next update re-settles the height.
+     */
+    fun displace(dx: Double, dz: Double) {
+        position.x += dx
+        position.z += dz
+        wallCollider.resolve(position, radius, verticalTolerance)
+    }
+
     fun teleportTo(x: Double, y: Double, z: Double, newYaw: Double) {
         position.set(x, y, z)
         yaw = newYaw
