@@ -63,6 +63,7 @@ import world.phantasmal.web.mobileGame.player.effectiveAtp
 import world.phantasmal.web.mobileGame.player.iconCell
 import world.phantasmal.web.mobileGame.player.PlayerTrapKind
 import world.phantasmal.web.mobileGame.player.maxTechniqueLevel
+import world.phantasmal.web.mobileGame.player.techniqueBoost
 import world.phantasmal.web.mobileGame.player.trapCapacity
 import world.phantasmal.web.mobileGame.player.usableBy
 import world.phantasmal.web.mobileGame.player.isKnockdown
@@ -7051,6 +7052,8 @@ class GameRenderer(
 
         val power = technique.power(techLevel)
         val mst = p.stats.mst
+        // The formula's Boosts term: a Force's class amplifies its own signature techniques.
+        val boost = techniqueBoost(technique, p.characterClass)
         val yaw = faceFocusTarget(p) ?: p.mesh.rotation.y
         val dirX = sin(yaw)
         val dirZ = cos(yaw)
@@ -7195,7 +7198,7 @@ class GameRenderer(
                     spawnZondeSparks(sx, strikeY, sz)
 
                     hurtEnemyAt(
-                        target, techniqueDamage(power, mst, target.resistances.thunder),
+                        target, techniqueDamage(power, mst, target.resistances.thunder, boost),
                         sx, strikeY, sz,
                     )
                 }
@@ -7226,7 +7229,7 @@ class GameRenderer(
                         burst.position.set(pt[0], pt[1], pt[2])
                         addEffect(TimedEffect(burst, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
                         hurtEnemyAt(
-                            enemy, techniqueDamage(power, mst, enemy.resistances.ice),
+                            enemy, techniqueDamage(power, mst, enemy.resistances.ice, boost),
                             pt[0], pt[1], pt[2],
                         )
                     }
@@ -7288,7 +7291,7 @@ class GameRenderer(
                         delayedTechActions.add(DelayedAction(arrival) {
                             if (!enemy.isDead) {
                                 hurtEnemyAt(
-                                    enemy, techniqueDamage(power, mst, enemy.resistances.fire),
+                                    enemy, techniqueDamage(power, mst, enemy.resistances.fire, boost),
                                     pt[0], pt[1], pt[2],
                                 )
                             }
@@ -7334,7 +7337,7 @@ class GameRenderer(
                     for (enemy in enemiesWithin(boxTarget.x, boxTarget.z, RAFOIE_RADIUS_UNITS)) {
                         for (pt in areaHitPoints(enemy, boxTarget.x, boxTarget.z, RAFOIE_RADIUS_UNITS * worldUnit)) {
                             hurtEnemyAt(
-                                enemy, techniqueDamage(power, mst, enemy.resistances.fire),
+                                enemy, techniqueDamage(power, mst, enemy.resistances.fire, boost),
                                 pt[0], pt[1], pt[2],
                             )
                         }
@@ -7352,7 +7355,7 @@ class GameRenderer(
                     for (enemy in enemiesWithin(tx, tz, RAFOIE_RADIUS_UNITS)) {
                         for (pt in areaHitPoints(enemy, tx, tz, RAFOIE_RADIUS_UNITS * worldUnit)) {
                             hurtEnemyAt(
-                                enemy, techniqueDamage(power, mst, enemy.resistances.fire),
+                                enemy, techniqueDamage(power, mst, enemy.resistances.fire, boost),
                                 pt[0], pt[1], pt[2],
                             )
                         }
@@ -7410,7 +7413,7 @@ class GameRenderer(
                     )
                     for (pt in hits) {
                         hurtEnemyAt(
-                            enemy, techniqueDamage(power, mst, enemy.resistances.ice),
+                            enemy, techniqueDamage(power, mst, enemy.resistances.ice, boost),
                             pt[0], pt[1], pt[2],
                         )
                     }
@@ -7442,7 +7445,7 @@ class GameRenderer(
                         enemy, p.mesh.position.x, p.mesh.position.z, RABARTA_RADIUS_UNITS * worldUnit,
                     )) {
                         hurtEnemyAt(
-                            enemy, techniqueDamage(power, mst, enemy.resistances.ice),
+                            enemy, techniqueDamage(power, mst, enemy.resistances.ice, boost),
                             pt[0], pt[1], pt[2],
                         )
                         val burst = effectSprite("barta_burst", 3.2, colorHex = BARTA_COLOR)
@@ -7508,7 +7511,7 @@ class GameRenderer(
                         fromY = toY
                         fromZ = toZ
                         hurtEnemyAt(
-                            body, techniqueDamage(power, mst, body.resistances.thunder),
+                            body, techniqueDamage(power, mst, body.resistances.thunder, boost),
                             toX, toY, toZ,
                         )
                     }
@@ -7609,7 +7612,7 @@ class GameRenderer(
                         bolt.position.set(pt[0], pt[1] + 3.0 * worldUnit, pt[2])
                         addEffect(TimedEffect(bolt, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
                         hurtEnemyAt(
-                            enemy, techniqueDamage(power, mst, enemy.resistances.thunder),
+                            enemy, techniqueDamage(power, mst, enemy.resistances.thunder, boost),
                             pt[0], pt[1], pt[2],
                         )
                     }
@@ -7655,7 +7658,7 @@ class GameRenderer(
                     val gx = techAimScratch.x
                     val gy = techAimScratch.y
                     val gz = techAimScratch.z
-                    hurtEnemyAt(target, techniqueDamage(power, mst, target.resistances.light), gx, gy, gz)
+                    hurtEnemyAt(target, techniqueDamage(power, mst, target.resistances.light, boost), gx, gy, gz)
                     techniqueFx?.grants(gx, target.mesh.position.y, gz)
                     // The reference's column of light dropped on the judged.
                     spawnLightPillar(gx, target.mesh.position.y, gz, GRANTS_COLOR)
@@ -8376,7 +8379,12 @@ class GameRenderer(
                 ) {
                     hurtEnemyAt(
                         enemy,
-                        techniqueDamage(proj.power, player?.stats?.mst ?: 0, enemy.resistances.fire),
+                        techniqueDamage(
+                            proj.power,
+                            player?.stats?.mst ?: 0,
+                            enemy.resistances.fire,
+                            player?.let { techniqueBoost(Technique.FOIE, it.characterClass) } ?: 0.0,
+                        ),
                         proj.sprite.position.x, proj.sprite.position.y, proj.sprite.position.z,
                     )
                     hit = true

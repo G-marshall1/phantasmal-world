@@ -72,8 +72,10 @@ fun supportDurationSeconds(level: Int): Double = 40.0 + (level - 1) * 10.0
 const val ICE_FREEZE_CHANCE = 0.20
 
 /** The wiki's attack-technique damage formula, truncated, floored at 1 like physical damage. */
-fun techniqueDamage(power: Int, mst: Int, resistancePercent: Int): Int =
-    ((power + mst) * 0.2 * (100 - resistancePercent) / 100.0).toInt().coerceAtLeast(1)
+fun techniqueDamage(power: Int, mst: Int, resistancePercent: Int, boost: Double = 0.0): Int =
+    ((power + mst) * 0.2 * (1.0 + boost) * (100 - resistancePercent) / 100.0)
+        .toInt()
+        .coerceAtLeast(1)
 
 /** The wiki's Resta formula: `TechPower + MST / 2`. */
 fun restaHeal(power: Int, mst: Int): Int = power + mst / 2

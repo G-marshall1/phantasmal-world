@@ -80,6 +80,39 @@ fun maxTechniqueLevel(technique: Technique, characterClass: CharacterClass): Int
     }
 }
 
+/**
+ * The `Boosts` term of the wiki's technique damage formula: each Force class amplifies its own
+ * signature techniques (wiki.pioneer2.net/w/Techniques, "Class-based boosts"). This is what
+ * makes the four Forces play differently rather than being one caster with different stats --
+ * FOnewearl is the simple-technique specialist, FOnewm the multi-target one, FOmar the Gi/Grants
+ * hybrid, FOmarl the Grants and support caster.
+ *
+ * Only the damage boosts are modelled. The published range boosts (+100% on Resta, Anti, Shifta
+ * and Deband) do nothing yet in a game with no allies to reach, and FOnewearl's piercing Megid
+ * needs a projectile that survives its first target.
+ */
+fun techniqueBoost(technique: Technique, characterClass: CharacterClass): Double = when (characterClass) {
+    CharacterClass.FOmar -> when (technique) {
+        Technique.GIFOIE, Technique.GIBARTA, Technique.GIZONDE, Technique.GRANTS -> 0.30
+        else -> 0.0
+    }
+    CharacterClass.FOmarl -> when (technique) {
+        Technique.GRANTS -> 0.50
+        else -> 0.0
+    }
+    CharacterClass.FOnewm -> when (technique) {
+        Technique.GIFOIE, Technique.GIBARTA, Technique.GIZONDE,
+        Technique.RAFOIE, Technique.RABARTA, Technique.RAZONDE,
+        -> 0.30
+        else -> 0.0
+    }
+    CharacterClass.FOnewearl -> when (technique) {
+        Technique.FOIE, Technique.BARTA, Technique.ZONDE -> 0.30
+        else -> 0.0
+    }
+    else -> 0.0
+}
+
 /** The three traps every android class deploys. */
 enum class PlayerTrapKind(val uiName: String) {
     DAMAGE("Damage Trap"),
