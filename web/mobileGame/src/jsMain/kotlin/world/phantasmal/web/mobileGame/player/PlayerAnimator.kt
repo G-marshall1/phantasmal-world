@@ -1,6 +1,8 @@
 package world.phantasmal.web.mobileGame.player
 
 import world.phantasmal.core.disposable.TrackedDisposable
+import world.phantasmal.psolib.fileFormats.Vec3
+import world.phantasmal.psolib.fileFormats.ninja.NjKeyframe
 import world.phantasmal.psolib.fileFormats.ninja.NjKeyframeTrack
 import world.phantasmal.psolib.fileFormats.ninja.NjMotion
 import world.phantasmal.psolib.fileFormats.ninja.NjMotionData
@@ -112,6 +114,9 @@ class PlayerAnimator(
     }
 
     companion object {
+        /** The bone the controller owns the ground position of -- see stripTranslation. */
+        private const val ROOT_BONE_INDEX = 0
+
         private const val FADE_DURATION = 0.15
 
         /**
@@ -124,10 +129,33 @@ class PlayerAnimator(
          * rotate), so stripping every Position track keeps the limbs animating in place with no
          * assumption needed about which bone index is "the" root.
          */
+        /**
+         * Removes the root bone's *horizontal* drift and nothing else.
+         *
+         * The character's position on the ground belongs to the controller, so a clip that also
+         * walks the root forward fights it and the character slides. Dropping every position
+         * track everywhere was too blunt a cure: it also threw away the root's vertical motion,
+         * which is what lowers the body to the floor in a knockdown or a death, so a floored
+         * character lay flat at standing height -- floating in mid-air. Non-root bones keep
+         * their translation outright; a clip that shifts a limb was never fighting anything.
+         */
         private fun stripTranslation(motion: NjMotion): NjMotion =
             NjMotion(
-                motionData = motion.motionData.map { data ->
-                    NjMotionData(data.tracks.filterNot { it is NjKeyframeTrack.Position })
+                motionData = motion.motionData.mapIndexed { boneIndex, data ->
+                    if (boneIndex != ROOT_BONE_INDEX) return@mapIndexed data
+                    NjMotionData(
+                        data.tracks.map { track ->
+                            if (track !is NjKeyframeTrack.Position) track
+                            else NjKeyframeTrack.Position(
+                                track.keyframes.map { key ->
+                                    NjKeyframe.Vector(
+                                        key.frame,
+                                        Vec3(0f, key.value.y, 0f),
+                                    )
+                                }
+                            )
+                        }
+                    )
                 },
                 frameCount = motion.frameCount,
                 type = motion.type,

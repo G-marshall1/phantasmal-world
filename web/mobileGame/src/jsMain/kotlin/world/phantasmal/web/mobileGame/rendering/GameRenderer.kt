@@ -2249,6 +2249,15 @@ class GameRenderer(
      * by the same collision the controller walks with, so a shove can't post the character
      * through a wall or off a ledge.
      */
+    /**
+     * How long a clip actually runs. Reaction holds are timed off this rather than off a flat
+     * constant, so each one plays its full length and no further: PSO's own clips vary (a
+     * handgun knockdown is 34 frames, a rifle's 32), and a hold shorter than the clip cuts the
+     * animation off mid-fall while a longer one leaves the character frozen after it ends.
+     */
+    private fun clipSeconds(motion: NjMotion?, fallback: Double): Double =
+        motion?.let { (it.frameCount - 1) / PSO_FRAME_RATE_DOUBLE } ?: fallback
+
     private fun shovePlayerBack(p: Player, fromX: Double, fromZ: Double, knockedDown: Boolean) {
         var dx = p.mesh.position.x - fromX
         var dz = p.mesh.position.z - fromZ
@@ -9382,7 +9391,15 @@ class GameRenderer(
                     oneShot = true,
                 )
             } else {
-                p.animator.playClip(stateMotion)
+                // The reaction clips are one-shots: they play through and hold their last
+                // pose. Looping them replayed the fall from standing over and over, which is
+                // what had a floored character springing up and dropping again mid-knockdown.
+                val holdsFinalPose =
+                    !alive ||
+                        p.knockedDownRemaining > 0 ||
+                        p.hitReactionRemaining > 0 ||
+                        p.blockRemaining > 0
+                p.animator.playClip(stateMotion, oneShot = holdsFinalPose)
             }
             // Walking out of the tail of a swing cancels it rather than sliding along with the
             // clip still playing.
@@ -9505,7 +9522,7 @@ class GameRenderer(
                         targetEvp = p.stats.evp,
                     )
                     if (Random.nextDouble() * 100.0 >= hitChance) {
-                        p.blockRemaining = BLOCK_REACTION_DURATION
+                        p.blockRemaining = clipSeconds(p.blockMotion, BLOCK_REACTION_DURATION)
                         p.invulnerableRemaining = INVULNERABILITY_DURATION
                         damageNumbers.showMiss(
                             p.mesh.position.x,
@@ -9531,11 +9548,12 @@ class GameRenderer(
                     // Only a critical puts the character on the floor. Everything else is a
                     // flinch with a shove: an ordinary blow gives ground without taking it.
                     if (critical) {
-                        p.knockedDownRemaining = KNOCKDOWN_DURATION
+                        p.knockedDownRemaining =
+                            clipSeconds(p.knockedDownMotion, KNOCKDOWN_DURATION)
                     }
                     shovePlayerBack(p, enemy.mesh.position.x, enemy.mesh.position.z, critical)
                     p.invulnerableRemaining = INVULNERABILITY_DURATION
-                    p.hitReactionRemaining = HIT_REACTION_DURATION
+                    p.hitReactionRemaining = clipSeconds(p.hitMotion, HIT_REACTION_DURATION)
                     playerStatusPanel.setHealth(p.hp, p.maxHp)
 
                     if (p.hp <= 0) handlePlayerDowned(p)

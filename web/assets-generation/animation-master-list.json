@@ -1,0 +1,5154 @@
+{
+ "_source": "Phantasy Star Online: Blue Burst Character Animations - Master Animation List (PDF), extracted 2026-08-11.",
+ "_note": "1-indexed as the list numbers them. The game's files are 0-indexed: list #N is animation_(N-1).njm. Frames are at 30fps.",
+ "animations": [
+  {
+   "list": 1,
+   "file": 0,
+   "name": "Male Handgun Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Handgun",
+   "comments": ""
+  },
+  {
+   "list": 2,
+   "file": 1,
+   "name": "Male Handgun Casting Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Handgun",
+   "comments": ""
+  },
+  {
+   "list": 3,
+   "file": 2,
+   "name": "Male Handgun Attack",
+   "frames": 20,
+   "category": "Attack",
+   "weapon": "Handgun",
+   "comments": "1, 2 and 3? Yes."
+  },
+  {
+   "list": 4,
+   "file": 3,
+   "name": "Male Handgun Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Handgun",
+   "comments": ""
+  },
+  {
+   "list": 5,
+   "file": 4,
+   "name": "Male Handgun Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Handgun",
+   "comments": ""
+  },
+  {
+   "list": 6,
+   "file": 5,
+   "name": "",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Handgun",
+   "comments": "Unused?"
+  },
+  {
+   "list": 7,
+   "file": 6,
+   "name": "",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Handgun",
+   "comments": "Unused?"
+  },
+  {
+   "list": 8,
+   "file": 7,
+   "name": "Male Handgun Knockdown",
+   "frames": 34,
+   "category": "Knockdown",
+   "weapon": "Handgun",
+   "comments": ""
+  },
+  {
+   "list": 9,
+   "file": 8,
+   "name": "Male Handgun Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Handgun",
+   "comments": ""
+  },
+  {
+   "list": 10,
+   "file": 9,
+   "name": "Male Handgun Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Handgun",
+   "comments": ""
+  },
+  {
+   "list": 11,
+   "file": 10,
+   "name": "Male Rifle Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 12,
+   "file": 11,
+   "name": "Male Rifle Cast Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 13,
+   "file": 12,
+   "name": "Male Rifle Attack",
+   "frames": 20,
+   "category": "Attack",
+   "weapon": "Rifle",
+   "comments": "1, 2 and 3? Yes."
+  },
+  {
+   "list": 14,
+   "file": 13,
+   "name": "Male Rifle Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 15,
+   "file": 14,
+   "name": "Male Rifle Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 16,
+   "file": 15,
+   "name": "Male Rifle Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Rifle",
+   "comments": "Male, also for handgun walk?"
+  },
+  {
+   "list": 17,
+   "file": 16,
+   "name": "Male Rifle Stand",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Rifle",
+   "comments": "Male, also for handgun stand?"
+  },
+  {
+   "list": 18,
+   "file": 17,
+   "name": "Rifle Knockdown",
+   "frames": 32,
+   "category": "Knockdown",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 19,
+   "file": 18,
+   "name": "Rifle Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 20,
+   "file": 19,
+   "name": "Rifle Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 21,
+   "file": 20,
+   "name": "Rifle Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 22,
+   "file": 21,
+   "name": "Rifle Switch Press",
+   "frames": 30,
+   "category": "Switch Press",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 23,
+   "file": 22,
+   "name": "Rifle Run",
+   "frames": 32,
+   "category": "Run",
+   "weapon": "Rifle",
+   "comments": ""
+  },
+  {
+   "list": 24,
+   "file": 23,
+   "name": "Male Mechgun Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Mechgun",
+   "comments": ""
+  },
+  {
+   "list": 25,
+   "file": 24,
+   "name": "Male Mechgun Cast Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Mechgun",
+   "comments": "Non-FOmar male"
+  },
+  {
+   "list": 26,
+   "file": 25,
+   "name": "Male Mechgun Attack",
+   "frames": 4,
+   "category": "Attack",
+   "weapon": "Mechgun",
+   "comments": ""
+  },
+  {
+   "list": 27,
+   "file": 26,
+   "name": "Mechgun Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Mechgun",
+   "comments": ""
+  },
+  {
+   "list": 28,
+   "file": 27,
+   "name": "Mechgun Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Mechgun",
+   "comments": ""
+  },
+  {
+   "list": 29,
+   "file": 28,
+   "name": "Mechgun Walk",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 30,
+   "file": 29,
+   "name": "Walk Mechgun",
+   "frames": 30,
+   "category": "Mechgun Stand",
+   "weapon": "20",
+   "comments": "Stand Mechgun"
+  },
+  {
+   "list": 31,
+   "file": 30,
+   "name": "",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "Mechgun",
+   "comments": "Unused?"
+  },
+  {
+   "list": 32,
+   "file": 31,
+   "name": "",
+   "frames": 35,
+   "category": "Rise",
+   "weapon": "Mechgun",
+   "comments": "Unused?"
+  },
+  {
+   "list": 33,
+   "file": 32,
+   "name": "Mechgun Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Mechgun",
+   "comments": ""
+  },
+  {
+   "list": 34,
+   "file": 33,
+   "name": "Mechgun Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Mechgun",
+   "comments": ""
+  },
+  {
+   "list": 35,
+   "file": 34,
+   "name": "Mechgun Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Mechgun",
+   "comments": ""
+  },
+  {
+   "list": 36,
+   "file": 35,
+   "name": "Mechgun Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Mechgun",
+   "comments": ""
+  },
+  {
+   "list": 37,
+   "file": 36,
+   "name": "Shot Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 38,
+   "file": 37,
+   "name": "Shot Cast Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 39,
+   "file": 38,
+   "name": "Shot Attack",
+   "frames": 25,
+   "category": "Attack",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 40,
+   "file": 39,
+   "name": "Shot Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 41,
+   "file": 40,
+   "name": "Shot Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 42,
+   "file": 41,
+   "name": "Shot Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 43,
+   "file": 42,
+   "name": "Shot Standing",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 44,
+   "file": 43,
+   "name": "Shot Knockdown",
+   "frames": 29,
+   "category": "Knockdown",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 45,
+   "file": 44,
+   "name": "Shot Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 46,
+   "file": 45,
+   "name": "Shot Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 47,
+   "file": 46,
+   "name": "Shot Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 48,
+   "file": 47,
+   "name": "Shot Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 49,
+   "file": 48,
+   "name": "Shot Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 50,
+   "file": 49,
+   "name": "Launcher Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 51,
+   "file": 50,
+   "name": "Launcher Cast Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 52,
+   "file": 51,
+   "name": "Launcher Attack",
+   "frames": 25,
+   "category": "Attack",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 53,
+   "file": 52,
+   "name": "Launcher Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 54,
+   "file": 53,
+   "name": "Launcher Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 55,
+   "file": 54,
+   "name": "Launcher Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 56,
+   "file": 55,
+   "name": "Launcher Stand",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 57,
+   "file": 56,
+   "name": "Launcher Knockdown",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 58,
+   "file": 57,
+   "name": "Launcher Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 59,
+   "file": 58,
+   "name": "Launcher Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 60,
+   "file": 59,
+   "name": "Launcher Switch Press",
+   "frames": 30,
+   "category": "Switch Press",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 61,
+   "file": 60,
+   "name": "Launcher Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Launcher",
+   "comments": "Animation Name Frames Category Weapon Wielded Comments"
+  },
+  {
+   "list": 62,
+   "file": 61,
+   "name": "Male Launcher Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Launcher",
+   "comments": ""
+  },
+  {
+   "list": 63,
+   "file": 62,
+   "name": "Rod Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Rod",
+   "comments": "Non-FOmar male"
+  },
+  {
+   "list": 64,
+   "file": 63,
+   "name": "Rod Casting Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 65,
+   "file": 64,
+   "name": "Rod Attack 1",
+   "frames": 25,
+   "category": "Attack",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 66,
+   "file": 65,
+   "name": "Rod Attack 2",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 67,
+   "file": 66,
+   "name": "Rod Attack 3",
+   "frames": 69,
+   "category": "Attack",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 68,
+   "file": 67,
+   "name": "Rod Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 69,
+   "file": 68,
+   "name": "Rod Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 70,
+   "file": 69,
+   "name": "Rod Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 71,
+   "file": 70,
+   "name": "Rod Stand",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 72,
+   "file": 71,
+   "name": "Rod Knockdown",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 73,
+   "file": 72,
+   "name": "Rod Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 74,
+   "file": 73,
+   "name": "Fod Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 75,
+   "file": 74,
+   "name": "Rod Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 76,
+   "file": 75,
+   "name": "Rod Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Rod",
+   "comments": "^"
+  },
+  {
+   "list": 77,
+   "file": 76,
+   "name": "Wand Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Wand",
+   "comments": "Non-FOmar , non-FOmarl"
+  },
+  {
+   "list": 78,
+   "file": 77,
+   "name": "Want Cast Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 79,
+   "file": 78,
+   "name": "Wand Attack 1",
+   "frames": 15,
+   "category": "Attack",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 80,
+   "file": 79,
+   "name": "Wand Attack 2",
+   "frames": 25,
+   "category": "Attack",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 81,
+   "file": 80,
+   "name": "Wand Attack 3",
+   "frames": 60,
+   "category": "Attack",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 82,
+   "file": 81,
+   "name": "Wand Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 83,
+   "file": 82,
+   "name": "Wand Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 84,
+   "file": 83,
+   "name": "Wand Knockdown",
+   "frames": 34,
+   "category": "Knockdown",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 85,
+   "file": 84,
+   "name": "Wand Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 86,
+   "file": 85,
+   "name": "Wand Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 87,
+   "file": 86,
+   "name": "Wand Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Wand",
+   "comments": "^"
+  },
+  {
+   "list": 88,
+   "file": 87,
+   "name": "Wand Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Wand",
+   "comments": "Also for Double Saber Photon Blast"
+  },
+  {
+   "list": 89,
+   "file": 88,
+   "name": "Card Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Card",
+   "comments": ""
+  },
+  {
+   "list": 90,
+   "file": 89,
+   "name": "Card Attack 1",
+   "frames": 27,
+   "category": "Attack",
+   "weapon": "Card",
+   "comments": ""
+  },
+  {
+   "list": 91,
+   "file": 90,
+   "name": "Card Attack 2",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "Card",
+   "comments": ""
+  },
+  {
+   "list": 92,
+   "file": 91,
+   "name": "Card Attack 3",
+   "frames": 70,
+   "category": "Attack",
+   "weapon": "Card",
+   "comments": ""
+  },
+  {
+   "list": 93,
+   "file": 92,
+   "name": "Card Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Card",
+   "comments": ""
+  },
+  {
+   "list": 94,
+   "file": 93,
+   "name": "Card Knockdown",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "Card",
+   "comments": ""
+  },
+  {
+   "list": 95,
+   "file": 94,
+   "name": "Card Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Card",
+   "comments": ""
+  },
+  {
+   "list": 96,
+   "file": 95,
+   "name": "Card Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Card",
+   "comments": ""
+  },
+  {
+   "list": 97,
+   "file": 96,
+   "name": "Card Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Card",
+   "comments": ""
+  },
+  {
+   "list": 98,
+   "file": 97,
+   "name": "Male Saber Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Saber",
+   "comments": ""
+  },
+  {
+   "list": 99,
+   "file": 98,
+   "name": "Saber Casting Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Saber",
+   "comments": "Also for Canes"
+  },
+  {
+   "list": 100,
+   "file": 99,
+   "name": "Male Saber Attack 1",
+   "frames": 19,
+   "category": "Attack",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 101,
+   "file": 100,
+   "name": "Male Saber Attack 2",
+   "frames": 24,
+   "category": "Attack",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 102,
+   "file": 101,
+   "name": "Male Saber Attack 3",
+   "frames": 59,
+   "category": "Attack",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 103,
+   "file": 102,
+   "name": "Male Saber Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 104,
+   "file": 103,
+   "name": "Male Saber Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 105,
+   "file": 104,
+   "name": "Male Saber Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 106,
+   "file": 105,
+   "name": "Male Saber Knockdown",
+   "frames": 34,
+   "category": "Knockdown",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 107,
+   "file": 106,
+   "name": "Male Saber Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 108,
+   "file": 107,
+   "name": "Male Saber Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 109,
+   "file": 108,
+   "name": "Male Saber Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 110,
+   "file": 109,
+   "name": "Male Saber Switch Press",
+   "frames": 30,
+   "category": "Switch Press",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 111,
+   "file": 110,
+   "name": "Male Saber Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Saber",
+   "comments": "^"
+  },
+  {
+   "list": 112,
+   "file": 111,
+   "name": "Male Saber Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Saber",
+   "comments": "Also for Rod, Wand, Cane, Slicer , Sword, Double Saber?"
+  },
+  {
+   "list": 113,
+   "file": 112,
+   "name": "Sword Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 114,
+   "file": 113,
+   "name": "Sword Casting Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 115,
+   "file": 114,
+   "name": "Male Sword Attack 1",
+   "frames": 23,
+   "category": "Attack",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 116,
+   "file": 115,
+   "name": "Male Sword Attack 2",
+   "frames": 26,
+   "category": "Attack",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 117,
+   "file": 116,
+   "name": "Male Sword Attack 3",
+   "frames": 80,
+   "category": "Attack",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 118,
+   "file": 117,
+   "name": "Male Sword Stand",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 119,
+   "file": 118,
+   "name": "Male Sword Blocking",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 120,
+   "file": 119,
+   "name": "Male Sword Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 121,
+   "file": 120,
+   "name": "Male Sword Knockdown",
+   "frames": 34,
+   "category": "Knockdown",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 122,
+   "file": 121,
+   "name": "Male Sword Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Sword",
+   "comments": "Animation Name Frames Category Weapon Wielded Comments"
+  },
+  {
+   "list": 123,
+   "file": 122,
+   "name": "Male Sword Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 124,
+   "file": 123,
+   "name": "Male Sword Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 125,
+   "file": 124,
+   "name": "Male Sword Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Sword",
+   "comments": ""
+  },
+  {
+   "list": 126,
+   "file": 125,
+   "name": "Male Dagger Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 127,
+   "file": 126,
+   "name": "Male Dagger Casting Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 128,
+   "file": 127,
+   "name": "Dagger Attack 1",
+   "frames": 37,
+   "category": "Attack",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 129,
+   "file": 128,
+   "name": "Dagger Attack 2",
+   "frames": 32,
+   "category": "Attack",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 130,
+   "file": 129,
+   "name": "Dagger Attack 3",
+   "frames": 80,
+   "category": "Attack",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 131,
+   "file": 130,
+   "name": "Male Dagger Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 132,
+   "file": 131,
+   "name": "Dagger Block Animation",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 133,
+   "file": 132,
+   "name": "Male Dagger Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 134,
+   "file": 133,
+   "name": "Male Knockdown",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 135,
+   "file": 134,
+   "name": "Male Dagger Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 136,
+   "file": 135,
+   "name": "Male Dagger Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 137,
+   "file": 136,
+   "name": "Male Dagger Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 138,
+   "file": 137,
+   "name": "Male Dagger Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 139,
+   "file": 138,
+   "name": "Male Partisan Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 140,
+   "file": 139,
+   "name": "Male Partisan Casting Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 141,
+   "file": 140,
+   "name": "Partisan Attack 1",
+   "frames": 24,
+   "category": "Attack",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 142,
+   "file": 141,
+   "name": "Partisan Attack 2",
+   "frames": 28,
+   "category": "Attack",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 143,
+   "file": 142,
+   "name": "Partisan Attack 3",
+   "frames": 60,
+   "category": "Attack",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 144,
+   "file": 143,
+   "name": "Male Partisan Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 145,
+   "file": 144,
+   "name": "Male Partisan Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 146,
+   "file": 145,
+   "name": "Male Partisan Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 147,
+   "file": 146,
+   "name": "Male Partisan Knockdown",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 148,
+   "file": 147,
+   "name": "Male Partisan Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 149,
+   "file": 148,
+   "name": "Male Partisan Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 150,
+   "file": 149,
+   "name": "Male Partisan Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 151,
+   "file": 150,
+   "name": "Partisan Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 152,
+   "file": 151,
+   "name": "Male Partisan Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Partisan",
+   "comments": ""
+  },
+  {
+   "list": 153,
+   "file": 152,
+   "name": "Male Slicer Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 154,
+   "file": 153,
+   "name": "Male Slicer Attack 1",
+   "frames": 28,
+   "category": "Attack",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 155,
+   "file": 154,
+   "name": "Male Slicer Attack 2",
+   "frames": 24,
+   "category": "Attack",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 156,
+   "file": 155,
+   "name": "Male Slicer Attack 3",
+   "frames": 70,
+   "category": "Attack",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 157,
+   "file": 156,
+   "name": "Male Slicer Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 158,
+   "file": 157,
+   "name": "",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 159,
+   "file": 158,
+   "name": "",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 160,
+   "file": 159,
+   "name": "",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 161,
+   "file": 160,
+   "name": "Male Slicer Knockdown",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 162,
+   "file": 161,
+   "name": "Male Slicer Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 163,
+   "file": 162,
+   "name": "Male Slicer Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 164,
+   "file": 163,
+   "name": "",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 165,
+   "file": 164,
+   "name": "",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Slicer",
+   "comments": ""
+  },
+  {
+   "list": 166,
+   "file": 165,
+   "name": "Male Double Saber Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Double Saber",
+   "comments": ""
+  },
+  {
+   "list": 167,
+   "file": 166,
+   "name": "Male Double Saber Attack 1",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "Double Saber",
+   "comments": ""
+  },
+  {
+   "list": 168,
+   "file": 167,
+   "name": "Male Double Saber Attack 2",
+   "frames": 19,
+   "category": "Attack",
+   "weapon": "Double Saber",
+   "comments": ""
+  },
+  {
+   "list": 169,
+   "file": 168,
+   "name": "Male Double Saber Attack 3",
+   "frames": 76,
+   "category": "Attack",
+   "weapon": "Double Saber",
+   "comments": ""
+  },
+  {
+   "list": 170,
+   "file": 169,
+   "name": "Male Double Saber Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Double Saber",
+   "comments": ""
+  },
+  {
+   "list": 171,
+   "file": 170,
+   "name": "Male Claw Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Claw",
+   "comments": ""
+  },
+  {
+   "list": 172,
+   "file": 171,
+   "name": "Male Claw Attack 1",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "Claw",
+   "comments": "Non-FOmar male"
+  },
+  {
+   "list": 173,
+   "file": 172,
+   "name": "Male Claw Attack 2",
+   "frames": 18,
+   "category": "Attack",
+   "weapon": "Claw",
+   "comments": "^"
+  },
+  {
+   "list": 174,
+   "file": 173,
+   "name": "Male Claw Attack 3",
+   "frames": 59,
+   "category": "Attack",
+   "weapon": "Claw",
+   "comments": "^"
+  },
+  {
+   "list": 175,
+   "file": 174,
+   "name": "Male Claw Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Claw",
+   "comments": ""
+  },
+  {
+   "list": 176,
+   "file": 175,
+   "name": "Male Twin Sword Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 177,
+   "file": 176,
+   "name": "Twin Sword Casting Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 178,
+   "file": 177,
+   "name": "Male Twin Sword Attack 1",
+   "frames": 25,
+   "category": "Attack",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 179,
+   "file": 178,
+   "name": "Male Twin Sword Attack 2",
+   "frames": 32,
+   "category": "Attack",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 180,
+   "file": 179,
+   "name": "Male Twin Sword Attack 3",
+   "frames": 76,
+   "category": "Attack",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 181,
+   "file": 180,
+   "name": "Male Twin Sword Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 182,
+   "file": 181,
+   "name": "Male Twin Sword Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 183,
+   "file": 182,
+   "name": "Male Twin Sword Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Twin Sword",
+   "comments": "Animation Name Frames Category Weapon Wielded Comments"
+  },
+  {
+   "list": 184,
+   "file": 183,
+   "name": "Male Twin Sword Stand",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 185,
+   "file": 184,
+   "name": "Male Twin Sword Knockdown",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 186,
+   "file": 185,
+   "name": "Male Twin Sword Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 187,
+   "file": 186,
+   "name": "Male Twin Sword Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 188,
+   "file": 187,
+   "name": "Male Twin Sword Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 189,
+   "file": 188,
+   "name": "Male Twin Sword Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 190,
+   "file": 189,
+   "name": "Male Katana Attack 1",
+   "frames": 19,
+   "category": "Attack",
+   "weapon": "Katana",
+   "comments": ""
+  },
+  {
+   "list": 191,
+   "file": 190,
+   "name": "Male Katana Attack 2",
+   "frames": 24,
+   "category": "Attack",
+   "weapon": "Katana",
+   "comments": ""
+  },
+  {
+   "list": 192,
+   "file": 191,
+   "name": "Male Katana Attack 3",
+   "frames": 59,
+   "category": "Attack",
+   "weapon": "Katana",
+   "comments": ""
+  },
+  {
+   "list": 193,
+   "file": 192,
+   "name": "Male Katana Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Katana",
+   "comments": ""
+  },
+  {
+   "list": 194,
+   "file": 193,
+   "name": "Male Unarmed Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 195,
+   "file": 194,
+   "name": "Male Unarmed Cast Animation",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 196,
+   "file": 195,
+   "name": "Male Fist Attack 1",
+   "frames": 27,
+   "category": "Attack",
+   "weapon": "Fist",
+   "comments": "Non-FOmar male"
+  },
+  {
+   "list": 197,
+   "file": 196,
+   "name": "Male Fist Attack 2",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "Fist",
+   "comments": "^"
+  },
+  {
+   "list": 198,
+   "file": 197,
+   "name": "Male Fist Attack 3",
+   "frames": 63,
+   "category": "Attack",
+   "weapon": "Fist",
+   "comments": "^"
+  },
+  {
+   "list": 199,
+   "file": 198,
+   "name": "Male Unarmed Standing",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 200,
+   "file": 199,
+   "name": "Male Unarmed Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 201,
+   "file": 200,
+   "name": "Male Unarmed Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 202,
+   "file": 201,
+   "name": "Male Unarmed Standing",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 203,
+   "file": 202,
+   "name": "Male Unarmed Knockdown",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 204,
+   "file": 203,
+   "name": "Male Unarmed Rise",
+   "frames": 34,
+   "category": "Rise",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 205,
+   "file": 204,
+   "name": "Male Unarmed Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 206,
+   "file": 205,
+   "name": "Male Unarmed Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 207,
+   "file": 206,
+   "name": "Male Unarmed Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 208,
+   "file": 207,
+   "name": "Male Unarmed Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Fist",
+   "comments": "Also for handgun, dagger , claw?"
+  },
+  {
+   "list": 209,
+   "file": 208,
+   "name": "Greeting One Arm Raise",
+   "frames": 40,
+   "category": "Emote",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 210,
+   "file": 209,
+   "name": "Greeting Waving Arms",
+   "frames": 36,
+   "category": "Emote",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 211,
+   "file": 210,
+   "name": "Thumbs Up Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 212,
+   "file": 211,
+   "name": "Wave No Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 213,
+   "file": 212,
+   "name": "Shrug Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 214,
+   "file": 213,
+   "name": "Jump Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 215,
+   "file": 214,
+   "name": "Clap Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 216,
+   "file": 215,
+   "name": "Male kneel Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 217,
+   "file": 216,
+   "name": "Victory arm pump Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 218,
+   "file": 217,
+   "name": "Clasp hands, bow head Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 219,
+   "file": 218,
+   "name": "Male Blow Kiss Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 220,
+   "file": 219,
+   "name": "Beckon Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 221,
+   "file": 220,
+   "name": "Cross arms, bow Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 222,
+   "file": 221,
+   "name": "Salute Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 223,
+   "file": 222,
+   "name": "Bow Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 224,
+   "file": 223,
+   "name": "Male Twirl Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 225,
+   "file": 224,
+   "name": "Side to side dance Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 226,
+   "file": 225,
+   "name": "Kick back, kick up dance Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 227,
+   "file": 226,
+   "name": "Throw tantrum Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 228,
+   "file": 227,
+   "name": "Action pose up Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 229,
+   "file": 228,
+   "name": "Action pose to left Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 230,
+   "file": 229,
+   "name": "Action post down Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 231,
+   "file": 230,
+   "name": "Bored Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 232,
+   "file": 231,
+   "name": "Photon Chair sit (normal) Photon Chair",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 233,
+   "file": 232,
+   "name": "Photon Chair sit (relaxed) Photon Chair",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 234,
+   "file": 233,
+   "name": "Back handspring Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 235,
+   "file": 234,
+   "name": "Backflip Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 236,
+   "file": 235,
+   "name": "Cartwheel Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 237,
+   "file": 236,
+   "name": "Somersault Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 238,
+   "file": 237,
+   "name": "Photon Chair idle (normal) Photon Chair",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 239,
+   "file": 238,
+   "name": "Photon Chair idle (relaxed) Photon Chair",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 240,
+   "file": 239,
+   "name": "Female Handgun Aggro Walk Aggro Walk Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 241,
+   "file": 240,
+   "name": "Female Handgun Tech Cast Cast Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 242,
+   "file": 241,
+   "name": "Female Handgun Attack Attack Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 243,
+   "file": 242,
+   "name": "Female Handgun Aggro Stand Aggro Stand Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 244,
+   "file": 243,
+   "name": "Female Handgun Block Stand Handgun Animation Name Frames Category Weapon Wielded Comments",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 245,
+   "file": 244,
+   "name": "Female Handgun Walk Walk Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 246,
+   "file": 245,
+   "name": "Female Handgun Knockdown Knockdown Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 247,
+   "file": 246,
+   "name": "Female Handgun Rise Rise Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 248,
+   "file": 247,
+   "name": "Female Handgun Stun Flinch Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 249,
+   "file": 248,
+   "name": "Female Handgun Death Death Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 250,
+   "file": 249,
+   "name": "Female Handgun Photon Blast Photon Blast Handgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 251,
+   "file": 250,
+   "name": "Female Rifle Aggro Walk Aggro Walk",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 252,
+   "file": 251,
+   "name": "Female Rifle Tech Cast Cast",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 253,
+   "file": 252,
+   "name": "Female Rifle Attack Attack Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 254,
+   "file": 253,
+   "name": "Female Rifle Stand Stand Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 255,
+   "file": 254,
+   "name": "Female Rifle Block Block Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 256,
+   "file": 255,
+   "name": "Female Rifle Walk Walk Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 257,
+   "file": 256,
+   "name": "Female Rifle Knockdown Knockdown Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 258,
+   "file": 257,
+   "name": "Female Rifle Rise Rise Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 259,
+   "file": 258,
+   "name": "Female Rifle Flinch Flinch Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 260,
+   "file": 259,
+   "name": "Female Rifle Death Death Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 261,
+   "file": 260,
+   "name": "Female Rifle Switch Press Switch Press Rifle Might not be only for rifles (eg. handgun, mechguns)",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 262,
+   "file": 261,
+   "name": "Female Rifle Photon Blast Photon Blast Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 263,
+   "file": 262,
+   "name": "Female Rifle Run Run Rifle",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 264,
+   "file": 263,
+   "name": "Female Mechgun Aggro Walk Aggro Walk Mechgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 265,
+   "file": 264,
+   "name": "Female Mechgun Attack Attack Mechgun 1, 2, and 3, non-FOmarl",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 266,
+   "file": 265,
+   "name": "Female Mechgun Aggro Stand Aggro Stand Mechgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 267,
+   "file": 266,
+   "name": "Female Mechgun Block Block Mechgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 268,
+   "file": 267,
+   "name": "Female Mechgun Walk Walk Mechgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 269,
+   "file": 268,
+   "name": "Female Mechgun Knockdown Knockdown Mechgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 270,
+   "file": 269,
+   "name": "Female Mechgun Rise Rise Mechgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 271,
+   "file": 270,
+   "name": "Female Mechgun Flinch Flinch Mechgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 272,
+   "file": 271,
+   "name": "Female Mechgun Death Death Mechgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 273,
+   "file": 272,
+   "name": "Female Mechgun Run Run Mechgun",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 274,
+   "file": 273,
+   "name": "Female Shot Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 275,
+   "file": 274,
+   "name": "Female Shot Cast",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 276,
+   "file": 275,
+   "name": "Female Shot Attack",
+   "frames": 25,
+   "category": "Attack",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 277,
+   "file": 276,
+   "name": "Female Shot Stand",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 278,
+   "file": 277,
+   "name": "Female Block",
+   "frames": 20,
+   "category": "Block",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 279,
+   "file": 278,
+   "name": "Female Shot Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 280,
+   "file": 279,
+   "name": "Female Shot Stand",
+   "frames": 20,
+   "category": "Stand",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 281,
+   "file": 280,
+   "name": "Female Shot Knockdown",
+   "frames": 31,
+   "category": "Knockdown",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 282,
+   "file": 281,
+   "name": "Female Shot Rise",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 283,
+   "file": 282,
+   "name": "Female Shot Flinch",
+   "frames": 20,
+   "category": "Flinch",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 284,
+   "file": 283,
+   "name": "Female Shot Death",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 285,
+   "file": 284,
+   "name": "Female Shot Photon Blast",
+   "frames": 50,
+   "category": "Photon Blast",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 286,
+   "file": 285,
+   "name": "Female Shot Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Shot",
+   "comments": ""
+  },
+  {
+   "list": 287,
+   "file": 286,
+   "name": "Female Launcher Aggro Walk Aggro Walk Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 288,
+   "file": 287,
+   "name": "Female Lancher Tech Animation Cast Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 289,
+   "file": 288,
+   "name": "Female Launcher Attack Attack Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 290,
+   "file": 289,
+   "name": "Female Launcher Aggro Stand Aggro Stand Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 291,
+   "file": 290,
+   "name": "Female Launcher Block Block Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 292,
+   "file": 291,
+   "name": "Female Launcher Walk Walk Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 293,
+   "file": 292,
+   "name": "Female Launcher Stand Stand Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 294,
+   "file": 293,
+   "name": "Female Launcher Knockdown Knockdown Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 295,
+   "file": 294,
+   "name": "Female Launcher Rise Rise Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 296,
+   "file": 295,
+   "name": "Female Launcher Flinch Flinch Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 297,
+   "file": 296,
+   "name": "Female Launcher Switch Press Switch Press Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 298,
+   "file": 297,
+   "name": "Female Launcher Photon Blast Photon Blast Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 299,
+   "file": 298,
+   "name": "Female Launcher Run Run Launcher",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 300,
+   "file": 299,
+   "name": "Female Rod Aggro Walk Aggro Walk Rod Non-FOmarl female",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 301,
+   "file": 300,
+   "name": "Female Rod Aggro Walk Cast Rod ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 302,
+   "file": 301,
+   "name": "Female Rod Attack 1 Attack Rod ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 303,
+   "file": 302,
+   "name": "Female Rod Attack 2 Attack Rod ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 304,
+   "file": 303,
+   "name": "Female Rod Attack 3 Attack Rod ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 305,
+   "file": 304,
+   "name": "Female Rod Aggro Stand Aggro Stand Rod ^ Animation Name Frames Category Weapon Wielded Comments",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 306,
+   "file": 305,
+   "name": "Female Rod Block Block Rod ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 307,
+   "file": 306,
+   "name": "Female Rod Walk Walk Rod ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 308,
+   "file": 307,
+   "name": "Female Rod Stand Stand Rod ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 309,
+   "file": 308,
+   "name": "Female Rod Photon Blast Photon Blast Rod ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 310,
+   "file": 309,
+   "name": "Female Wand Aggro Walk Aggro Walk Wand ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 311,
+   "file": 310,
+   "name": "Female Wand Tech Animation Cast Wand Also for double saber?",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 312,
+   "file": 311,
+   "name": "Female Wand Block Block Wand",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 313,
+   "file": 312,
+   "name": "Female Wand Walk Walk Wand Also for saber , slicer?",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 314,
+   "file": 313,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 315,
+   "file": 314,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 316,
+   "file": 315,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 317,
+   "file": 316,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 318,
+   "file": 317,
+   "name": "Female Wand Photon Blast Also for double saber?",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 319,
+   "file": 318,
+   "name": "Female Card Aggro Walk Aggro Walk Card",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 320,
+   "file": 319,
+   "name": "Female Card Attack 1 Attack Card",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 321,
+   "file": 320,
+   "name": "Female Card Attack 2 Attack Card",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 322,
+   "file": 321,
+   "name": "Female Card Attack 3 Attack Card",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 323,
+   "file": 322,
+   "name": "Female Card Aggro Stand Aggro Stand Card",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 324,
+   "file": 323,
+   "name": "Female Card Knockdown Knockdown Card",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 325,
+   "file": 324,
+   "name": "Female Card Rise Rise Card",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 326,
+   "file": 325,
+   "name": "Female Card Flinch Flinch Card",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 327,
+   "file": 326,
+   "name": "Female Card Run Run Card",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 328,
+   "file": 327,
+   "name": "Female Saber Aggro Walk Aggro Walk Saber Also for non-FOmarl female cane",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 329,
+   "file": 328,
+   "name": "Female Saber Tech Animation Cast Saber ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 330,
+   "file": 329,
+   "name": "Female Saber Attack 1 Attack Saber ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 331,
+   "file": 330,
+   "name": "Female Saber Attack 2 Attack Saber ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 332,
+   "file": 331,
+   "name": "Female Saber Attack 3 Attack Saber ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 333,
+   "file": 332,
+   "name": "Female Saber Aggro Stand Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 334,
+   "file": 333,
+   "name": "Female Saber Block Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 335,
+   "file": 334,
+   "name": "Female Saber Walk Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 336,
+   "file": 335,
+   "name": "Female Saber Stand Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 337,
+   "file": 336,
+   "name": "Female Saber Knockdown Knockdown Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 338,
+   "file": 337,
+   "name": "Female Saber Rise Rise Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 339,
+   "file": 338,
+   "name": "Female Saber Flinch Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 340,
+   "file": 339,
+   "name": "Female Saber Death Death Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 341,
+   "file": 340,
+   "name": "Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 342,
+   "file": 341,
+   "name": "Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 343,
+   "file": 342,
+   "name": "Female Saber Run Saber",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 344,
+   "file": 343,
+   "name": "Female Sword Aggro Walk",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 345,
+   "file": 344,
+   "name": "Female Sword Tech",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 346,
+   "file": 345,
+   "name": "Female Sword Atttack 1 Attack Non-FOmarl",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 347,
+   "file": 346,
+   "name": "Female Sword Atttack 2 Attack ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 348,
+   "file": 347,
+   "name": "Female Sword Atttack 3 Attack ^",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 349,
+   "file": 348,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 350,
+   "file": 349,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 351,
+   "file": 350,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 352,
+   "file": 351,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 353,
+   "file": 352,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 354,
+   "file": 353,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 355,
+   "file": 354,
+   "name": "Death",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 356,
+   "file": 355,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 357,
+   "file": 356,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 358,
+   "file": 357,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 359,
+   "file": 358,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 360,
+   "file": 359,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 361,
+   "file": 360,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 362,
+   "file": 361,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 363,
+   "file": 362,
+   "name": "Death",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 364,
+   "file": 363,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 365,
+   "file": 364,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 366,
+   "file": 365,
+   "name": "Animation Name Frames Category Weapon Wielded Comments",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 367,
+   "file": 366,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 368,
+   "file": 367,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 369,
+   "file": 368,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 370,
+   "file": 369,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 371,
+   "file": 370,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 372,
+   "file": 371,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 373,
+   "file": 372,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 374,
+   "file": 373,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 375,
+   "file": 374,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 376,
+   "file": 375,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 377,
+   "file": 376,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 378,
+   "file": 377,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 379,
+   "file": 378,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 380,
+   "file": 379,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 381,
+   "file": 380,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 382,
+   "file": 381,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 383,
+   "file": 382,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 384,
+   "file": 383,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 385,
+   "file": 384,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 386,
+   "file": 385,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 387,
+   "file": 386,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 388,
+   "file": 387,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 389,
+   "file": 388,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 390,
+   "file": 389,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 391,
+   "file": 390,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 392,
+   "file": 391,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 393,
+   "file": 392,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 394,
+   "file": 393,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 395,
+   "file": 394,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 396,
+   "file": 395,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 397,
+   "file": 396,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 398,
+   "file": 397,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 399,
+   "file": 398,
+   "name": "Switch Press",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 400,
+   "file": 399,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 401,
+   "file": 400,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 402,
+   "file": 401,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 403,
+   "file": 402,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 404,
+   "file": 403,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 405,
+   "file": 404,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 406,
+   "file": 405,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 407,
+   "file": 406,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 408,
+   "file": 407,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 409,
+   "file": 408,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 410,
+   "file": 409,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 411,
+   "file": 410,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 412,
+   "file": 411,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 413,
+   "file": 412,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 414,
+   "file": 413,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 415,
+   "file": 414,
+   "name": "Death",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 416,
+   "file": 415,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 417,
+   "file": 416,
+   "name": "HUcaseal Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 418,
+   "file": 417,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 419,
+   "file": 418,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 420,
+   "file": 419,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 421,
+   "file": 420,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 422,
+   "file": 421,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 423,
+   "file": 422,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 424,
+   "file": 423,
+   "name": "Excited clapping Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 425,
+   "file": 424,
+   "name": "Kiss Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 426,
+   "file": 425,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 427,
+   "file": 426,
+   "name": "Sleepy Emote Animation Name Frames Category Weapon Wielded Comments",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 428,
+   "file": 427,
+   "name": "Female Blow Kiss Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 429,
+   "file": 428,
+   "name": "Cute Wave Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 430,
+   "file": 429,
+   "name": "Bow Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 431,
+   "file": 430,
+   "name": "Hold Hand to Ear Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 432,
+   "file": 431,
+   "name": "Curtsy Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 433,
+   "file": 432,
+   "name": "Female Twirl Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 434,
+   "file": 433,
+   "name": "Raised Arms Dance Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 435,
+   "file": 434,
+   "name": "Sideway Step Dance Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 436,
+   "file": 435,
+   "name": "Cry Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 437,
+   "file": 436,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 438,
+   "file": 437,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 439,
+   "file": 438,
+   "name": "Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 440,
+   "file": 439,
+   "name": "Yawn Emote",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 441,
+   "file": 440,
+   "name": "Photon Chair Female photon chair sit down 1?",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 442,
+   "file": 441,
+   "name": "Photon Chair Female photon chair sit down 2?",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 443,
+   "file": 442,
+   "name": "Photon Chair Female photon chair 1?",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 444,
+   "file": 443,
+   "name": "Photon Chair Female photon chair 2?",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 445,
+   "file": 444,
+   "name": "",
+   "frames": 30,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 446,
+   "file": 445,
+   "name": "",
+   "frames": 20,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 447,
+   "file": 446,
+   "name": "",
+   "frames": 20,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 448,
+   "file": 447,
+   "name": "",
+   "frames": 30,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 449,
+   "file": 448,
+   "name": "",
+   "frames": 20,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 450,
+   "file": 449,
+   "name": "",
+   "frames": 4,
+   "category": "Attack",
+   "weapon": "Mechgun",
+   "comments": ""
+  },
+  {
+   "list": 451,
+   "file": 450,
+   "name": "",
+   "frames": 20,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 452,
+   "file": 451,
+   "name": "",
+   "frames": 20,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 453,
+   "file": 452,
+   "name": "HUcaseal",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 454,
+   "file": 453,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 455,
+   "file": 454,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 456,
+   "file": 455,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 457,
+   "file": 456,
+   "name": "",
+   "frames": 45,
+   "category": "Death",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 458,
+   "file": 457,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 459,
+   "file": 458,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 460,
+   "file": 459,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 461,
+   "file": 460,
+   "name": "FOmarl Rod Cast Cast Rod",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 462,
+   "file": 461,
+   "name": "Attack Might be the first attack of a combo 462-464",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 463,
+   "file": 462,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 464,
+   "file": 463,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 465,
+   "file": 464,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 466,
+   "file": 465,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 467,
+   "file": 466,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 468,
+   "file": 467,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 469,
+   "file": 468,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 470,
+   "file": 469,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 471,
+   "file": 470,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 472,
+   "file": 471,
+   "name": "",
+   "frames": 45,
+   "category": "Death",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 473,
+   "file": 472,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 474,
+   "file": 473,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 475,
+   "file": 474,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 476,
+   "file": 475,
+   "name": "",
+   "frames": 15,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 477,
+   "file": 476,
+   "name": "",
+   "frames": 25,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 478,
+   "file": 477,
+   "name": "",
+   "frames": 60,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 479,
+   "file": 478,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 480,
+   "file": 479,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 481,
+   "file": 480,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 482,
+   "file": 481,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 483,
+   "file": 482,
+   "name": "",
+   "frames": 19,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 484,
+   "file": 483,
+   "name": "",
+   "frames": 24,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 485,
+   "file": 484,
+   "name": "",
+   "frames": 59,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 486,
+   "file": 485,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 487,
+   "file": 486,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 488,
+   "file": 487,
+   "name": "Animation Name Frames Category Weapon Wielded Comments",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 489,
+   "file": 488,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 490,
+   "file": 489,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 491,
+   "file": 490,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 492,
+   "file": 491,
+   "name": "",
+   "frames": 50,
+   "category": "Death",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 493,
+   "file": 492,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 494,
+   "file": 493,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 495,
+   "file": 494,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 496,
+   "file": 495,
+   "name": "",
+   "frames": 28,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 497,
+   "file": 496,
+   "name": "",
+   "frames": 24,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 498,
+   "file": 497,
+   "name": "",
+   "frames": 70,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 499,
+   "file": 498,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 500,
+   "file": 499,
+   "name": "FOmarl Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 501,
+   "file": 500,
+   "name": "FOmarl Cast",
+   "frames": 20,
+   "category": "Cast",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 502,
+   "file": 501,
+   "name": "FOmarl Attack 1",
+   "frames": 27,
+   "category": "Attack",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 503,
+   "file": 502,
+   "name": "FOmarl Attack 2",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 504,
+   "file": 503,
+   "name": "FOmarl Attack 3",
+   "frames": 63,
+   "category": "Attack",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 505,
+   "file": 504,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 506,
+   "file": 505,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 507,
+   "file": 506,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 508,
+   "file": 507,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 509,
+   "file": 508,
+   "name": "Run",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 510,
+   "file": 509,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 511,
+   "file": 510,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 512,
+   "file": 511,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 513,
+   "file": 512,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 514,
+   "file": 513,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 515,
+   "file": 514,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 516,
+   "file": 515,
+   "name": "Run",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 517,
+   "file": 516,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 518,
+   "file": 517,
+   "name": "Cast",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 519,
+   "file": 518,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 520,
+   "file": 519,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 521,
+   "file": 520,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 522,
+   "file": 521,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 523,
+   "file": 522,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 524,
+   "file": 523,
+   "name": "Stand",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 525,
+   "file": 524,
+   "name": "Aggro Walk",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 526,
+   "file": 525,
+   "name": "",
+   "frames": 15,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 527,
+   "file": 526,
+   "name": "",
+   "frames": 25,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 528,
+   "file": 527,
+   "name": "",
+   "frames": 60,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 529,
+   "file": 528,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 530,
+   "file": 529,
+   "name": "Aggro Walk",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 531,
+   "file": 530,
+   "name": "Run",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 532,
+   "file": 531,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 533,
+   "file": 532,
+   "name": "",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 534,
+   "file": 533,
+   "name": "",
+   "frames": 18,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 535,
+   "file": 534,
+   "name": "",
+   "frames": 59,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 536,
+   "file": 535,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 537,
+   "file": 536,
+   "name": "Female Twin Sword Aggro Walk",
+   "frames": 30,
+   "category": "Aggro Walk",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 538,
+   "file": 537,
+   "name": "Female Twin Sword Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 539,
+   "file": 538,
+   "name": "Female Twin Sword Walk",
+   "frames": 30,
+   "category": "Walk",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 540,
+   "file": 539,
+   "name": "Female Twin Sword Run",
+   "frames": 20,
+   "category": "Run",
+   "weapon": "Twin Sword",
+   "comments": ""
+  },
+  {
+   "list": 541,
+   "file": 540,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 542,
+   "file": 541,
+   "name": "",
+   "frames": 27,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 543,
+   "file": 542,
+   "name": "",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 544,
+   "file": 543,
+   "name": "",
+   "frames": 63,
+   "category": "Attack",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 545,
+   "file": 544,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 546,
+   "file": 545,
+   "name": "HUcaseal Dagger Attack 1",
+   "frames": 37,
+   "category": "Attack",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 547,
+   "file": 546,
+   "name": "HUcaseal Dagger Attack 2",
+   "frames": 32,
+   "category": "Attack",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 548,
+   "file": 547,
+   "name": "HUcaseal Dagger Attack 3",
+   "frames": 80,
+   "category": "Attack",
+   "weapon": "Dagger",
+   "comments": ""
+  },
+  {
+   "list": 549,
+   "file": 548,
+   "name": "Animation Name Frames Category Weapon Wielded Comments",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 550,
+   "file": 549,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 551,
+   "file": 550,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 552,
+   "file": 551,
+   "name": "HUcaseal Double Saber Attack 1",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "Double Saber",
+   "comments": ""
+  },
+  {
+   "list": 553,
+   "file": 552,
+   "name": "HUcaseal Double Saber Attack 2",
+   "frames": 19,
+   "category": "Attack",
+   "weapon": "Double Saber",
+   "comments": ""
+  },
+  {
+   "list": 554,
+   "file": 553,
+   "name": "HUcaseal Double Saber Attack 3",
+   "frames": 76,
+   "category": "Attack",
+   "weapon": "Double Saber",
+   "comments": ""
+  },
+  {
+   "list": 555,
+   "file": 554,
+   "name": "",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 556,
+   "file": 555,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 557,
+   "file": 556,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 558,
+   "file": 557,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 559,
+   "file": 558,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 560,
+   "file": 559,
+   "name": "Attack",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 561,
+   "file": 560,
+   "name": "Aggro Stand",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 562,
+   "file": 561,
+   "name": "",
+   "frames": 40,
+   "category": "Knockdown",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 563,
+   "file": 562,
+   "name": "",
+   "frames": 40,
+   "category": "Rise",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 564,
+   "file": 563,
+   "name": "HUcaseal Fist Attack 1",
+   "frames": 27,
+   "category": "Attack",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 565,
+   "file": 564,
+   "name": "HUcaseal Fist Attack 2",
+   "frames": 30,
+   "category": "Attack",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 566,
+   "file": 565,
+   "name": "HUcaseal Fist Attack 3",
+   "frames": 63,
+   "category": "Attack",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 567,
+   "file": 566,
+   "name": "HUcaseal Fist Aggro Stand",
+   "frames": 20,
+   "category": "Aggro Stand",
+   "weapon": "Fist",
+   "comments": ""
+  },
+  {
+   "list": 568,
+   "file": 567,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 569,
+   "file": 568,
+   "name": "Rise",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 570,
+   "file": 569,
+   "name": "RAmarl Handgun Attack",
+   "frames": 20,
+   "category": "Attack",
+   "weapon": "Handgun",
+   "comments": ""
+  },
+  {
+   "list": 571,
+   "file": 570,
+   "name": "Knockdown",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  },
+  {
+   "list": 572,
+   "file": 571,
+   "name": "Rise ^\u0081\u008c\u007f\u0082 r`p T_mw\u0081\u0090\u0095\u009f\u00a9\u00b9\u00c2\u00da\u00eb\u010d\u001e-\u001ey\u00db\u00f5\u001e\u001f\u001e4\u001eI\u001e\u0080\u0107\u001e%^hr|\u0090\u00c3\u001e&\u001e\u00a0\u001e\u00d0^\u0081;G\u0108\u0117\u001e+\u001eU\u001f\u0091I]\u009f\u00b3\u00d3\u00dd\u00e9\u00f9\u0103\u010d\u011c\u001e'\u001e=\u001eI\u001eX\u001ea\u001es\u001e\u0080\u0114t\u0081\u001e-\u001eSm\u001e\u00ce\u011c\u00d3Vka \u00e9\u0102A\u001e-_\u001e?\u001e\u00c1\u010d}\u00fd+:V\"\u0100\u001e\u001fI\u011bk\u011cU\u001f\u0086 \u00da\u001e3\u011c+\u00bdq8Z\u001e\u008e^,m\u011a2\u001elR\u011boI\u00f0\u001e !\u00cd\u001e\u00ef\u00d3\u00dd\u00b6\u001f\u0082\u011c\u00a4 \u0094\u011b\u0089\u00e8\u00c6y]!\u0093$a]^q]\\[ZYXWVUTRQPONMLKJIHG DCBA@?>=<;:9876543210/.-,+*)('&%$#\"! \u001f\u001eIb@c}=\u00cdC}\u00cd!C@eeJIb@c@~=\u00cdC~\u00cd!C@eeJIb@c}\u00cd=~=\u00cdc}\u00cd!C@eeJIb@c@~\u00cd=}=\u00cdC~\u00cd=~\u00cd!C@eeJIb@c}\u00cd]~=\u00cd\u0083}\u00cd!C@eeJIb@c@~\u00cd]}=\u00cdC~\u00cd]~\u00cd!C@eeJI\u001e-=YYJI=b@=\u00cd\u00eaa@=\u00d5\u001ewnu@=\u00cd\u00aaa@v=\u00cd\u010anu@=\u00cdja@v=\u00cd\u00adnu@=\u00cd*a@v>>JI==b5\u0085a=\u00cd\u001e}=b\u00cdc\u0093\u0085\u00a7b}aJI\u001e\u00ce('`@`\u0082'JI\u00ce'(`@`(JI\u00cd4@\u008d\u00ce\u001e4[\u001e\u00cd4@\u008d\u00ce\u001f4bW\u00ce\u001f%*JIb\u00cd7@ab\u00cd6@aJI=b\u00cd Bb~\u0081\u00cdmnuba8>>vJI\u00cd\u001e`\u0080@\u007f\u00cd@_\u00cd,HJI=b\u00cd`}aJI\u001e\u00cd#`\u00cd$`\u0082'JI=\u0086\u00cd]~\u00cd\u00a8=\u00ceI\u00dd\u00a7\u00a9\u00d5-\u007f}H)\u0081@\u0081~yu\u00cd ~vJIb\u00cd.H\u00cd4@a\u00cd4\u0097\u01015JIb\u00cd.H\u00cd4@aJI\u00cd/`u\u00a4b\u00cd.H\u00cd4@a\u00cd4\u0097\u01018 \u00a7b5\u0086=\u00cd4@a\u00a7\u00a7\u00a4=\u00cd\u00ddnu\u00cd.H\u00cd4@a\u00cd4\u0097\u01018>\u00cd4\u0097\u0101vv5JIJI\u00cd\u001fBc}\u00a7c\u00cd]~\u00a9eJIhp=yu\u00cd\u001f\u00a2vu\u00cd\u001e\u00a2vJI=\u00cd Bb\u00cd6@ab\u00cd7@ab\u0082@b=\u00cd B}\u0087=\u00cd&@_@\u0085\u00a7\u0087}~=\u00cd7\u00a7\u00cdo\u0096>\u00cf77]\u00d6\u011c\u00fd7b=\u00a7qu@>\u00cd\\8@v~a9\u00ce1\u00a7o\u0096\u00d06]=6b=\u00a7qu@>\u00cd\\8@v~aJI\u00ce-.`@`(JI\u00ce+,`@`(JI\u00ce)*`@`(JI\u00ce)*`@`\u0082(JI\u00ce+,`@`\u0082(JI\u00ce-.`@`\u0082(JIhouba8>>vJI\u001e=\u00cd B@f\u00cd]}\u00cd=\u0080=\u00cdou@\u00cd\u001fBU@\u00cd\u001fB\u0082U\u00a7\u0080U8>>>>>v\u001eJIh\u00cd\u0081nub\u0086\u00cd&`}\u00a7-W8>>>vJI\u001e\u00cd\"B-@=\u00a7\u0112\u00cd\u001e}@\u010a\u0109JI\u001e\u00cd\"B-@=\u00a7\u0112\u00cd\u001e~@\u010a\u0109JI\u001e\u00cd#B-\u0112\u010a\u0109JI=\u00cd\u001e}\u001e-=YYJI=\u00cd\u001e~\u001e-=YYJI\u00cdHH\u00cdGGJI\u00cd$`\u00cd#`(JI[\u00cdGGJIRJI\u0093\u00d5\u001fS@\u008d-=\u00d5\u001fSb=\u00cdmu\u00cd\u001e~vWL5JI>>)\u0081@\u0081\u00a8\u00d5]\u007fJI>\u00cd\u009dnu)\u0081@\u0081\u00a8\u00d5=\u007f8\u00cf]LHv\u00cd\u001f}JI>\u00cd\u00ddnu)\u0081@\u0081\u00a8\u00d52r\u007f8\u00cf\u009dLHv\u00cd\u001f}JI)\u0081@\u0081\u00a8\u00d5]\u007f}@>JI\u00d1\u001e2\u00cd%C\u00cd%C\u00cd%C\u00cd%C,-30b\u0085W\u00cd\u001e3JI\u00d1\u001e2\u00cd%C\u00cd%C\u00cd%C\u00cd%C,-30b\u0085\u0082W\u00cd\u001e3JIhp@hnwu=b\u00a7}a8>>vJIhqu=b\u00a7}a8>>vJIhp@hnwuU8>>vJIhquU8>>vJI\u00cd0`u 8\u001fvJI\u00cd0`u\u001f8 vJIhq\u00cd/`ywuU8>>vJI\u00cd/`yu)\u00cd!B\u00cd!B#)\u0081@\u0081~\u0081\u00cd nu\u00cd!B\u00cd!B\u001e=c\u00cd-}e=c\u00cd-}ev'>>8>>vJI\u00cd/`yu)\u00cd!B\u00cd!B#)\u0081@\u0081~\u0081\u00d5$%nu\u00cd!B\u00cd!B\u001e=c\u00d5\u011c\u010d}e=c\u00d5\u011c\u010d}ev'>>8>>vJIhp@hnwu\u00cdWH8>>vJIhp@hnwu\u00cdXH8>>vJIhp@hnw\u00cd/`ywuU8>>vJI)\u00a7 hq\u00cd!C\u001fhqw\u00a7\u00a7'\u00cd/`ywuU8>>vJIc@c}\u00a7\u00a7c@=c\u00a7}\u00a7~\u00d5\u011c\u009d\u007f@=-@\u00a7\u00d6\u001f\u00c4\u001f\u00c4\u00a7\u008db}=\u00cdmu\u00cd\u001e~\u00d5\u011c\u00d7\u00a88\u00cdc\u00a9v\u00cd-}\u0085\u001eWJI\u00ce\u001f_\u00ce@\u001e\u00a5n\u00ce]\u001e\u00a5pwu\u00d6-=\u00a5qu\u00cf\u001f\u001e\u001f`}_v\u00ceA\u001e\u00a5nu\u00d6=]\u00a5qu\u00cf\u001f\u001f\u001f`}_v\u00ceA\u001e\u00a5qu\u00cf\u001f=\u001f`}_h\u001ehou\u00cf\u001f%\u001f`}_v8\u00d6]\u009d\u00a5qu\u00cf\u001f!\u001f`}_v\u00d6]\u009d\u0080\u00d5\u001e\u00a5qu\u00cf\u001f%\u001f`}_v\u00d6]\u001e\u0080\u00d5\u001f\u00a5qu\u00cf\u001f-\u001f`}_vvvvJ\u001f\u001e\"\" $_\u00d1\u001f\u001e\u011b#$\u00d5\u001f\\]0\"!\u011b '$!\u011b\u001e6%#\"\u011b\u001f \u00d9\u001eC&\u001e\u00cd\u001e55H-\u0113Y\u011aYk-\u0111Yj\u011aY\\Y\u011aY-\u0119Y\u011aYNM>.>.B>.>\u001e!\u0119= \u00dd\u0119]\"\u0118=!\u00dd\u001fs\u011c\u0104!+\"\u00dd+=\u00b0]h\u0095'\u00a5'\u00c4\u001e\u00c7$\u00c7&\u00c4+\u00d4&\u00e5&%s.v3v7s<\u0084.\u00853\u00857\u0084<%V\u001fV#S&S*f\u001ff#b&c*\u00c4&\u00e8\u001f\u00e6#\u00e1&\u00e1*\u00f6\u001f\u00f8#\u00f1&\u00f1*.-5=5\u001f5\u00d5\u011c\u00dd]B/3Q5\u00c3%*<,L,\u001f,]/3Q,\u00c3\":\u00f5l!\u001e!7?1\u00f5(6>\u00f0\u00df5Hk-\u0111j\u010ak-\u0113\u008ej\u010a\\\u010aH\u008e\\\u010aH\u008eNM\u001ezzz\u001eO43.-$#@?.-TS4?#$#.-33POSTS.-CC\u001fO\u00f2\u0095\u00ac\u00ad\u0094\u00f2\u00f3\u011b\u0117\u00ad\u0094\u00f2Pm3:QlPPm3:Ql\"\u00dd\u00b5\u00d1\u011b|\u011b}\u00d3\u00b3\u001ef\u001e\u00c3\u001e\u00bb\u00d3\u00b3\u0106^q\u008a\u011b\u011b\u011b\u011b\u00de]^q\u0089\u001e\u001f\u001e\u001f\u00de^\u001e\u00bf C\"\u00dd&s]&\u0088\u001f\u0098\u001f\u00a8\u001f \u001f!\u00d5 #T7e!`5`6`7%A5A6A7 3C!s!\u00a55\u00b98\u00b99\u00b9:\u00c79\u00c7:%/:-:=:N:\u0093:\u00a1:\u00ad:\u00f3:%:\u00d5\u011c\u00dd]312Q:\u001f-),:-=\u001f=M] \u00d5\u011c\u00dd\u00d0/3Q\u00d5\u001f\u00be\u00d0\u001f\u001e),\u00d5\u001es]@<)L)\u001f)]/3Q)\u00c30\"&\u00f533\u001el\u001e7<,\u00f5-\u0094\u001f6;\u00f0\u00df5Hk-\u0111j\u0111\u010ak-\u0113\u008eYYj-\u010a\\\u011aH\u008e\u0101\\Y\u011aHz\u008eY./V\u001e.PHz`yu\u00d6:\u011c\u00dd\u00cf.V:\u00d5\u011c\u00dd\u00cf,V:\u00d5\u011c\u00dd]+-V!%-V\"%.V!%.VHHHHHHv\u00ce#\u001f`qu](&868\u001f80\u001e!0./V./VzvNM\u001ezhnu\u00da8\u011c\u00fd9\u011c\u00fd:\u011c\u00fdUUUv\u001e\u008ezzz\u001e.>S/TSTSRQC@?#$BSAPO321#$#!#$!)\u0119D-\u00bd\u0109\u00dbHW\u0082vu\u0085%\u011b\u01056\u001e%\u00e3\u00f6\u0115djP\u011b\u0113d3\u001e\"\u011b\u0118\u00b1\u001e&\u00f8\u00ce\\tr{\u0082\u0087\u00989\u0105\u00e7\u0107\u00cb\u0080\u00d0\u007f^\u0111mC\u001ej\u011c\u0104!8\"\u00dd %\u001f\u001e\u00d1\u00d3!!))\u00d5\u001eu\u00d1\"\u00ac'\u001e'\u00d5\u001e\u001f]/-$\u00bc$\u00dc$ $7,\\\u001f\u009c\u001f\u001f\u001f6+\u00d7\u001ei\u001ee5Hk-\u0101\u008e-\u0113zj\u0111zY\u011aY\\\\-\u0111Y\u011azY\u001e./V/VV./V/V\u00a4\"KH!\u009a-\u00e1,,,\u00ce#\u001f`qu](J)Z)j)\u00ea)\u00fa)\"zvNM\u001ezzzH>.>R\u001eP.P2@.\u001e.\u001e\u001f\u009b\u011a\u00c5\u001f\u0099\u0109\u00d3\u00d3\u011b\u010d\u011b\u00cc\u001eD\u0113 \u00c0\u0119{\u0114\u011b\u00f6\u001f;\u001e\u0112\u011b(\u001ex\u011c\u0104!R\"\u00c3:\u001e-] >DQ * $g$\u0095$\u00a5$\u00c9\u001f#\u001ez\u008e\u008f\u008fHHHHHHHHHzz\u008e\u008fHHHHvzP.>\u001e.>.>\u001e.\u00b5\u001e=\u001fu\u001e0\u011b\u00f4\u011a\u00ce\"\u00d7\u0119J \u00f0\u0117c \u00d9\u0119a\u001e$$\u00a8\"\u00d7)\u001e\u011c]/H H#=(P(!#\u001e(]7WQ#\u00d5\u011c\u009d\u00d07WQ \u00d5\u011c\u009d\u00d07WQ \u00d5\u011c\u009d\u00cf6R&\u00d5\u011c\u0104]&7:Q'67:Q)\u00d5\u011c\u0104]&7:Q67:Q\"\u00d5\u011c\u00fd]v3:Q!=3:Q$&&'#)72& QA]6:Q\u008cA\u0119A\u001fAc:\u00d5\u011c\u00dd]M+,QZ:\u001e:-:\u00cd:\u0116:!::I\u001eP]+,Q,<\u001fr>]9.\\>]8-\\>]57Q>\u00d5\u001f\u0091\u00d2!$)*'I\u00d5\u011c\u00dd\u00d09.\\I\u00d5\u011c\u00dd\u00d08-\\I\u00d5\u011c\u00dd\u00d057QI\u00d5\u001f\u0091]]1(;NC% *v<)\u00bc)\u001f<)\u001e\u011c)\u001e)]+3Q)7lQ\u001eQ}\u001e\u00abM\u001e\u001e\u001eP 1\\/\u00d5\u011c\u00dd\u00d0;,\\/\u00d5\u011c\u00dd\u00d08-\\/\u00d5\u011c\u00dd\u00cf9.\\HHHHv\u0111z\u008eHHHHH`yu\u00d6\u011c\u00dd\u00cf/V\u00d5\u011c\u00dd\u00cf4V\u00d5\u011c\u00cd\u00d0&'[\u00d5\u011c\u00dd\u00cf^>\\HHHHv\u0101H./Vz`yu]1+],;\\+]9.\\+]8-\\+]+4\\HHHHvLY\u011aHH\u008fHHY\u001e.PNM\u001ez\u008ezH\u001e\"##@=DCR-PO >33POS0CC@?$#4\u001f\u0117\u001e5S\u0106\u00cc\u011b\u0108\u00a2\u0086\u001e1\u00f0\u010a\u001e/#\u011a] \u009f~_wD \u0095syYY\u001e\u001eoL\u00b7\u00be\u00d2\u00ae\u00fa\u001e%\u001eH\u011b\u00e4\u011b\u00da\u009a\u00a8e\u001e\u0089\u0097\u009c``\u0090\u001fq\u011bn!}![@L\u001ek]\u007f\u0094:\u00a4:\u001f/)*\u008dN\u00a3*\u009dN!=\u001e@\u001f@ M\u001eP\u001fP ]\u001e`\u001f` x,v1vBs GQ\u00d5\u011c\u00dd\u00d0@BQ\u00d5\u011c\u00dd\u00d0NQQ\u00d5\u011c\u00dd]&28Q}\u001e|\"\u00d5\u001f\u0091\u00cf<,D\u00d5\u001f\u0091\u00cf+'J\u00d5\u001f\u0091](2$56#Gs\u008bTB0*\u009b\u00dd\u00f3\u009a\u007f\u001e\u001e\u00dc\u00e2\u009d\u001e$[\u008d\u00d8\u00ac\u011b\u010f\u00ff\u0119\u00a0}\u0084\u00ab\u00a5\u0085\u0082\u00a0cDU2;>3N@{\u00b8\u00c9\u00d2\u00ac\u00f2\u001e(\u001e7\u00ca\u00b2\u0119d\u00d9\u00d7\u0087Y\u00d6\u00ab+\u001f\u00a0\u00c6\u00ba\u00be\u00bb\u00c2\u00bd\u00ba\u001f\u00b0\u001e\u00c9\"\u00d7 $\u0094\u00d6&\u011c\u00dd]\\.'\\]&m&\u001f\u009d&\u00cd&\u00dd&\u00ed&\u010c&\"<&}&\u009c&\u00bd&\u00cd&\" #$\"! ,\u001e]\u00ed\u00fd z\u001f\u001e#\"#$!'\u001f$C\u001e!\u00d5\u011c\u00dd]&>AQ!6%\\Y5Hk-\u0111HYj\u011aY\\Y\\Y\\Y\u011az\u008eY \"-YY-YYNM\u001e\u008ez\u008fH0.>.\u001e.>.\u00b0\u001e6\u011b\u0104\u001e6!\u00d3\u001e!\u011b\u0119\u0118g!C\u0118\u00f7\u001e\u00b0\u001e\u00c9\"\u00d7 p\u00d6\"\u011c\u00dd] :\u011b\u0104:DnX\u0085K\u011b\u0104;\\S^\u0085J\u011b\u0104!C\u00ae\u00c6qrrq|ya\u00b5\u011av\u001f|\u00bbKYe\u00a8\u00b3\u011b\u001f\u001fc\u00b8wIc\u00a1\u00b6\u011a\u0119\u001e\u00ae!v![3\u00bc]5$040w%\u0085%!\u00d5!\u001eQ%Q-a%a,\u0106-\"#\u00d5\u001f\u0091]:.$+*#)((\u001e'\u001f\u001eC3]=AQ\u00cc\u001e\u011c\u001e75\u00d5\u011c\u00dd]3?AQ\u00ad5\u00bd5\u001f\u008d5\u010d5\u001f\u010c5\u001e5'(C)+\u00d5 \u00b4\"\u001e&+\u001ep\"\u0083\"\u0092\" L/u+\u0085+\u008d/!'&,)<)\u001f\u00ac)\u011c)\u001f\\)l)\u001f)\u00d5\u001f\u0094] &-&M&\u008d&!&7\u009c/\u00bc/\u001f|/\u009c/\u00cc/\u00ed/!/-C\u001e \u00d5 (3]68Q3P4]4J\\4]&'[4]RTQ4]HKQ4]B 9L=21.h[s\u00b6\u00a7\u00d9\u00ab\u00a8N[_<3@;29\u0083gh\u00a3\u00af\u00ef\u00cd\u001e<\u011c\u0105\u001f\u00ae\"\u00ba6\u00ea] !\u0090#V\u007f!\u0100q\u001fV\u00a9\"sg!\u0090M\"\u00e4~!\u0090r\"\u00e4~!\u0090r!\u0100q!\u0088\u011c\u010a\u001f\u00c7\u00e5\"\u00e4!\u0090f\"\u00e4!\u0090f\"\u00e4\u00b1\"\u00ddn\"\u00e4\u011c\u011a\"s\u00b2!\u0090^\"s\u00b2!\u0090^!\u0100\u00ba\u001fV\u0096!\u0100\u00ba 2\u00b2!\u0100\u00b7 \u00f2\u00b0\"\u00e4\u00b5!\u0100\u00ae\"\u00e4\u00b5!\u0100\u00ae#Vv!\u0100o\"\u00e4\u00b3 :\u00a4\"\u00e4\u00b3 :m\"sg!\u0090M!\u0100I\u001f\u00c7<!\u0100I \u00f2;\"\u00e4\u00b0!\u0100\u00aa\"\u00e4\u00b0!\u0100\u00aa!\u01003!?!\u01003!?!\u00ec\u00b7#Vs#\u00aes!\u0108k!\u00f7k \u00e9k\"\u0096k \u00afM\"\u00d6k!\u0088\u011c\u010a!\u00f2\u00d5 Hl%\u00dd \"\u00d5w\"\u0080J\u001fL\u00a4!\u00b8^ \u010ah!\u00cf\u0081!\u00f8^\u011c\u00f9\u011cB\u011c\u00f9\u011bn\u001f\u00aa\u00c8\u001f\u00aa\u00bd\u001f\u00f7` \u00dd\u009b\u001e\u00b3\u011c\u00d7cccceccc!\u009b\u001e\u00a5!\u009b\u001em!\u009b\u001e!!\u009b\u00bb!\u009b\u001eJ!\u009b\u0107!\u009b\u00f2!\u009b\u00b9!\u009b\u00d9!\u009b\u010b!R\u00a2\u001f\u00aa\u00de!R\u00d0#\u001e#\u001e\u001f\u00dbu#\u001e!\u009b\u00c2!\u009b\u00da!\u009b\u00fb#\u001e#\u001e#\u001e#\u001e#\u001ec#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e!\u0103\u011c\u00d7#\u001e#\u001e#\u001e\"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7#\u001e#\u001e#\u001e#\u001e!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7 \u0093' \u0093'#+ \u00b4!\u00bb.\u001fI\u011c\u00d7\u001fI\u011c\u00d7\u001e\u00d9\u00a5\u001e\u00fd7\"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7\u001f\u00dbS o \"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7\"OY\"OY\u001fI\u011c\u00d7\u001fI\u011c\u00d7!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7\u001f\u00db\u0086\u001f\u00db\u0086\u001f\u00db\u0086\u001f\u00db\u0086 \u0093' \u0093' \u0093' \u0093'$O]$O]!\u00fb\u011c\u00d7!\u00fb\u011c\u00d7$O]$O]!\u00fb\u011c\u00d7!\u00fb\u011c\u00d7%\u009d]%\u009d]#I\u011c\u00d7#I\u011c\u00d7%\u009d]%\u009d]#I\u011c\u00d7#I\u011c\u00d7!M\u011c\u00d7!M\u011c\u00d7!M\u011c\u00d7!M\u011c\u00d7!M\u011c\u00d7!M\u011c\u00d7!M\u011c\u00d7!M\u011c\u00d7!qQ \u00ddc!q\u011c\u00d7\u001f\u00ff\u011c\u00d7!qQ \u00ddc!q\u011c\u00d7\u001f\u00ff\u011c\u00d7#-L#-L\u001f\u008d\u011c\u00d7\u001f\u00b5\u011c\u00d7!\u0103D!\u0103D\u001f\u008d\u011c\u00d7\u001f\u00b5\u011c\u00d7!q \u00b4!\u008c'\"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7\"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7\"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7\"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7\"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7\"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7\"OV\"OV\u001fI\u011c\u00d7\u001fI\u011c\u00d7!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7!\u00bbQ!\u0095M!M\u011c\u00d7!M\u011c\u00d7\u001f\u00dbl\u001f\u00dbl\u001f\u00db\u0086\u001f\u00db\u0086\u001f\u00db\u0086\u001f\u00db\u0086\u001f\u00dbl\u001f\u00dbl\u001f\u00db\u0083\u001f\u00db\u0083\u001f\u00db\u0086\u001f\u00db\u0086\u001f\u00db\u0086\u001f\u00db\u0086\u001f\u00dbL\u001f\u00dbL\u001f\u00db?\u001f\u00db? \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093' \u0093'$O]$O]!\u00fb\u011c\u00d7!\u00fb\u011c\u00d7$O]$O]!\u00fb\u011c\u00d7!\u00fb\u011c\u00d7$O]$O]!\u00fb\u011c\u00d7!\u00fb\u011c\u00d7%\u009d]%\u009d]#I\u011c\u00d7#I\u011c\u00d7%\u009d]%\u009d]#I\u011c\u00d7#I\u011c\u00d7!M\u011c\u00d7!M\u011c\u00d7!qQ \u00ddc!q\u011c\u00d7\u001f\u00ff\u011c\u00d7#-L#-L#-L\u001f\u008d\u011c\u00d7\u001f\u00b5\u011c\u00d7#-L#-L\u001f\u008d\u011c\u00d7\u001f\u00b5\u011c\u00d7#-L#-L\u001f\u008d\u011c\u00d7\u001f\u00b5\u011c\u00d7#-L#-L\u001f\u008d\u011c\u00d7\u001f\u00b5\u011c\u00d7#-L#-L\u001f\u008d\u011c\u00d7\u001f\u00b5\u011c\u00d7!\u0103D!\u0103D!\u0103D!\u0103D&[O&[O$]\u011c\u00d7$]\u011c\u00d7#+ \u011b #\u00acJ!\u00c9r\u011bX\u011b\u0083\u011b\u0085!\u0090\u011c\u0119!\u00a1 \u00f2\u011c\u00d7\u001e\u00fd\u011c\u00d7\u001e\u00fd\u011c\u00ce\u001e\u00fd\u011c\u00d7\u001e\u00fd\u011c\u00d7#\u00edK&\u00a1@!%!%\u001f\u00c8\u001f\u001er!\u0090\u001fV\u001e\u00b7\u00c8\"\u0102\u011c\u0114\"\u00e4~#\u00c7\u00ae\"\u0108\u00b8$}\u00aa$\u00beq$\u00bex\"\u00e4\"\u00e4~!\u00901!\u0100.!\u0100I!\u0090V!?\" !q\u00b3 \u0099\u00a5\"\u00d6k\u011cp\u011c\u00d9\u011b\u011b\u011b\u011b\u011b\u00c1\u011b\u00c1\u001fV\u00b0\"\u00e6\u00b9\"\u00e4\u00b5\"\u00e6\u00b9\u011b\u00fd\u011cM\u011b\u00f1\u011b\u00f2\u011b\u00dd\u011b\u00ed\u011b\u00f5\u011b\u00f5\u011b\u00f5\u011b\u00f5\u011a\u00e3#Vv!\u0100x$\u00aa$#V&\"\u00d6\u00ae\u011b\u00b8#8v!\u00f6#%x$#\u00fb#\u001f\u00c7\u00e6 9r\u001e\u0104y\u001e\u0104y!\u00b6!\u00b6\u001f\u00c7\u00d5\u001f\u00c7\u00d5\u001f\u00c7\u00d5\u001f\u00c7 !\u0100I!\u0090H\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u0089\u001e\u008d\u001e\u010f \u00b5!\u010d#'$\u0099%\u00cd&\u0089(')m)m)m)m)m)m)m)m*\u00e7*\u00e7,!,!,!,\u00bd,\u00bd,\u00bd,\u00bd,\u00bd,\u00bd,\u00bd,\u00bd.\u00bb.\u00bb.\u00bb.\u00bb.\u00bb.\u00bb.\u00bb.\u00bb.\u00bb0\u00fd0\u00fd0\u00fd0\u00fd0\u00fd0\u00fd0\u00fd0\u00fd0\u00fd0\u00fd2\u010b2\u010b2\u010b3\u00fb5\u01075\u01077\u00e37\u00e38\u00858\u00858\u00858\u00f1:\u00a5;\u008f<\u007f={={>_A\u00a5B\u00c5B\u00c5B\u00c5B\u00c5B\u00c5DCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDC\u001e*v\u010fY\u00ac#\u001f-Lr$Y\u001f\u00df\"\u001f\u00ceq\u009d^* \u00c9\u00cc \u00c9\u001f- \u00c9= \u00c9\u00bd \u00c9 ] \u00c9\u00d0$*O]\u00d5 \u00c9\u00d0/1O]\u00d5 \u00c9\u00cf3HO\u00d6\u011c\u00dd \u00c9\u00cfWP]\u00d5 \u00c9\u00d0J\u00b1O\u009d\u00d9 \u00c8|P\u011c\u00dd \u00c8\u00cfrP]\u00d5 \u00c8\u00d0]aO]\u00d5 \u00c8\u00d0PXO]\u00d5 \u00c8\u00d0LNO]\u00d5 \u00c8\u00cf%P]\u00d5 \u00c8\u00d0$1O<^7 \u00c8L \u00c8\u001f, \u00c8L \u00c8l \u00c8\u00ac \u00c8\u00bc \u00c8\u00dc \u00c8#- \u00c8\u00fc \u00c8\u011c \u00c8  \u00c5 \u00bf\u00cfc<]\u00d5 \u00c2\u00cf%P,^1 \u00c2\u001e] \u00c2\u00ec \u00c2\u011c \u00c2 = \u00c2\u00cc \u00c2\u010c \u00c2\u011c \u00c2!\u011c\u00dd \u00c0\u00d0&)O]\u00d5 \u00c0\u00cf%P,^8 \u00c0\u001e, \u00c0- \u00c0\u009d \u00c0\u00cc \u00c0\u00ec \u00c0\"\u008c \u00c0\u00bc \u00c0\u011c \u00c0 \u00bc \u00bf\u00cc \u00bf\u001f \u00bf \u00be\u00cf-<-^' \u00bb\u009c \u00bb\u001f \u00b7,\u001e\u001e<\u011c\u00dd \u00b5\u00d0-1O]\u00d5 \u00b6\u00d0,0O]^- \u00b2m \u00b2\u001f\u00cd j\u00dd j\u001f\u008c \u00ae\u009c \u00ae\u001f\u011c\u00dd h\u00cfJNO\u00d6\u011c\u00dd h\u00d0'+O-^- \u00a8= \u00a8\u009d \u00a8 \u00bd \u00a8\u001e= \u00a8] \u00a8\u001f\u011c\u00dd \u00a8\u00d003O]\u00d5 \u00a0\u00cf,.O\u00d6\u011c\u00dd \u0098\u00cfMQO\u00d6\u011c\u00dd \u0098\u00d0-5Om^1 \u0095\u001e \u0082 \u008b@< \u009b \u008b;< \u0080 \u008b:< \u007f \u0081*<\u011c\u00dd ]\u00d0,-O\u009d^- \\\u001e \\ 2 O\u00d6 6 5\u00cfO<-\u00d8 7\u001e\u011c\u00dd 7\u00d0&+O]\u00d5 5\u00cf/0O\u00d6\u011c\u00dd 5\u00d0)+O\\\u00da \u0090l \u0090\u001f] \u0091\u00d045O\u008c\u00d8 G\u001e] I\u00d058O]\u00d5 \u008d\u00cf&)O\u00da 4 3O<\u011c\u00dd 3\u00cf+.O\u00da 9 ;3< : ;\u00cf2<\u00cd^< ;\u001e, <\u001e\u001f\u00e7\u001f\u00ed2<\u001f\u00f0\u001f\u00f2*<\u001f\u00ec\u001f\u00ed*<\u001f\u00e8\u001f\u00ed*<\u001f\u00ea\u001f\u00ed*<\u001f\u00eb\u001f\u00ed*<\u011c\u00dd\u001f\u00ed\u00d0&)O]\u00d5\u001f\u00ef\u00d0&)O\u00fd^9\u001f\u0102\u001e|\u001f\u00fa\u00bc\u001f\u0102\u001f\u001f\u00d8\u001f\u00e0M<\u001f\u00f7\u001f\u00d5O<\u001f\u00f6\u001f\u00d6\\<\u001f\u00f5\u001f\u00d5\u0081<\u001f\u00d6\u001f\u00d5P<\u001f\u00d7\u00cf>\u00e5<\u00d5\u001f\u00d5\u00d0>\u00e5<]\u00d5 \u00b8\u00cf*3O\u00d6\u011c\u00dd\u001f\u00e0\u00cfHLO\u00d6\u011c\u00dd\u001f\u00e0\u00cf<BO\u00d6\u011c\u00dd\u001f\u00e0\u00cf48O\u00d6\u011c\u00dd\u001f\u00e0\u00cf/3O^B\u001f\u00df\u001f\u00de9<\u001f\u00f4\u001f\u00deA<\u001f\u00de\u001f\u00dd?<\u001f\u00dc\u001f\u00dd5<\u001f\u00dd\u001f\u0091\u00e5<\u001f\u00d2\u001fRX<\u001f\u00d1\u001fRX<\u001f\u00e1\u001f\u00d9;<\u001f\u00d4\u001f\u00d3U<\u001f\u00d0\u00cf+\u00e5<\u00d5\u001f\u00cd\u00cf$\u00e5<\u00d5\u001f\u00cc\u00cf#\u00e5<\u00d5\u001f\u00cb\u00cf\u00e5<\u00d5\u001f\u00cc\u00cfmL<\u00d9\u001f\u00cb\u001f\u00c87<\u001f\u00ca\u00cfC7<\u00d5\u001f\u00c5\u00d0CA<,\u00d8\u001fR\u001e\u001f\u00c2\u001f\u0091\u00cf:</^'\u001f\u00be\u001eu\u001e\u0111<\u001f\u00bd\u00f5\u001e\u0111</\u001f\u00bf\u00cfT\u00e5<\u00d5\u001f\u00ad\u00cf\u00d9=<\u00d6\u001f\u00ad\u001f\u00ad]5T]B]J]\u00c3 MBMJM\u00c3 =B=J=T=\u00c3=^-\u001f\u00ab\"\u00bc\u001f\u00a8\u001e\u001f\u00a8\u001f\u00a8T=\u001f\u00a6M\u001f\u00a6]\u001f\u00a6\u00ad\u001f\u00a6\u00cf!T\u00cd^\u011a\u001f\u0091\u00dd\u001f\u0091\u001f\u009d\u001f\u0091\u00bd\u001f\u0091\u001f}\u001f\u0091\u008d\u001f\u0091\u001f\u001f\u0091-\u001f\u0091\u001f\u009d\u001f\u0091\u010d\u001f\u0091\u001f\\\u001f\u00a2l\u001f\u00a2\u001f\u00ad\u001f\u009b\u00ad\u001f\u009c\u00ad\u001f\u009d\u00ad\u001f\u009e!\u00ad\u001f\u0097\u00ad\u001f\u0098\u00ad\u001f\u0099\u00ad\u001f\u009a!\u00ad\u001f\u0091\u00ad\u001f\u0092\u00ad\u001f\u0094 \u008d\u001f\u009b\u008d\u001f\u009c\u008d\u001f\u009d\u008d\u001f\u009e!\u008d\u001f\u0097\u008d\u001f\u0098\u008d\u001f\u0099\u008d\u001f\u009a!\u008d\u001f\u0091\u008d\u001f\u0092\u008d\u001f\u0094 }\u001f\u009b}\u001f\u009c}\u001f\u009d}\u001f\u009e!}\u001f\u0097}\u001f\u0098}\u001f\u0099}\u001f\u009a!}\u001f\u0091}\u001f\u0092}\u001f\u0094 m\u001f\u009bm\u001f\u009cm\u001f\u009dm\u001f\u009e!m\u001f\u0097m\u001f\u0098m\u001f\u0099m\u001f\u009a!m\u001f\u0091m\u001f\u0092m\u001f\u0094 ]\u001f\u009b]\u001f\u009c]\u001f\u009d]\u001f\u009e!]\u001f\u0097]\u001f\u0098]\u001f\u0099]\u001f\u009a!]\u001f\u0091]\u001f\u0092]\u001f\u0094 M\u001f\u009bM\u001f\u009cM\u001f\u009dM\u001f\u009e!M\u001f\u0097M\u001f\u0098M\u001f\u0099M\u001f\u009a!M\u001f\u0091M\u001f\u0092M\u001f\u0094 =\u001f\u009b=\u001f\u009c=\u001f\u009d=\u001f\u009e!=\u001f\u0097=\u001f\u0098=\u001f\u0099=\u001f\u009a!=\u001f\u0091=\u001f\u0092=\u001f\u0094 -\u001f\u009b-\u001f\u009c-\u001f\u009d-\u001f\u009e!-\u001f\u0097-\u001f\u0098-\u001f\u0099-\u001f\u009a!-\u001f\u0091-\u001f\u0092-\u001f\u0094 \u00fd\u001f\u009b\u00fd\u001f\u009c\u00fd\u001f\u009d\u00fd\u001f\u009e!\u00fd\u001f\u0097\u00fd\u001f\u0098\u00fd\u001f\u0099\u00fd\u001f\u009a!\u00fd\u001f\u0091\u00fd\u001f\u0092\u00fd\u001f\u0094\u00ce \u00ed^\u00e2\u001f\u009b\u00ed\u001f\u009c\u00ed\u001f\u009d\u00ed\u001f\u009e!\u00ed\u001f\u0097\u00ed\u001f\u0098\u00ed\u001f\u0099\u00ed\u001f\u009a!\u00ed\u001f\u0091\u00ed\u001f\u0092\u00ed\u001f\u0094 M\u001f\u0091]\u001f\u0091\u001f\u00dd\u001f\u009b\u00dd\u001f\u009c\u00dd\u001f\u009d\u00dd\u001f\u009e!\u00dd\u001f\u0097\u00dd\u001f\u0098\u00dd\u001f\u0099\u00dd\u001f\u009a!\u00dd\u001f\u0091\u00dd\u001f\u0092\u00dd\u001f\u0094 \u00cd\u001f\u009b\u00cd\u001f\u009c\u00cd\u001f\u009d\u00cd\u001f\u009e!\u00cd\u001f\u0097\u00cd\u001f\u0098\u00cd\u001f\u0099\u00cd\u001f\u009a!\u00cd\u001f\u0091\u00cd\u001f\u0092\u00cd\u001f\u0094 \u00bd\u001f\u009b\u00bd\u001f\u009c\u00bd\u001f\u009d\u00bd\u001f\u009e!\u00bd\u001f\u0097\u00bd\u001f\u0098\u00bd\u001f\u0099\u00bd\u001f\u009a!\u00bd\u001f\u0091\u00bd\u001f\u0092\u00bd\u001f\u0094 \u00ad\u001f\u009b\u00ad\u001f\u009c\u00ad\u001f\u009d\u00ad\u001f\u009e!\u00ad\u001f\u0097\u00ad\u001f\u0098\u00ad\u001f\u0099\u00ad\u001f\u009a!\u00ad\u001f\u0091\u00ad\u001f\u0092\u00ad\u001f\u0094 =\u001f\u009b=\u001f\u009c=\u001f\u009d=\u001f\u009e!=\u001f\u0097=\u001f\u0098=\u001f\u0099=\u001f\u009a!=\u001f\u0091=\u001f\u0092=\u001f\u0094 \u001f\u009e\u001eu%\u001e<\u001f\u009d <\u00d5\u001e\u00d8\u00cfDM<\u00d5\u001e\u00d5\u00cfDl<\u00d5\u001e\u00d4\u00cfD\u007f<^&\u001e\u00d3D\u001e\u001e<\u001e\u00d2=\u001f\u00c8<\u001e\u00cc\u00cf<\u0101<\u00d5\u001e\u00ca\u00cf<\u0101<\u00d5\u001e\u00c9\u00cf<\u00d8<\u00d5\u001e\u00c5\u00cf<Q<\u00d5\u001ez\u00cfDK<\u00d5\u001ex\u00cfD\u00ea<^*\u001er<!\u001e<\u001eq<!\u001e<\u001ep<\u001f\u001e<\u001eo\u00cf<s<\u00d5\u001en\u00cf< ^\u0081\u008c\u007f\u0082 r`p ?\u00b6\u007fg\u0101\u008a\u010b\u0102e \u00ddP\u011bk\u001f\u00ce\u011cc \u008d\u0096\"\u00fcn\u011c\u00c4\u011c<\u001e'\u0085\u011c\u0089l\u00d9\u00c2$\"~$H\u010a!\u00cd\u001e\u00ef\u00d3\u0098\u0082\u001fo\u011c\u0091 \u0082\u011b\u0086\u00b1\u00acy]\u00a3\u0092\u00a6\u00a6]`rq^]\\[ZYXWVUTRQPONMLKJIHG -\u001f&'-\u001e/&\u00d5\u001eP\u00d0'\u00bc \u001e\u00d5\u001eP\u00d1\u00bc {+\u00d5\u011c\u010d\u00d1--\u001fr+\u00d5\u011c\u0115\u00d1,,\u001fr+\u00d5\u011c\u0101\u00d1**\u001fr+\u00d5\u011c\u0109],''\u001fr,+<+\u001f+\u00c9/\u00ba\u00a95H-\u0113zHHHH\u011a\u0113\u010a-\u0113\u010a\\Y\\YNM\u001ez0@.QDCDCDP3432-\u001f\u011a\u009e\u001eHH?ZD\u0097\u009e\u00d9wj\u00ec\u011bn\u001e\u00fd\u001e\u00fe\u00d9\u00d6\u00b3\u00a7w\u00ef\u0118\u011a\u00f7\u010b\u011b\u010f\u011b%\u001e\u00c7\u011b\u00fb\u001e\u00a0\u00ea'k\u00d2' $\u00c8#\u00d5\u001em]C\u001e Y\u001f\u001f\u001e'\u001eY'\u001f \u001e Y#U$Wl|\u008c\u009c\u00bd\"\u00bd(\u00be\u00b55H-\u0111z\u0111\u0101-\u010aY-Y\\\u010aY-Y-\u010a-\u011a\u010a\u001e./VNMPRP21#$DSST\u00d3\u00eamtOVS \u00ea\u00ea\u008e\u00a8Cj6~x\u001e^\u001e\u00d5\u001f\u0087\u001f\u008a I]6\u008d\u001f\u008d \u001fj\u001ej\u001f\u001f\u001e@\u001f7\"\u008d\u001e6!\u008d\u00aa5Hk-\u0101z-\u0103Lj\u010aNM\u008e\u001ez0R>2^ \"*3*b*\u00a3*!b.t.\u00938 o3\u0089-\u00871\u00813\u0092*\u00961\u00a3*\u00a71\u00a68\u00c2*'\"= \u00d5\u011c\u00fd](()*+!$\u001e@*)\u001e\u00d5\u001f\u00c1\u00d0]\u001e\u00d8\u001e5 ;]*m*\u001f**18\u001e\u00f0|\u001e\u00d5\u001f\u0085]&\";8\"?;1*\u001e\u00d5\u001eU\u00cf\u00d2B\u00d5\u011c\u0111\u00d1))_rB\u00d5\u011c\u010f\u00d1((_rB\u00d5\u011c\u0115]1**_rB\u0090-]>@QM-\u001e---\u001f-\u00d5\u011c\u010d\u00d4))#r-\u00adI'\u00d5\u001eU]0;)))_r;+((_r;%**_r;\u00d5\u001eV]?\\4|4\u008c4\u009c4!4-((_r4-)*_r43))#r43**#r4\u00d5\u001fA\u00d0H\u00e4\u00a85H-\u0113HHHHz\u010aHHH\u010a-\u0113Hz\u008eH\u010aHHH\u0111\u010a\\\u010a\\\u010a\u011az\u0101./VLz\u010aNM\u001eUUUUHHHH\u001ezzv\u001eHHHHHHHHHHHH\u001e$CDC@?$##$SSPO/21##@?.-TSPO3\u001e133POSRQC@?# \u0118\u00d05If\u0088s^r\u007f\u001f^\u00d9\u0084\u00d1\u011a\u0094\u00ed\u00a1\u00fe\u011b\u0101\u00ba\u00a6\u0105\u00ca\u00fa\u011aTl\u00abk\u008f\u00c1\u00bf\u0098\u0097\u00c7!p+\u0087MjM[\u010b\u00f9\u0080}\u011b\u0114\u00ef\u00a7\u010a\u009b\u001eh\u001e\u0099\u001e\u00c6\u00de\u00c5\u00df\u0119\u00faz\u00c7v\u00d5\u00bb\u00b5\u00cc\u00cc\u001e~!3\"\u00c4*\u008d]+\u00e1*\u001e!*\u001e!\u001f%!& *\u00d5\u001f\u00d8]M\u001f\u001e!&)*\u0090  \u001f]>@Ql\u001f|\u001f\u008c\u001f \u001f7,%\u0090&\u0108l\u001e|\u001e|\u001f \\\u001e|\u001e\u008c\u001e\u009c\u001e!\u001e6+\u00d5\u001e\u00af\u00ce\u00a85Hk-\u0111z\u008eYj\u0111\u010ak-\u0113\u008eHYj-\u010a\\\\Y\u011aYV.V\u001e./VNM\u001e\u008ez0R>2# #$@S//T~ \u00d2\u00a9\u011b\u010ahS,\u00d6 \u009f\u0110\u00a6!\u0117\u00ca\u00a9\u00b2\u011b/\u011b\u0118\u00d5\u00f8\u00ca\u001e\u0107\u001e\u00e4\u00b9 p\u011c\u0104!6\"\u00dd4@M c\u00d69\u011c\u0105].))_r75))_r$5))_r=\u00d5\u011c\u0105].))_r?5))_rL5))_rJ\u00d5\u011c\u0105\u00d1))_r ;/*\\\u010a\\\u010a/VL\u010aVV\u001eLHH\u00eaLHH\u00eaLHH\u00eaLHH\u00eaNM8]TR3 ;/*;\u00d5\u011c\u0111\u00d1))_r;\u00d5\u011c\u010f\u00d1((_r;\u00d5\u011c\u0115]'**_r;\u0090\u00dc&\u001e&\u00d7\u001f\u0084H\u011c\u0111\u00d1))_rH\u00d5\u011c\u010f\u00d1((_rH\u00d5\u011c\u0115]1**_rH\u0090,]=@QM,\u001e,-,\u001f,\u00d5\u001e\u00ae]6O5)))_r5+((_r5%**_r5\u0090\u00cd \u001e \u00d5\u001f\u0084]2A)))_rA+((_rA%**_rA\u00902\u00d5\u011c\u00dd]+>@Q=2]2\u001f2\u00adN\u00e4\u00a85H-\u0113zH\u010aHHH\u0111z\u010aHHH-\u0111z\u008eH\u010aHHH\u0111z\u010aHHH\\\u010a\\\u010a/VzL\u010aVV\u001e./VVNM\u001eUUUUUUUU\u001ez\u008f\u008e\u008evv\u001eHHHHHHHHHHHHHHHHHHHHHHHHH\u001eCCRQSPO321#$3321@?RQS013POSRQC@?# 133POSRQC@?#\u001e\u0087\u008d\u0089\u0103\u00dc\u00dd\u0107\u0088\u008a\u00a4\u00aa\u011b\u0113\u00f6\u00f6\u011b\u0113\u00ae\u007f\u00a3\u0088\u0085\u00a2\u00a6\u0083\u0084\u00a5Wf\u00adp\u009e\u00c5\u00ca\u009f\u009c\u00c4 8 ;,+<+l+ ++1m\u001e\u001e\u001e!;9*?;1\"\\\u010a\\\u010a\u00e1zO/VLz\u010aO\u001e./VVLHLHH-\u00ea\u00f1\u00ea-\u00fa\u00e2NM8]QW7i3]@x3t@\u0083 \u00893\u008a7\u0084@\u00977\u009a;\u00a97\u00a8;\u00b73\u00c67\u00d97\u01073\u0103=\u0113=0Z3\u00bb3\u00ca3 W ;l+|+\u001f++9?;1\"\u001e\u00f0m\u001e\u00d5\u001f\u0085\u00d1!;9*<\u00d5\u011c\u0111\u00d1))_r<\u00d5\u011c\u010f\u00d1((_r<\u00d5\u011c\u0115\u00d1**_r<\u00d7\u001eV(\u011c\u0111\u00d1))_r(\u00d5\u011c\u0113\u00d1((_r(\u00d5\u011c\u0115\u00d1**_r(\u00d5\u001eU].5]>@QM5\u001e5-5\u001f5\u00adI\u001e\u00d5\u001eU]4\u00d2B)))_rB+((_rB%**_rB\u0090.\u00d5\u011c\u00dd]+>@Q=.].\u001f.\u00adH\u00e4\u00a85H-\u0113zH\u010aHHH\u0111\u010a-\u0113z\u008eH\u010aHHH\u010aHHH\\\u010a\u011az\u0101\\\u010a/VLz\u010aNM\u001eUUUUz\u008e\u001ezvvHHHHHHHHHHHHHHHHHHH0T33PO[\u001fRQD##@?\u001fRQPO3/.-\u001f#@?C\u001eQC@?#213POS\u008d\u00ca3\u0099~p\u009amS\u001eS\u00d8\u008a\u00d3\u0119\u001e$\u00e3\u00ac\u010a\u0098\u0097\u010e\u00bf\u00c9\u00f7\u001f\u00e8\u00c2\u0091\u0095\u00cf\u00c6\u0099\u009a\u00be\u001ep-\u0097\u008bi\u009c\u00f5\u008d)5s\u0088\u001e%\u00f5\u00fc\u001e-\u00b7\u011b\u0100\u011b\u010f\u011b\u0104\u011b\u00d0\u00cb\u00dc Q\u00b8\u00d3\u00e1\u00b9\u00a9\u00cc\u00cc\u001fw!)\"\u00f0;?\u00a1]L\u00a97\u00a88\u001f\u00997\u00998\u001f\u007f7\u00828\u001f\u0088)~+\u001fw)q+\u001fS+a+\u001f86%$!-D..* \"\u00a9!\u00a7\"\u00c7!\u0107%\"'!\u001eR!\u00f3!\u001f&\u00d5\u011c\u00fd]&/>Q =/>Q \u00d5\u011c\u00fb\u00d0)V/&\u00d5\u011c\u00fd\u00d0/>Q%\u00d5\u011c\u00fd\u00d0/>Q!\u00d5\u011c\u00fd\u00d0:>Q!\u00d5\u011c\u00dd\u00d0/3Q%\u00d5\u011c\u00fb]Z6V%&BBZ%&66Z##$&'&%'\" !!=\"'1\"\"'&%%=$#1$$#''\"\u001f!\u001e\u001f$(%%' \u001f(\u001e!\u00d5\u001fW],M\"\u001e\u00bd\"\u00cd\"\u00dd\"\u00fd\"!\"g%\u00d5\u001fW](M$\u001e=$\u009d$\u00cd$ $\u00d5\u001f\u00a3];(\u001f))_r(+((_r(')*_r(==\u001e=--\u001fr\u00d5\u011c\u0113\u00d1,,\u001fr\u00d5\u011c\u0113\u00d1**\u001fr\u00d5\u011c\u0117\u00d1))\u001fr\u00d5\u011c\u0117\u00d1))#r\u00d5\u011c\u010f]'**#rz)X\u00c55H-\u0111HHHHHHz\u010aHHH\u011az\u008e\u010a\u0111z\u008e\u010a-Y-YYY\\YYY\\YYY/VL\u00a4\"KH+\u009a-\u00e1\u00a4\"K5H!\u009a-\u00e1$%-Y%Y\u001eh\u00cd5ph\u00cd8nwu\u00d6!\u011c\u00f5Uv\u00ce#\u001f`qu\u00d6!\u011c\u010d\u00d0).Q \u00d5\u011c\u010d]4).Q#-+.Q%-+-Q&-+.Q'-*-QHHHHHHvNM\u001eHHHHHHH`yu].&?6V%I6V!I6V!?8V\"\u00d5\u011c\u00fb\u00d33V!?3V#\u00d5\u011c\u00fb](/V%?1V!]1V%\u00d5\u011c\u00fb\u00d2BV!]2VHHHHHHHHHHHvHHH\u001e\u008e\u008fzH\u008ezHHP.P.\u001e>\u001e\u001e>\u001e$.\u00b3\u00df\u001f\u00f5\u001e$\u011a\u00b6\u001f\u009f\u011c\u011a\u0113\u010d\"\u00d7\u011a *.\u001fr)/))\u001fr\",) &\u001e\u001f%&(+%&\u001f'(#--\u001fr(-**\u001fr(\u00d5\u011c\u0117\u00d3))\u001fr(-\u00d5\u011c\u0103\u00d1--\u001fr\u00d5\u011c\u0115\u00d1,,\u001fr\u00d5\u011c\u0119\u00d1**\u001frLHHH\u00eaLHHH\u00ea\\\\\u00dd\u00dd-\u00ed\u00ed\u00dd./4VHHNM\u001eHHH8\u00ce#\u001f`qu]<$=((#r#=((#r =((#r!=((#r\"=((#r%\u00d5\u011c\u010f]@((#r\u001f)((#r #))#r\u001f+))#r&)))#r')))#r$\u00d5\u011c\u0115\u00d1**#r%\u00d5\u011c\u0115]<**#rC\"\u001e)='/Q,='/Q,\") \u001e+(%%\u001e\u001f'\u00d5\u011c\u010b\u00d1((#r'\u00d5\u011c\u010b\u00d1))#r'\u00d8\u001fs/-\u001fs]*)((#r#))#r\u00d5\u011c\u0115\u00d1**#r\u001eLHHH\u0111L\u0111HH\\Y\\YY./4VHHzNM\u001eHHHHHHHHHHHHH8]\u009c\u001f,%1\u001f8%!\u0093)\u00a3)\u00e5) &)f)f, nwu\u00d6*\u011c\u0115\u00ce+'UUv\u001e`yu\u00d6*\u011c\u00f1\u00d3>V+I>V*\u00d5\u011c\u00f1\u00d3TV+OTV*\u00d5\u011c\u00f1\u00d2JV+IJVHHHHHHv\u008f\u008ez\u008ez\u001ezvvHHP.>\u001e34ST\u001e>.@.\u001e@\u001e.\u00b5\u001eA\u001exM36R\u001e|\u001e\"\u00d8\u011bs\u00cc\u011bu\"\u00d7\u0118\u010f\u00aeem\u00b8 \u0119\u0117c!\u00e8\u0118R!\u00fd\u0118=\u001e\u00b9\"<\"\u00d7&\u001e\u00d9\u00d3 5))_r%\u00d5\u011c\u0105\u00d2))_r/(\u00d5\u011c\u00dd]'02Q%5)3\u001fr \u00d5\u011c\u0105]:)3\u001fr%\u001f  =$%1$$%\u001f$  %&!\u001f\u001f&$%! \u00d5\u011c\u0118\u00d1))_r \u00d5\u011c\u010f\u00d1((_r \u00d5\u011c\u0118]&))_r =##\"\u00d5\u011c\u0109\u00d1,,\u001fr\"\u00d5\u011c\u010f](**\u001fr\"/))\u001fr\"\u00d5\u011c\u0114]C((#r\"z=(\u001e=(m(}(\u008d(\u009d(\"(%&+((_r&'))_r&=\u001e\u00d5\u011c\u00dd]*02Q=\u001e=--\u001fr\u00d5\u011c\u0113\u00d1,,\u001fr\u00d5\u011c\u0113\u00d1**\u001fr\u00d5\u011c\u0117]())\u001fr!((#r\u00d5\u011c\u0114\u00d1))#r\u00d5\u011c\u0115]'**#rz'Xv5H-\u0113HHHHHHHzHY\u011aHHY-z\u008e\u0111HHHHY-\u011aHHHY\\Y\\Y/VV\u001e.VV\u00a4!KH\u00a4\u009a\u00e1\u00ce#\u001f`qu\u00d6 \u011c\u00fd\u00d4).Q%=).QHHvNMHH\u001eH`yu\u00d1%]cV \u00d5\u011c\u00dd\u00d3cV%]OV \u00d5\u011c\u00dd\u00d3OV$?6V\u001f\u00d5\u011c\u00fb\u00d36V$?OV\u001f\u00d5\u011c\u00fb\u00d3OV$?@V\u001f\u00d5\u011c\u00fb](@V$+1V$+0V\u001f\u00d5\u011c\u0111\u00d30V$+:V\u001f\u00d5\u011c\u0111\u00d3:V$+2V\u001f\u00d5\u011c\u0115\u00ce2VHHHHHHH\u001eHHHHHHHHHHvHHP.P\u001e.P.@\u001e.\u00b9\u00e4 \u001f\u00d7\u00e4\u0119\u011b\"\u00d7\u0118\u009e!\u009c\u0117c!\u009d\u0118\u009d\u001f\u0080\u011c\u0104\"\u00fa\"\u00f1+8\u001e3]h7,\u001e1-118488!!-!1(4(8!\u00c64\u00d3+\u00e3+ 4458\u001f=:].l0l4]7u\"u&t-r.|0w4|5s7t8\u00a84\u00b6\u001f-6;  /;(&2\u00d5\u011c\u011b\u00d1))_r2\u00d5\u011c\u010f\u00d1((_r2\u00d5\u011c\u0113]')*_r2C=$\u001e$\u00d5\u011c\u0111\u00d1((_r$\u00d5\u011c\u0105\u00d1--\u001fr$\u00d5\u011c\u010b\u00d1**\u001fr$\u00d5\u011c\u010d\u00d1))\u001fr$\u00d5\u011c\u0107\u00d1((#r$\u00d5\u011c\u0111\u00d1**#r$\u00d5\u011c\u0117]\\))#r$7\u009d:\u001e:,\u001f))_r,+((_r,')*_r,C=\u001e%((_r))*_r#((#r#))#r69\u0080y5Hk-\u0111HHHHzj\u010aHHHk-z\u0113HHHHHHHzj\u010aHHH\\\u010a\\\u010aNM\u001ez\u008ezzz\u008e0->O!/21\u001f!@?A\u001fT-PO.Q\u001fC@?\u0080\u001e\u00a5\u001eS\u00e8\u001ec\u00c8\u00d1\u011b\u00d3\u00dc\u00ec\u011b\u00d7\u00c5\u00e5\u001e:\u00f4\u00f8\u001e8\u0096\u0106\u00ae\u00eb\u011b\u00f4\u001f\u00e7\u001e\u008a\u001e\u00ba\u00df\u011b\u00c2\u00f9\u00fc\u011b\u00bd\u00d2\u00e5\u001ew\u00db\u011b\u0114\u011b\u00ec\u001eQ\u001e8\u00d0\u001e(\u00b0\u011b\u0102\u001f\u00bb!\u011a\"\u00d7*5\u010d];\u0082.\u00881\u001fh-h1x-x1!();,++45;\u001f\u001e\u001f%/\u00d5\u011c\u011b\u00d1))_r/\u00d5\u011c\u010f\u00d1((_r/\u00d5\u011c\u0115\u00d3**_r/C%\u00d5\u011c\u0113].**_r%'**\u001fr%-((#r%\u00d5\u011c\u0111]J))#r%7=7\u001e=7\u001e75*\u001f))_r*+((_r*')*_r*=\u001e=\u001e=--\u001fr\u00d5\u011c\u0113\u00d1,,\u001fr\u00d5\u011c\u0113\u00d1**\u001fr\u00d5\u011c\u0117]())\u001fr)((#r\u00d5\u011c\u0117\u00d1))#r\u00d5\u011c\u010d]'**#rz6Xy5H-\u0113HHHHHHHzY\u011aHHHYk-\u008ez\u0113HHHHj\u010aHHH\\\\Y\u011aY/VLY\u011aYNM\u001ezzP.>O4;\u001f21\u001f>>..>OSRQCDC@>\u00bb *CA\u001fA DBS,Q@aBbLw=s@rB\u0089(\u0087*\u0088+\u00831\u00825\u0096(\u0097*\u0097,\u009a-\u0092A\u0090B\u00a3 \u00a7(\u00a6*\u00a7,\u00aa-\u00a2A\u00a0B\u00af*\u00b3,\u00b32;\u00ce#\u001f`qu]J>C/8C7&Cph\u00cdSnwu\u00d6\u011c\u00ddUvvNM\u001ez\u008ezzv\u001eHHHHHHHHHHHHHHHHHHHH>\u001eP\u001e34ST\u001eP\u001e\u001f^\u011a\u00e5\u00ef\u001e\u009aK<?J\u001e\u00a9\u00e3\u011a\u00df\"\u00d7\u0118\u00f4\u009d\u008d\u0095\u0095! 5>Q/C! T\u001f\u00c5]I&*&G6*7G %a3\u001e;\u00d5\u011c\u0111].))#r//))#r\")))#rR\u00d5\u011c\u00fd]l))#r<4<5HIGQV!VIf!eIs%vH\u0083%\u0086H\u0093)\u00a4)\u00e6)\u0116*\u0116H.TQ+\u001e!-LAQ4O>15| \u011b\u00fb\u011b\u0116-=\u00cc\u00d7\u0085\u001e\u00b2\u00a3`\u0085\u00c3\u001e0\u001f\u009d\"\u00f04 ,,\u001fr?++\u001frI**\u001fr\u00d5\u011c\u010f]())\u001fr1((#r\u00d5\u011c\u0107\u00d1--#r\u00d5\u011c\u0103\u00d1,,#r\u00d5\u011c\u0117\u00d4))#r\u00c056\u00d9\u001e\u00d7>\u0113\u001e'5HH\u0113HHHHHHHHHHHzHHY-\u0111Y-Y\u010aHHH-\u010aH\u010az\\\\YYY\u011aY\\\u010aV.VNM`\u0096]1-.#&$#%#\u001f#-&/8.#,8\u001eH\u001eHG\u009e\u009e\u001eH\u008ez\u008fP.@RPRQTSSPO4$C@?#22P2@.\u00cf\u00bc\u00bc07\u00a0\u0093iy8UOoa\u00ec\u00ec \u00b7\u00a9\u008e\u0088Qct/\u00ba'c}\u007f\u00a9\u0119\u0083\u001f_\u011bn \u0107![;G\u001e\u00e2]}((\"1I(B1i(b1#&:6:I(C1I@V(S1g(c1s$u(\u0085(\u0117'\u01122+K@ID[@[DiD\u00adI\u00bdI$S>S --\u001fr&1++\u001fr&\u00d5\u011c\u0109].**\u001fr&!))\u001fr&7((\u001fr&\u00d5\u011c\u0113](((#r&1--#r&\u00d5\u011c\u0115](**#r&',,#r&\u00d5\u011c\u0113\u00d3))#r&k3\u00d5\u011c\u00dd] --\u001fr(1++\u001fr(\u00d5\u011c\u0109].**\u001fr(!))\u001fr(?((\u001fr(\u00d5\u011c\u0111](((#r(1--#r(\u00d5\u011c\u0116](**#r(',,#r(\u00d5\u011c\u0113]/))#r(]PSQ\u011c(\u001e\u011c(\u001e(k5\u00d5\u011c\u00dd]IQSQ\u00cd5\u010d5\u001f\u008d5\u00bd5\u00cd5\u00dd5!5 \u001fP23%**_r3+((_r3)))_r3B\u001e\u00d5\u011c\u0113\u00d1..\u001fr\u00d5\u011c\u0117\u00d1--\u001fr\u00d5\u011c\u0117]4++\u001fr!))\u001fr'((\u001fr!((#r\u00d5\u011c\u0117].,,#r\u001f))#r!**#r\u00d5\u011c\u00dd]/PSQ\u010d\u001e=\u00ed\u00fd!k4-\u0113z\u008eHHHHHHHHHHY\u011aHHHY\u0111Y-z\u008eH\u0113z\u008eHHHHHHHHHHHHH\u010aHHHY-Y\\Y\\\\\u010a.V\u001e/VNM`\u0096]3#.&'%'$' #-C.#+8\u001e,'/8\u001eH\u001eHHG\u009e\u001ez\u008eHz\u008eP.P2SPO33432.@.QCC@?#2.\u00a4\u00bf\u0092\u00fa}\u00bem-'\u00d1G\u0088e\u0090\u00c4!C\u00b4\u00ccb\u008djO\u009a\u011a\u0090\u001f\u00a3\u008b\u008a^\u00af\u00e9\u011a\u00d9\u001fa\u011c\u0105!D![*6\u001e\u00dc\u00d325**#r0\u00d5\u011c\u0105\u00d1**#r,\u00d5\u011c\u0105]\u0082**#r65**#r/$'6)d#e%s#v%\u0084#\u0086%%Q-W/W3R5b-h/h3b5y\"y&o-z/z3o5\u008a\"\u008a&\u0081-\u008a/\u008a3\u00815\u0094\u001e2&#\"*x q\"q'x)\u0089 \u0082\"\u0082'\u0089)'49!$.9((1\u00d5\u011c\u010f\u00d1((_r1\u00d5\u011c\u0111\u00d1))_r1\u00d5\u011c\u0115]0**_r1A8]**\u001fr8]((\u001fr$\u00d5\u011c\u0107].,,\u001fr$5**\u001fr$-((\u001fr$\u00d5\u011c\u010d\u00d1((#r$\u00d5\u011c\u010d\u00d1**#r$\u00d5\u011c\u010d\u00d1,,#r$\u00d5\u011c\u010d\u00d1))#r$\u00d5\u011c\u00dd]+ABQM$\u001e$-$=$ $\u00d5\u011c\u0111]'**_r$N\u00fc8\u001e8\u00d5\u011c\u00dd]\u008a;@QM8\u001e8+%**_r+)))_r++((_r+A)+,\u001fr/**\u001fr)))\u001fr9((\u001fr+((#r+**#r)--#r3))#r]ABQ<\\\u001f)**_r)))_r)((_rN7QT5H-\u0113HHHzHHHHHHHHH\u010aHHH-\u008eHz\u0113HzzHHHHHHHHHH\u010aHHH\\\u010a\\\u010aNM\u001e\u008ez\u008e`yu]&p\"p&\u007f\"\u007f&!\u001ezvHHHH0-TSPO21##@?013POSRQC@?#a\u00c1\u00a6\u00e2\u00f8\u001e3\u0098\u0108\u00a8\u00fc\u011b\u010a\u00d6\u00cf\u00a4\u00a3\u00cf\u00d0\u00a2\u00a4\u00cf\u001f0\u001eD\u00ab\u0093\u011b\u00fe\u011a\u00ea\u0108\u009f\u001e;\u001e*\u00e9\u00e8\u00e9\u00ee\u00e2\u00e8\u00e7\u001f\u00a4\u011b\u0086!>![/;\u001e\u00b3]\u0091)-J-Z-h-!\\=\u00cd=\u001f<= $8\u001e\"J$8\u001e;1=8>+@8?@*)% KQ,) C'T'l]'&\"]/3Q\"](*Q\u00ce#\u001f`qu]&\"\u001e%#\u001e#'\u00d5\u011c\u0111],**#r')**#r\"&%\u00d5\u011c\u0111]/**#r%\"\u001e\u001f)**#r\u001f\"\")(./VL\u00faH\u00ea-\u00faH\u00ea-\u00eaH\u00eaHL\\\\./VNM8]T'$%%B&'1&&' \u001f\u001fB\u001e1\u001e\u001e\"'''&%%\u001f\u001f\u001e#$'& \u001e\"L)\u001e)?%]]]&\u009d&\u001f&\u00d5\u001e8\u00d2]\"\u009d\"\u001f\"\u00d5\u001e8]&=\u001f]\u001e?(\u0107\u00ef5H-\u0113\u010a76\u011az\u011az75\u010a\u0101z./VV/VV\\Y-Y-Y\\Y.V\u00a4\"KH\u00a4\u009a\u00e1\u00a4K5H\u00a4\u009a\u00e1vNMHH\u001e\u008ezHHHHHHHHHHHHzv\u001eHHHHHHHH>\u001eP034ST0P\u001e\u001e\u00cb\u011b\u0089\u00db\u0101B<5H\u0109\u00d6\u011b\u008b!C\u011a\u00a1\u0084\u008cq\u0093\u001f\u00a5\u0118\u00f7\u001e#\"\u00d4!C/\"|\u00d6\u011c\u010f](((_r++((_r)\u00d5\u011c\u0111]:)*_r\u001f))*_r-!**_r\"!**_r#\u001f**_r \u00d5\u011c\u0119\u00d1**_r\u00d5\u011c\u0107].**_r-#))_r##))_r&\u00d5\u011c\u0117\u00d1))_r+\u00d5\u011c\u0117]())_r,#))_r/\u00d5\u011c\u0117\u00d1))_r%\u00d5\u011c\u0117]())_r$#))_r)\u00d5\u011c\u010f]4((_r\u001f+((_r-#((_r#!((_r&\u00d5\u011c\u0119\u00d1((_r+\u00d5\u011c\u0111](((_r,)((_r/\u00d5\u011c\u0111\u00d1((_r%\u00d5\u011c\u0111](((_r$)((_r'\u00d5\u011c\u0111\u00d1**_r!\u00d5\u011c\u0111](**_r.?((_r'\u00d5\u011c\u0105\u00d1((_r!\u00d5\u011c\u0105].((_r.=**_r.?))_r'\u00d5\u011c\u00fb\u00d1))_r!\u00d5\u011c\u00fb\u00d0))_r\u00ce\u001f\u001f`qu\u00d6/\u011c\u0111].**\u001fr$#**\u001fr#**\u001fr'\u00d5\u011c\u00f1\u00d1)*\u001fr!\u00d5\u011c\u0105]()*\u001fr.=)*\u001fr'\u00d5\u011c\u00dd\u00d1+-\u001fr!\u00d5\u011c\u00dd]L+-\u001fr.]+-\u001fr!'. \u001e)#$#\u001e#,''*)#))\u001fr).\u001e\u001f!'!.'))\u001fr.\u00d5\u011c\u0115\u00d1**\u001fr.LHH\u00ea\u00ea-\u00f3\u00ea-\u00f1H\u00ea\\\\\\\\\\./4VNMHHHHHH\u001eHHH8]3,1\u001eG! ,D/L1UT/\u0094%\u00a3%\u00b5 \u00b4)\u00c4\u001e\u00c5\u001f\u00c5(\u00c3)\u00d2\u00d3#\u00d7+\u00e5!\u00f3#\u00f6&\u0105!\u0105,\u0104/\u0111#\u0117&9(#**#r)#**#r-#**#r+#**#r,#**#r/\u00ce#\u001f`qu]8'+,!/.%$%B$,B+/B+$ *\u001e)B*\u00d5\u011c\u00f3]T((#r*\u001fB\u001eG((#r\u001e*\u001e10#'(.C'H.q!o'y.\u0089.\u0099.\u00a7.'.'! \u001e,'')#$#\u001e#\\\\\\\\\\./4Vz\u001e./VVLH\u0111LH\u0111./4V-\u0101-\u0101-\u0101./V./V./V8]1 \"\"\u001f#$$\"&''%())'-..,\u00d5\u011ch\u00d0\"/=\u00d5\u011cf]\u0083',+=\u00e0.$%=$.//H\"$1\"\"$+'))B*+1**+%.,,H'%1''%\"\u001f\u001fB\u001e1\u001e\u001e\u001f\u001e$/!%,.)+*'.'! /*))%%$$\u001f\u001f\u001e#/,,++'1\u0113-*\u001e}*\u008d*\u009d* *\u00d5\u001e\u00c4]'=l'\u001e\u008c'\u009c'\u001f'\u00d5\u001fr]&l.\u001e\u008c.\u009c.\u001f.\u00d5\u001fr](-\"\u001e}\"\u008d\"\u009d\" \"\u00d5\u001e\u00c4\u00d2\u001e\u01130\u0113\u00835Hk-\u01116j\u0111zz5\u011az\u008e\u011az\u008e76\u011azz5\u0103\\Y-Y-Y\\Y-Y-Y-Y-Y/4V\u001e./VV/VV.VV/VV\u00a4jKH\u00a4\u009a\u00e1\u00a4K5H\u00a4\u009a\u00e1\u00a4K5H\u00a4\u009a\u00e1\u00a4K5H\u00a4\u009a\u00e1HHH\u00a4+-\u00e1$+-Y$+-Y\u00a4+-\u00e1\u00a4+-\u00e1h\u00cd<pu\u00d1*=)=\u001f\u00d9\u011c\u00fd\u001e\u011c\u00fd+\u011c\u00ed\u00d1M,=/\u00d5\u011c\u00fd\u001eUUUUUUUUvh\u00cdQpu\u00d6%\u011c\u00ed\u00ce$M\u001eUUvh\u00cd>ph\u00cdPnwu\u00d6%\u011c\u00fd\u00ce$=\u001eUUvh\u00cd/ph\u00cd;nwu\u00d6+\u011c\u00ed\u00d3,=*=)=%\u00d5\u011c\u00ed\u00cf$M/\u00d5\u011c\u00fd\u00cfU\u001f\u00d7\u011c\u00fd\u001e\u011c\u00fd\u001eUUUUUUUUUUvh\u00cd/ph\u00cd4nwu\u00d6.\u011c\u00fd\u00d0'=!=UUUvvNM\u001e`yu\u00d6+\u011c\u00f1\u00d3/VI/V\u00d5\u011c\u00f1\u00ce0VHHHvHHHHHz\u008e\u008fHHHHHH\u008ez\u001ezvHHHHHHHHH\u001eHHHHHHHHHHHHHHHHHHHHHHHHHHH>\u001eP04ST0P04T0P\u001e@ D \u001eh\u011b\u00d8\u00d7\u00c6\\!P\u00c6\u00d6\u00bcRZ\u00d3\u00cc\u011b\u00d1\u00d8\u00c6 \u011a\u00b6\u0092\u009e\u0099\u0093\u001f\u0088\u0118\u00e5\u00cc_vp\u001e\"6\u00b7)\u00e1m8|,Y\u0112%8%\u00bf\u0100DG\u00e8mX\u00d3\u0117\u00cc\u011a\u0084-%)&\u001e\u001e\u001e$[\u011bk`-\u0117\u00cc\u0117\u0097-\u001e*v#\u001e\u001fV\u001fV\u001fV\u00cd\u001f\u00f4{!\u00902!\u0090f$:\u0094\"su\u001e\u00a4w\u001f\u00c7\u0099\u001f\u00c7\u0099 :]!\u00c9\u008f\u001fV\u00c7\u001f\u00c7^\u001fV\u00d7\u001fV!\u0090r!\u0090\u00fc!\u0090Y!\u0090s!\u00907!\u0090r!\u0090j!\u0090~!\u0090p!\u0090r\u001fV\u00d6\u001fV\u00c7!\u00c9\u008d!\u00c9\u008f!\u00c9\u008d!\u0090w%<\u008c\"s\u011c\u011a\"s\u00b3\"\u00e4\u0083\"\u00e4\u00bb\"s\u00bf!\u0100\u00c5#V\u008a\"\u00e4\u00c1\u001fV\u00dc!T\"s\u00b3!\u0090\u00b3#\u00c7\u00b5\"\u00e4\u00b9#V\u0080\"s\u00bb#Vu\"\u00e4\u00be\"sy!\u0100M\"\u00e4\u00be\"s&$\u00aa6\"s&\"s#!\u0100 !\u0090\u001e\u00e4 \"sy!\\!\u0100 1\u00d9\"\u00e4\u011c\u011a!\u0090f\"s#!>\"s\u00bb!\u0090\u00a4!\u00c9\u008f!\u00c9\u00be\u001f\u00c7\u0088\u001f\u00c76\u001f\u00c7>#\u00c9\u0088#\u00c9\u0088#\u00c9>!\u0090#V\u008a!\u0090_\u001fV\u00ce\"sy!\\\"\u00e4\u0083!m\"\u00e4\u0083!m!\u0090c!\u0088\u011c\u00fe\u001f\u00c7\u010b\"s\u011c\u011a!\u0090g\"s\u011c\u011a!\u0090g\"\u00e4\u00bb!\u0108d\"\u00e4\u011c\u011a\"s\u00bf!\u0090h\"s\u00bf!\u0090h!\u0090\u00b3\u001e\u00e4_!\u0090\u00b3\u001fr\u00a5!\u0090\u00b7\u001f\u00c9\u00a0\"\u00e4\u00b9!\u0090\u00a4\"\u00e4\u00b9!\u0090\u00a4#V\u0080!\u0090a\"\u00e4\u00be\u001f\u00c7\u00a2\"\u00e4\u00be\u001f\u00c7Y\"sy!\\!\u0100M\u001fVA!\u0100M @\"\u00e4\u00be!\u0090\u00a0\"\u00e4\u00be!\u0090\u00a0!\u0100 !\u0100 !\u0085\u00c1#V}#\u007fr!\u00bde!\u0091e \u00ae\u007f!\u010da \u0116\u00b8!sO \u00cdm!|\u0090!\u00b8Y\u011c\u00f9\u011cB\u011c\u00f9\u011bn\u001f\u00aa\u00c8\u001f\u00aa\u00bd\u001f\u00f7` j\u0096\u001e\u00c5\u011c\u00d7cccceccc!R\u001e\u0099!R\u001eK!R\u00d4!R\u009e!R\u001eI!R\u00db!R\u00cc!R\u009e!R\u00b7!R\u00f8!R\u00a2\u001f\u00aa\u00de!R\u00d0#\u001e#\u001e\u001f_S#\u001e!R\u00bb!R\u00b5!R\u00e8#\u001e#\u001e#\u001e#\u001e#\u001ec#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e\"8\u011c\u00d7#\u001e#\u001e#\u001e\"\u00d2W\"\u00d2W\u001e\u0111\u011c\u00d7\u001e\u0111\u011c\u00d7#\u001e#\u001e#\u001e#\u001e!\u009eS!RS!Z\u011c\u00d7!Z\u011c\u00d7 \u0106g \u0106g#\u009c1$\u00931 D\u011c\u00d7!;\u011c\u00d7#\u009c1$\u00931 D\u011c\u00d7!;\u011c\u00d7\"8O!\u00d2A \u011c\u0114#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001eMcc]c#\u001e#\u001e\u011c\u00f9\u011bn\u011c3\u011c3\u011c3\u011c3\u011c3\u011c3\u011c3\u011c3\u011c3\u011c\u00f9\u011c3\u011c\u00f9\u011c=\u011c\u00f9!\u0090g%#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e\u001f\u00aa\u009c\u001f\u00aaz#\u001e!\u010b2 j\u0096\u001e\u00c5+\u001e\u00f3\u011c\u00f9\u001e\u00c5s\u001e\u00f3- \u0092O \u0092O\u001e\u00c5J\u001e\u00f30\"8O!\u00d2A\u001e\u0111\u011c\u00d7\u001e\u0111\u011c\u00d7\u001e\u00c5\u00b0\u001e\u00f30\"\u00d2W\"\u00d2W\u001e\u0111\u011c\u00d7\u001e\u0111\u011c\u00d7\u001f_ \u011c\u0114\"\u00d2W\"\u00d2W\u001e\u0111\u011c\u00d7\u001e\u0111\u011c\u00d7\"\u00d2W\"\u00d2W\u001e\u0111\u011c\u00d7\u001e\u0111\u011c\u00d7!\u009eS!RS!Z\u011c\u00d7!Z\u011c\u00d7!\u009eS!RS!Z\u011c\u00d7!Z\u011c\u00d7!\u009eS!RS!Z\u011c\u00d7!Z\u011c\u00d7\u001f\u00d0|\u001f\u00d0|\u001f\u00d0|\u001f\u00d0| \u0106g \u0106g \u0106g \u0106g#\u00af[#\u00af[!\\\u011c\u00d7!\\\u011c\u00d7#\u00af[#\u00af[!\\\u011c\u00d7!\\\u011c\u00d7%\u00e6[%\u00e6[#\u00e2\u011c\u00d7#\u00e2\u011c\u00d7%\u00e6[%\u00e6[#\u00e2\u011c\u00d7#\u00e2\u011c\u00d7!\u00c4\u011c\u00d7!\u00c4\u011c\u00d7!\u00c4\u011c\u00d7!\u00c4\u011c\u00d7!\u00c4\u011c\u00d7!\u00c4\u011c\u00d7!\u00c4\u011c\u00d7!\u00c4\u011c\u00d7!wG \u00b7S!R\u011c\u00d7 D\u011c\u00d7!wG \u00b7S!R\u011c\u00d7 D\u011c\u00d7#lD#lD\u001fA\u011c\u00d7\u001f7\u011c\u00d7!\u00c4c!\u00c4c\u001fA\u011c\u00d7\u001f7\u011c\u00d7!\u00ecJ!\u00ecJ D\u011c\u00d7 D\u011c\u00d7!*d!*d\u001e\u00c5\u011c\u00d7\u001e\u00c5\u011c\u00d7\u001f\u00d1@\u001f\u00d1@ D\u011c\u00d7 D\u011c\u00d7!Rb!Rb\u001e\u0111\u011c\u00d7\u001e\u0111\u011c\u00d7\u001f_S \u011c\u0114 \u00b7\u011c\u00d7 D\u011c\u00d7 \u0092O \u0092O\"8O!\u00d2A\"8O!\u00d2A\u001e\u0111\u011c\u00d7\u001e\u0111\u011c\u00d7!w]!\u00ebf!wC!\u00ebV!wp!\u00ebg!wp!\u00ebg#\u001e#\u001ecc#\u001e#\u001e#\u001ecc#\u001e#\u001eec#\u001e#\u001e#\u001ecccc]M#\u001ecc#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e\u001f\u00aa\u00e7\u001f\u00aa\u00e4\u001f\u00aa\u00e3#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e#\u001e\u001e\u011c\u00d7%\u011c\u00d7-\u011c\u00d7#\u00f9\u0080\"\\a#\u00f2\u00be\"x\u00a0\u011a\u00f9\u0119L\u0119\u00c3\u011bq\u0119\u00f4\u011a\u0090\u011b \u011b !\u0100 !\u00eca!\u00b2x!m\u001e\u00e4\u011c\u00bf#V} \u00a6j \u00a6m\"s\u00bf\"\u00dd\u00be!\u0090h!\u0095\u00a4'\u00d1\u008a!\u011b-#V1!\u01041$\u00b6\u00dc\"\u00d2\u00a5\"u\u001e!#$K\u00dc\"\u00ad\u00a5#\u00be\u0095\"\u0098\u0097%\u008a\u00dc#\u010d\u00a5!\u00f2\u0083 \u00c8<#|V\"\u009fe#V}!\u0090a#\u008a&\")7#\u008a&\")7%\u00b5\u0080$Ia#\u00c7=!\u01039&\u00a4\u008a#\u00edm\u011bT'\u00d1\u008a!\u011b-\"\u00e4\u0083!m!$1\u011b\u00c3\u011b\u00d9\u011c\u00b5\u011c\u00b5\u0119H\u0119i\"\u00dd\u00be!\u0095\u00a4\"]!!H1\"s\u00bb!\u0090\u00a4\"z\u00c1!\u0081\u00a5!\u00f2k \u00c8O!\u00c6! \u009d\"\u010c $&\u00c1\"L\u00a5&5\u00bd#\u0113\u00a5##[!H@\"\u00e4\u0083!m!\u0100M \u00c7C$\u0084N\"\u00a4C\"rt!Hb#\u0101'\"q'#\u0101'\"q'\u001fV\u00dc$\u0080$\"w\u011c\u0118\"t\u00be!\u0085\u00a3\"]/!\u00c85\"\u00e4\u00c1!\u0088\u00a5\"\u00e4\u00c1!\u0088\u00a5\"rt!Hb#\u00c7\u00b5\"\u009d\u00a9\u001f\u00c7K\"s\u011c\u011a!\u0090g\"s\u011c\u011a!\u0090g%\u001e$:a\"s\u00bf!\u0090h#\"\u0080!\u0090r$\u0080$\"w\u011c\u0118!\u00f2k \u00c8O!\u00f2k!yi\"\u00dd\u00be!\u0095\u00a4\"\u00dd\u00be!\u0095\u00a4#V\u0080!\u0090a#V}!\u0090a\"\u00ddg!2H\"2'!>\"2'!>\"2'!>\"rt!Hb$2\u00c5\"\u00dd\u00a8\"]g!\u0090c$\u00dcg$ c$\u00c3\u0083#\u00a3p\"j\u0083!0p$\u00e0/$d5%c\u00c1$$\u00a5#V\u008a!\u0095m\"\u0116M\"pC\u011c`\u011b\u00e6\u011c\u0094\u011c\u00cd\u011cd\u011cs\u011c\u0091\u011b\u00f4\u011b\u00c9\u011co\u011cs\u011b\u00c9\u011a\u00b7\u011c\u0087\u011c\u0099\u011c\u0086\u011cs\u011b\u00c9\u011c\u009c\u011cs\u011a\u010c\u011c`\u011c\u0086\u011c\u0099\u011a\u00cb\u011c\u00a9\u001e\u001f\u011b\u011b\u011b\u011b\u011b\u00fc\u011b\u00fc\u011cu\u011c=\u011b\u011b\"s\u011c\u011a!\u0090g\"s\u00b3!\u0090\u00a3\"s\u00b3!\u0090\u00a3\"s\u00b3!\u0090\u00a3\"\u00e4\u0083!m\"\u00e4\u00bb!\u0090c\"\u00e4\u00bb!\u0090c\"\u00e4\u00bb!\u0090c\"\u00e4\u00bb!\u0090c\"\u00e4\u00bb!\u0090c\"s\u00bf!\u0090h\"s\u00bf!\u0090h\"s\u00bf!\u0090h\"s\u00bf!\u0090h\"s\u00bf!\u0090h!\u0100\u00c5\u001fV0#V\u008a!\u0090_\"\u00e4\u00c1!\u0090\u00a4\"\u00e4\u00c1!\u0090\u00a4\"\u00e4\u00c1!\u0090\u00a4\"\u00e4\u00b0!\u0090\u0085\"\u00e4\u00c1!\u0090\u00a4\u001fV\u011c\u00fc\u001e\u00e4\u011c\u00af\u001fV=\u001fV#\"s\u00b3!\u00a5\"s\u00b3!\u00a5\"s\u00b3!\u00a5!\u0090\u00b3\u001e\u00e4\u009b!\u0090\u00b3\u001e\u00e4\u011c\u00d6!\u0090\u00b3\u001e\u00e4\u011c\u00c2!\u0090\u00b3\u001e\u00e4\u011c\u00c0#\u00c7\u00b5#\u00c7\u00a4#\u00c7\u00b5#\u00c7\u00a4#\u00c7\u00b5#\u00c7\u00a4\"\u00e4\u00b9!\u0090\u00a4\"\u00e4\u00b9!\u0090\u00a4\"\u00e4\u00b9!\u0090\u00a4\"\u00e4\u00b9!\u0090\u00a4#V\u0080!\u0090a#V\u0080!\u0090a#V\u0080!\u0090a#V\u0080!\u0090a\"s\u00bb!\u0090\u00a4\"s\u00bb!\u0090\u00a4\"\u00e4\u00be\u001f\u00c7\u00a2\"\u00e4\u00be\u001f\u00c7\u00a2\"\u00e4\u00be\u001f\u00c7{\"\u00e4\u00be\u001f\u00c7C\"sy!\\\"sy!\\\"sy!\\\"sy!\\\"sy!\\!\u0100M\u001fVA!\u0100M\u001fVA!\u0100M\u001fV\u011c\u011c!\u0100M\u001fV+\"\u00e4\u00be!\u0090\u00a0\"\u00e4\u00be!\u0090\u00a0\"\u00e4\u00be!\u0090\u00a0\"\u00e4\u00be!\u0090\u00a0\"\u00e4\u00be!\u0090\u00a0\"s&!7\"s&!7$\u00aa6\"\u00e4#$\u00aa6\"\u00e4#\"s&!,\"s&!,\"s#!>!\u0100 !\u0100 !\u0100 !\u0090\u00a4\u001fV \"\u00e4#!>!\u0090g\u001e\u00e4\u00a6!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde\"s\u011c\u011a\"s\u011c\u011a#\u009f0#\u009f0#\u009f0#\u009f0#\u009fs#\u009fs \u00ae\u007f \u00ae\u007f \u00ae\u007f \u00ae\u007f \u00ae\u007f \u00ae\u007f#;#;$\u0089$\u0089$\u0089$\u0089!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8#\u00ac#\u00ac%<%<%<%<%<\u011c\u0110%<\u011c\u0110\u001e\u00e4\u009e\u001e\u00e4\u009e\u001e\u00e4\u011c\u00b8\u001e\u00e4\u011c\u00b8\u001e\u00e4\u011c\u0108\u001e\u00e4\u011c\u0108\u001e\u00e4\u011c\u00bf\u001e\u00e4\u011c\u00bf \u001e \u001e!\u00ae!\u00ae!\u00ae!\u00ae!\u00ae\u011c\u0110!\u00ae\u011c\u0110!\u0090a!\u0090a!\u0090a!\u0090a!\u0090a!\u0090a#\u00ba#\u00ba%J%J$\u00e6$\u00e6!}\u00a5!}\u00a5!}\u00a5!}\u00a5!}\u00a5!}\u00a5!}\u00a5!}\u00a5#\u009f$\u00cb%/$\u00cb##\\t#\\t#\\t#\\t#\\t#\\t#\\t#\\t#|#|$\u010c$\u010c$\u00a8$\u00a8$\u00a8\u011c\u011c$\u00a8\u011c\u011c!\u00bde!\u00bde \u00ae\u007f \u00ae\u007f!\u0090\u00a8!\u0090\u00a8\u001e\u00e4\u011c\u0103\u001e\u00e4\u0085!\u0090a!\u0090a!}\u00a5!}\u00a5#\\t#\\t!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde\"s\u011c\u011a\"s\u011c\u011a#\u009f0#\u009f0#\u009f0#\u009f0#\u009fs#\u009fs!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8#\u00ac#\u00ac%<%<%<%<%<\u011c\u0110%<\u011c\u0110#\\t#\\t#\\t#\\t#\\t#\\t#\\t#\\t#|#|$\u010c$\u010c$\u00a8$\u00a8$\u00a8\u011c\u011c$\u00a8\u011c\u011c!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde\"s\u011c\u011a\"s\u011c\u011a\"s\u011c\u011a\"s\u011c\u011a\"s\u011c\u011a\u001f\u00c7\u0102\u001f\u00c7\u011a\u001f\u00c7\u0102\u001f\u00c7#\u001f\u00c7#!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8!\u0090\u00a8#\u009f#\u009f#\u0110#\u0110\"\u00e4\u00c1\u001f\u00c70\u001f\u00c70\u001f\u00c7#\u001e\u00e4\u011c\u00d8\u001e\u00e4\u011c\u00c8\u001e\u00e4\u011c\u00e7\u001e\u00e4\u011c\u00e7\u001e\u00e4\u011c\u00b0\u001e\u00e4\u011c\u00b0\u001fV7\u001fV\u011c\u0112 \u0082 \u0082\u001f\u00c70\u001f\u00c70\u001f\u00c7#!}\u00a5!}\u00a5!}\u00a5!}\u00a5!\u00aa\u00a0!\u00aa\u00a0!}\u00a5!}\u00a5\"s#\"s##\u0103$5#;\u001f\u00c7\u011c\u0107\u001f\u00c7\u011c\u0107\u001f\u00c7v#\\t#\\t#\\t#\\t#\\t$\u0082#\u00ba$D#|\"\u0118~\u001f\u00c7\u00fb\u001f\u00c7\u0102!\u0090*\"\u00e4\u0083\"\u00e4\u0083#\u00c7\u00a4\"\u00e4A&m\u00be$\u00aa6\"s<!\u0100M% !\u0090g!\u0090e!\u0090c!\u0090h \u00c8f \u00c8O\"Qr\u001e\u00e4\u00a5!0\u001e\u00e4\u011c\u00bf!\u0090\u00a0!yi !\u0081\u001f\u00f2O\u001f\u00e6P\u001f\u0119O\u001f\u00a9O\u001e\u00f2O\u001e\u00f2 !O .\u0081\u001e_6\u001e_\u0081\u001e_\u0081\u001e_6\u001fG\u001e_\u0081\u001e_&\u001fP\u0081!\u00b0\u0081!\u00b0\u0081 ,\u011c\u00e6 ,\u0081 +\u0081 \"O O\u001f\u00d5O\u001e_\u011c\u00e7\u001e\u00dfO ,: 7O #\u0081\u001f\u00f1\u0081\u001f\u00af\u001f\u00fbO\u001f\u00fbO\u001f\u00fbO\u001f\u0111O\u001f\u0107O\u011b\u00d9\u011b\u00d9\u011c\u0090\u011b\u00c6\u001fV\u00d6\u001f\u0117O\u001f\u0116O \"O\u001f\u00bd\u001f\u0116O#V\u008a\"s\u011c\u011a!\u0090,\"\u00e4\u0083\u001f\u00c7^!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde!\u00bde\u001e\u00e4\u011c\u00b8\u001e\u00e4\u011c\u00c8\u001e\u00e4\u011c\u00b8\u001e\u00e4\u011c\u00c8\u001e\u00e4\u011c\u00b8\u001e\u00e4\u011c\u00d8\u001e\u00e4\u011c\u00b8\u001e\u00e4\u011c\u00d8!}\u00a5!}\u00a5!}\u00a5!}\u00a5!}\u00a5!}\u00a5!}\u00a5!}\u00a5\u001e\u00e4\u011c\u00c8\u001e\u00e4\u011c\u00c8\u001e\u00e4\u011c\u00d8\u001e\u00e4\u011c\u00d8!}\u00a5!}\u00a5!}\u00a5!}\u00a5!wp!\u00ebg \u00bd0\"s.\"\u00e4 !X!\u00bb\u00c1 \u0084\u00a5\"Me\u011cp\u011c\u00d9\u011b\u011b\u011b\u011b\u011b\u00c1\u011b\u00c1\u001e\u00e4\u00a5\"\u00e6\u00c2\"\u00e4\u00b9\"\u00e6\u00c2\u011b\u00ea\u011ce\u011b\u00e6\u011b\u00eb\u011b\u00e2\u011b\u00ed\u011b\u00ee\u011b\u010b\u011b\u00f3\u011b\u00f9\u011a\u00f6#Vu!\u0090e$\u00aa6\"\u00e4#\"\u00bc\u00c1\u011b\u00d6\"\u00f9\u0080!\u00e3&%i6#\u00d7#\u001fV\u00d6 \u009d\u008f\u001e\u00a4w\u001e\u00a4w!\u00b6!\u00b6\u001fV\u00cd\u001fV\u00cd\u001fV\u00cd\u001f\u00c76!\u0100M!\u0090mGGGGGGGGGGG\u00c7\u001em\u001em\u001em\u001e\u00e5\u001f+\u001fg\u001fg!\u00dd\"\u00e3%_'\u0095)\u0087+\u00e7.q/2\u00f76666666\u010f6\u010f9o;y<\u00cf>K?-?\u00f9A\u00c5B\u00ffB\u00ffD# \u00d0C5<\u00ed\u00d9",
+   "frames": null,
+   "category": "",
+   "weapon": "",
+   "comments": ""
+  }
+ ]
+}
