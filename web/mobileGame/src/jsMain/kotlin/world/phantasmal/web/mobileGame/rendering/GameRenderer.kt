@@ -106,6 +106,7 @@ import world.phantasmal.web.mobileGame.world.AREA_ENEMIES
 import world.phantasmal.web.mobileGame.world.areaDisplayName
 import world.phantasmal.web.mobileGame.world.DragonClips
 import world.phantasmal.web.mobileGame.world.DragonFight
+import world.phantasmal.web.mobileGame.world.PartedBoss
 import world.phantasmal.web.mobileGame.world.DeRolLeClips
 import world.phantasmal.web.mobileGame.world.DeRolLeFight
 import world.phantasmal.web.mobileGame.world.VolOptClips
@@ -8214,9 +8215,31 @@ class GameRenderer(
         }
     }
 
-    /** The multi-part boss fight [enemy] belongs to, if it is one -- the Dragon today. */
-    private fun multiPartFightOf(enemy: Enemy): DragonFight? =
+    /**
+     * The parted-boss fight [enemy] belongs to, if it is one: the Dragon's head, wings, feet
+     * and tail, or De Rol Le's skull boxes and armored shell segments.
+     */
+    private fun multiPartFightOf(enemy: Enemy): PartedBoss? =
         dragonFight?.takeIf { it.enemy === enemy }
+            ?: deRolLeFight?.takeIf { it.enemy === enemy }
+
+    /** Which region of a parted boss a blow landing at ([x], [y], [z]) belongs to. */
+    private fun nearestPartIndex(fight: PartedBoss, x: Double, y: Double, z: Double): Int {
+        var best = 0
+        var bestD = Double.MAX_VALUE
+        for (i in fight.parts.indices) {
+            fight.partPosition(i, techAimScratch)
+            val dx = techAimScratch.x - x
+            val dy = techAimScratch.y - y
+            val dz = techAimScratch.z - z
+            val d = dx * dx + dy * dy + dz * dz
+            if (d < bestD) {
+                bestD = d
+                best = i
+            }
+        }
+        return best
+    }
 
     /**
      * Extra strikes a sweeping weapon can land on [enemy] past the first: its targetable
@@ -8413,8 +8436,24 @@ class GameRenderer(
         // to resurface and become targetable again. The isDead guard is what makes repeated
         // part hits in one cast safe: the strike that kills is the last one that counts.
         if (enemy.untargetable || enemy.isDead) return
-        enemy.hp -= damage
-        damageNumbers.showDamage(x, y, z, damage, false)
+
+        // A plated region eats the blow until its armor gives way -- De Rol Le's shells.
+        var landed = damage
+        multiPartFightOf(enemy)?.let { fight ->
+            val part = nearestPartIndex(fight, x, y, z)
+            val standing = fight.armorRemaining(part)
+            landed = fight.damageThroughPart(part, damage)
+            if (standing > 0) {
+                damageNumbers.showDamage(x, y, z, damage, false)
+                if (fight.armorRemaining(part) == 0) {
+                    showToast("${fight.parts[part].name} is broken open!")
+                }
+                if (landed <= 0) return
+            }
+        }
+
+        enemy.hp -= landed
+        damageNumbers.showDamage(x, y, z, landed, false)
         maybeLilyScreech(enemy)
         if (enemy.isDead) onEnemyKilled(enemy) else {
             enemy.ai?.onDamaged()

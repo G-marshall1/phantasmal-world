@@ -45,7 +45,7 @@ class DeRolLeClips(
  * this class owns the boss's body, timing, and rotation.
  */
 class DeRolLeFight(
-    val enemy: Enemy,
+    override val enemy: Enemy,
     private val njObject: NjObject,
     private val mixer: AnimationMixer,
     private val clips: DeRolLeClips,
@@ -67,7 +67,7 @@ class DeRolLeFight(
     private val spawnRock: (x: Double, z: Double) -> Unit,
     /** The beam: telegraph then fire across the deck band centred on [z] (world units). */
     private val fireBeam: (z: Double) -> Unit,
-) {
+) : PartedBoss {
     private enum class State { ENTER, SWIM, TENTACLES, SCATTER, BEAM_CHARGE, BEAM_FIRE, SWITCH, DEAD }
 
     /** The rotation, straight from the wiki's listing. */
@@ -83,6 +83,59 @@ class DeRolLeFight(
     private var state = State.ENTER
     private var stateRemaining = ENTER_SECONDS
     private val mesh = enemy.mesh
+
+    /**
+     * The body the wiki describes: a skull carrying three separate hurtboxes, then a chain of
+     * armored shell segments running back from it (wiki.pioneer2.net/w/De_Rol_Le). Damage to
+     * the head goes straight to the main health pool -- "the main health pool ... can be
+     * correlated directly to damage to the boss' unarmored head" -- while every segment is
+     * plated with its own [SHELL_ARMOR_HP] that has to be broken before hits carry through.
+     *
+     * The bone indices are the model's own spine, read off a scan of the loaded skeleton: bone 0
+     * is the head end and the chain runs back on a ~13.7-unit stride to bone 19 at the tail.
+     * Three head boxes sit on the one skull bone, spread sideways -- which is exactly why the
+     * wiki says multi-target weapons chew through the head on Normal.
+     */
+    override val parts: List<BossPart> = buildList {
+        add(BossPart("skull (left)", HEAD_BONE_INDEX, HEAD_PART_RADIUS, offsetX = -HEAD_BOX_SPREAD))
+        add(BossPart("skull", HEAD_BONE_INDEX, HEAD_PART_RADIUS))
+        add(BossPart("skull (right)", HEAD_BONE_INDEX, HEAD_PART_RADIUS, offsetX = HEAD_BOX_SPREAD))
+        for ((n, bone) in SHELL_BONE_INDICES.withIndex()) {
+            add(BossPart("shell ${n + 1}", bone, SHELL_PART_RADIUS, armorHp = SHELL_ARMOR_HP))
+        }
+    }
+
+    /** Armor left on each region, indexed alongside [parts]; head boxes stay at zero. */
+    private val armor = IntArray(parts.size) { parts[it].armorHp }
+
+    private val partScratch = Vector3()
+
+    override fun partPosition(index: Int, out: Vector3) {
+        val part = parts[index]
+        val bone = mesh.skeleton.bones.getOrNull(part.boneIndex)
+        if (bone == null) {
+            out.copy(mesh.position)
+            return
+        }
+        bone.getWorldPosition(out)
+        if (part.offsetX != 0.0) {
+            // Sideways in the body's own frame, so the three skull boxes stay spread across the
+            // head however the body has turned.
+            partScratch.set(part.offsetX * unitScale, .0, .0)
+            partScratch.applyQuaternion(mesh.quaternion)
+            out.set(out.x + partScratch.x, out.y + partScratch.y, out.z + partScratch.z)
+        }
+    }
+
+    override fun armorRemaining(partIndex: Int): Int = armor.getOrElse(partIndex) { 0 }
+
+    override fun damageThroughPart(partIndex: Int, damage: Int): Int {
+        val standing = armor.getOrElse(partIndex) { 0 }
+        if (standing <= 0) return damage
+        // The plating absorbs the whole blow; only what outlasts it reaches the boss.
+        armor[partIndex] = (standing - damage).coerceAtLeast(0)
+        return (damage - standing).coerceAtLeast(0)
+    }
 
     /** Which flank of the raft the worm rides: +1 is the player's right (+x). */
     private var side = 1.0
@@ -325,6 +378,23 @@ class DeRolLeFight(
     }
 
     companion object {
+        /**
+         * The spine, from a scan of the loaded skeleton (DEROLSCAN): bone 0 sits at the head
+         * end and the chain runs back to bone 19 at the tail on a ~13.7-unit stride. The odd
+         * indices are taken because the joints come in pairs at identical positions.
+         */
+        private const val HEAD_BONE_INDEX = 0
+        private val SHELL_BONE_INDICES = listOf(3, 5, 7, 9, 11, 13, 15, 17, 19)
+
+        /** The wiki's Normal-difficulty shell plating, per segment. */
+        private const val SHELL_ARMOR_HP = 1000
+
+        private const val HEAD_PART_RADIUS = 4.0
+        private const val SHELL_PART_RADIUS = 5.0
+
+        /** How far the two outer skull boxes sit off the centre one, in PSO units. */
+        private const val HEAD_BOX_SPREAD = 3.0
+
         // The wiki's flat damage figures on Normal.
         const val MINE_DAMAGE = 31
         const val ORB_DAMAGE = 61

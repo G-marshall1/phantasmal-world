@@ -30,7 +30,9 @@ import world.phantasmal.webui.obj
  * read off a posed bone scan of the walking Dragon (rig DRAGONSCAN run); radii are stated in
  * PSO units at the scaled body.
  */
-class DragonPart(val name: String, val boneIndex: Int, val radiusUnits: Double)
+/** The Dragon's regions are plain [BossPart]s -- it wears no armor over any of them. */
+private fun DragonPart(name: String, boneIndex: Int, radiusUnits: Double) =
+    BossPart(name, boneIndex, radiusUnits)
 
 /** The Dragon's full clip roster -- see npcs/Dragon/. Only [walk] and [fire] are essential. */
 class DragonClips(
@@ -73,7 +75,7 @@ class DragonClips(
  * arena's stacked walkable surfaces (the outer shell's dome and the real floor).
  */
 class DragonFight(
-    val enemy: Enemy,
+    override val enemy: Enemy,
     private val njObject: NjObject,
     private val mixer: AnimationMixer,
     private val clips: DragonClips,
@@ -97,7 +99,7 @@ class DragonFight(
      * fresh character and a tank take the same burn. Rate-capped by the same i-frame window.
      */
     private val strikePlayerFixed: (Int, Boolean) -> Unit,
-) {
+) : PartedBoss {
     private enum class State {
         APPROACH, BREATH,
         TAKEOFF, AIR_VOLLEYS, LANDING,
@@ -115,10 +117,10 @@ class DragonFight(
      * The boss's focusable regions -- head, feet, wings, tail. The player locks onto one at a
      * time (nearest by default, tap to choose); ranged fire flies at the locked part.
      */
-    val parts: List<DragonPart> = DRAGON_PARTS
+    override val parts: List<BossPart> = DRAGON_PARTS
 
     /** Writes [parts]`[index]`'s current world position -- the bone rides the animation. */
-    fun partPosition(index: Int, out: Vector3) {
+    override fun partPosition(index: Int, out: Vector3) {
         val bone = mesh.skeleton.bones.getOrNull(parts[index].boneIndex)
         if (bone != null) bone.getWorldPosition(out) else out.copy(mesh.position)
     }
