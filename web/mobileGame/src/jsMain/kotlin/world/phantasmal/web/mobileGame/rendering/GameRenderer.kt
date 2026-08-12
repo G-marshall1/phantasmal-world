@@ -1219,6 +1219,110 @@ class GameRenderer(
     }
 
     /**
+     * A Canadine's fight: it is a flyer, not a walker.
+     *
+     * Two patterns, alternating. It climbs out of reach and tracks the player with a red laser
+     * that does nothing by itself, then looses a Gizonde bolt at wherever that laser last
+     * rested -- which is why standing still is what gets you hit and walking out of it is
+     * always possible. Then it drops to the floor, strafing as it closes, and zaps at contact
+     * range where the ordinary chase AI takes over. While it is up there a blade can't reach
+     * it and it cannot be frozen.
+     */
+    private class CanadineState(
+        val enemy: Enemy,
+        var high: Boolean = true,
+        var timer: Double = CANADINE_LOCK_SECONDS,
+        var markX: Double = 0.0,
+        var markZ: Double = 0.0,
+        var strafe: Double = 1.0,
+    )
+
+    private val canadines = mutableListOf<CanadineState>()
+
+    private fun updateCanadines(deltaTime: Double) {
+        val p = player ?: return
+
+        for (enemy in enemies) {
+            if (enemy.slug != "Canadine" && enemy.slug != "Canane") continue
+            if (enemy.isDead) continue
+            if (canadines.none { it.enemy === enemy }) {
+                canadines.add(CanadineState(enemy, strafe = if (Random.nextBoolean()) 1.0 else -1.0))
+            }
+        }
+
+        val iterator = canadines.iterator()
+        while (iterator.hasNext()) {
+            val state = iterator.next()
+            val enemy = state.enemy
+            if (enemy.isDead) {
+                enemy.ai?.hoverOverride = null
+                iterator.remove()
+                continue
+            }
+            if (isPeacefulHub) continue
+
+            val dx = p.mesh.position.x - enemy.mesh.position.x
+            val dz = p.mesh.position.z - enemy.mesh.position.z
+            val distance = sqrt(dx * dx + dz * dz)
+            if (distance > CANADINE_ENGAGE_UNITS * worldUnit) {
+                enemy.ai?.hoverOverride = null
+                continue
+            }
+
+            state.timer -= deltaTime
+
+            if (state.high) {
+                // Out of reach, painting the ground under its target.
+                enemy.ai?.hoverOverride = CANADINE_HIGH_UNITS * worldUnit
+                enemy.mesh.rotation.y = atan2(dx, dz)
+                state.markX = p.mesh.position.x
+                state.markZ = p.mesh.position.z
+
+                // The sight itself: a red mark refreshed under the player every frame, so it
+                // reads as a beam resting on them rather than a decal dropped once.
+                if (state.timer > 0) {
+                    val mark = effectGroundQuad("ring_red", 2.4, 2.4, 0.0, CANADINE_LASER_COLOR)
+                    mark.position.set(state.markX, p.mesh.position.y + 0.2 * worldUnit, state.markZ)
+                    addEffect(TimedEffect(mark, 0.12, 0.12))
+                } else {
+                    // The bolt lands where the laser rested, not where the player now is.
+                    val bolt = effectSprite("zonde_bolt", 3.0, 10.0, colorHex = ZONDE_COLOR)
+                    bolt.position.set(state.markX, p.mesh.position.y + 5.0 * worldUnit, state.markZ)
+                    addEffect(TimedEffect(bolt, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
+                    spawnLightningCrawl(
+                        state.markX, p.mesh.position.y, state.markZ,
+                        count = 4, spreadWorld = 6.0 * worldUnit,
+                    )
+                    val hitX = p.mesh.position.x - state.markX
+                    val hitZ = p.mesh.position.z - state.markZ
+                    val radius = CANADINE_BOLT_RADIUS_UNITS * worldUnit
+                    if (hitX * hitX + hitZ * hitZ <= radius * radius) {
+                        hurtPlayerFlat(p, CANADINE_BOLT_DAMAGE)
+                    }
+                    state.high = false
+                    state.timer = CANADINE_DIVE_SECONDS
+                    state.strafe = if (Random.nextBoolean()) 1.0 else -1.0
+                }
+            } else {
+                // Down at head height, cutting side to side as it comes in. The chase AI does
+                // the closing and the zap; this only adds the weave and holds it low.
+                enemy.ai?.hoverOverride = CANADINE_LOW_UNITS * worldUnit
+                if (distance > 1e-3) {
+                    val rightX = -dz / distance
+                    val rightZ = dx / distance
+                    val step = CANADINE_STRAFE_UNITS * worldUnit * deltaTime * state.strafe
+                    enemy.mesh.position.x += rightX * step
+                    enemy.mesh.position.z += rightZ * step
+                }
+                if (state.timer <= 0) {
+                    state.high = true
+                    state.timer = CANADINE_LOCK_SECONDS
+                }
+            }
+        }
+    }
+
+    /**
      * A Delsaber's entrance: it vaults across the room and lands on you.
      *
      * The jump clip alone only played in place -- an animation with nowhere to go. This carries
@@ -4708,7 +4812,9 @@ class GameRenderer(
                                         colorHex = GARANZ_MISSILE_COLOR,
                                         sizeUnits = 1.1,
                                     )
-                                    // The Canadines' airborne zap.
+                                    // The Canadines' close-range zap. Their airborne Gizonde
+                                    // is their own controller's business (updateCanadines);
+                                    // this is the jolt they give at contact range.
                                     "Canadine", "Canane" -> fireEnemyShot(
                                         enemy,
                                         speedUnits = CANADINE_ZAP_SPEED_UNITS,
@@ -8673,6 +8779,8 @@ class GameRenderer(
     /** The guaranteed freeze -- what a Freeze Trap's burst applies, no roll involved. */
     private fun freezeEnemy(enemy: Enemy) {
         if (frozenEnemies.any { it.enemy === enemy }) return
+        // Nothing riding the air freezes: a Canadine up on its perch is out of the ice.
+        if (enemy.ai?.isAirborne == true) return
 
         enemy.ai?.onStatusHeld(FREEZE_SECONDS)
         val ice = effectSprite("freeze", FREEZE_SPRITE_UNITS)
@@ -9764,6 +9872,7 @@ class GameRenderer(
                 updatePlayerTraps(deltaTime)
                 updateSorcerers(deltaTime)
                 updateDelsabers(deltaTime)
+                updateCanadines(deltaTime)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
@@ -10409,6 +10518,22 @@ class GameRenderer(
         private const val MACHINE_PART_COUNT = 26
         private const val MACHINE_PART_SIZE_WORLD = 1.8
         private const val MACHINE_PART_GRAVITY = 60.0
+
+        /**
+         * The Canadine's two patterns. It snipes from CANADINE_HIGH_UNITS -- above a blade's
+         * reach, which is what forces a Hunter to draw a gun -- and drops to
+         * CANADINE_LOW_UNITS to close. The bolt lands where its laser rested, so the whole
+         * telegraph is worth nothing if the player keeps moving.
+         */
+        private const val CANADINE_ENGAGE_UNITS = 26.0
+        private const val CANADINE_HIGH_UNITS = 11.0
+        private const val CANADINE_LOW_UNITS = 2.2
+        private const val CANADINE_LOCK_SECONDS = 2.2
+        private const val CANADINE_DIVE_SECONDS = 5.0
+        private const val CANADINE_STRAFE_UNITS = 9.0
+        private const val CANADINE_BOLT_RADIUS_UNITS = 3.4
+        private const val CANADINE_BOLT_DAMAGE = 24
+        private const val CANADINE_LASER_COLOR = 0xff2b2b
 
         private const val TECH_FLASH_SECONDS = 0.5
 

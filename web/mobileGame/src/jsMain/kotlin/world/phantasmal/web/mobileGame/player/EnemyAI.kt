@@ -130,6 +130,16 @@ class EnemyAI(
     private val attackRange = (attackRangeUnits + PLAYER_HITBOX_UNITS) * unitScale
     private val hoverHeight = hoverUnits * unitScale
 
+    /**
+     * Overrides [hoverHeight] while set, in world units. A Canadine spends its fight climbing
+     * out of reach to snipe and dropping to the floor to close, so its altitude belongs to its
+     * own controller rather than to a constant.
+     */
+    var hoverOverride: Double? = null
+
+    /** Whether this enemy is currently riding high enough to be out of a blade's reach. */
+    val isAirborne: Boolean get() = (hoverOverride ?: hoverHeight) > AIRBORNE_THRESHOLD * unitScale
+
     /** How close it can physically get before bodies overlap. */
     private val bodyRadius = hitboxUnits * unitScale
 
@@ -442,9 +452,10 @@ class EnemyAI(
         // simply sat at whatever height it was placed at, which is the floor. Re-seating it
         // here also catches a flyer moved by something other than its own AI, like the
         // Sorcerer's teleport.
-        if (hoverHeight > 0) {
+        val height = hoverOverride ?: hoverHeight
+        if (height > 0) {
             findGroundHeight(walkable, mesh.position.x, mesh.position.z)?.let {
-                mesh.position.y = it + hoverHeight
+                mesh.position.y = it + height
             }
         }
 
@@ -743,6 +754,9 @@ class EnemyAI(
     }
 
     companion object {
+        /** Above this, in PSO units, a body counts as out of reach of anything swung. */
+        private const val AIRBORNE_THRESHOLD = 4.0
+
         private const val RADIUS_FACTOR = 0.3
         private const val VERTICAL_TOLERANCE_FACTOR = 3.0
         /**
