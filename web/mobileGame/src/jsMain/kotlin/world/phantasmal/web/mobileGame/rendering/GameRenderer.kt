@@ -8150,16 +8150,12 @@ class GameRenderer(
             }
 
             Technique.BARTA -> {
-                techniqueFx?.let { fx ->
-                    for (step in 1..4) {
-                        val along = step * BARTA_RANGE_UNITS / 4.0 * worldUnit
-                        fx.bartaSpike(
-                            p.mesh.position.x + dirX * along,
-                            p.mesh.position.y,
-                            p.mesh.position.z + dirZ * along,
-                        )
-                    }
-                }
+                // One wall of ice that travels the line, rather than four spikes stamped
+                // along it at once.
+                techniqueFx?.barta(
+                    p.mesh.position.x, p.mesh.position.y, p.mesh.position.z,
+                    dirX, dirZ, BARTA_RANGE_UNITS,
+                )
                 // The freezing line: everything within the wave's length and half-width ahead
                 // takes the hit -- every targetable region it crosses on a multi-part boss --
                 // and the wave itself is barta_lv1hontai's own recipe: forty small shards

@@ -15,6 +15,7 @@ import world.phantasmal.web.externals.three.BoxGeometry
 import world.phantasmal.web.externals.three.Float32BufferAttribute
 import world.phantasmal.web.externals.three.BufferGeometry
 import world.phantasmal.web.externals.three.Color
+import world.phantasmal.web.externals.three.ConeGeometry
 import world.phantasmal.web.externals.three.CylinderGeometry
 import world.phantasmal.web.externals.three.CatmullRomCurve3
 import world.phantasmal.web.externals.three.DoubleSide
@@ -181,6 +182,19 @@ class TechniqueFx(
     )
 
     private val wheels = mutableListOf<Wheel>()
+
+    /** A Barta wave sliding forward along its cast. */
+    private class IceWave(
+        val group: Object3D,
+        val shards: List<Object3D>,
+        val dirX: Double,
+        val dirZ: Double,
+        val speed: Double,
+        var life: Double,
+        val maxLife: Double,
+    )
+
+    private val iceWaves = mutableListOf<IceWave>()
 
     private class Orbiter(
         val sprite: Sprite,
@@ -411,6 +425,87 @@ class TechniqueFx(
                 sin(phi) * cos(theta) * speed, cos(phi) * speed, sin(phi) * sin(theta) * speed,
             )
         }
+    }
+
+    /**
+     * Barta: a wall of ice that travels. Chunky, faceted shards rather than one smooth mesh --
+     * PSO's own effects were polygonal, and a modern rounded wave reads as the wrong game.
+     *
+     * The front is a row of five-sided shards laid flat and staggered in depth so the wave has
+     * a body rather than a face, flanked by cones of side ice, riding a frost slick with a
+     * short tail behind it. It slides forward along the cast for its whole life.
+     *
+     * Cut down from the sketch: thirteen shards, forty-two crystals, a hundred and eighty mist
+     * spheres, a thirty-four ring tail and a hundred motes is well over three hundred meshes
+     * for one cast of a first-tier spell.
+     */
+    fun barta(x: Double, y: Double, z: Double, dirX: Double, dirZ: Double, rangeUnits: Double) {
+        val group = Group()
+        group.position.set(x, y, z)
+        // Turned to face the way it was cast, so everything below can be built along +Z.
+        group.rotation.y = kotlin.math.atan2(dirX, dirZ)
+        scene.add(group)
+
+        val shards = mutableListOf<Object3D>()
+
+        for (i in 0 until BARTA_SHARDS) {
+            val width = (0.55 + Random.nextDouble() * 0.55) * BARTA_SCALE * bu
+            val height = (1.4 + Random.nextDouble() * 2.2) * BARTA_SCALE * bu
+            val shard = Mesh(
+                CylinderGeometry(width, width * 0.65, height, 5),
+                basic(
+                    when {
+                        i % 4 == 0 -> 0xf4ffff
+                        i % 3 == 0 -> 0x91edff
+                        else -> 0x40cfea
+                    },
+                    opacity = 0.45 + Random.nextDouble() * 0.35,
+                ),
+            )
+            // Laid flat and fanned across the front, staggered back so the wave has depth.
+            shard.rotation.x = -PI / 2
+            shard.rotation.z = (Random.nextDouble() - 0.5) * 0.4
+            shard.position.set(
+                (i - (BARTA_SHARDS - 1) / 2.0) * 0.75 * BARTA_SCALE * bu,
+                height * 0.42,
+                Random.nextDouble() * 2.0 * BARTA_SCALE * bu,
+            )
+            group.add(shard)
+            shards.add(shard)
+        }
+
+        // Side ice thrown out along the flanks.
+        for (i in 0 until BARTA_SIDE_ICE) {
+            val side = if (Random.nextBoolean()) 1.0 else -1.0
+            val cone = Mesh(
+                ConeGeometry(0.25 * BARTA_SCALE * bu, 1.5 * BARTA_SCALE * bu, 5),
+                basic(if (Random.nextDouble() > 0.3) 0x51dfff else 0xdfffff, opacity = 0.3 + Random.nextDouble() * 0.45),
+            )
+            cone.position.set(
+                side * (1.2 + Random.nextDouble() * 2.0) * BARTA_SCALE * bu,
+                (0.15 + Random.nextDouble() * 1.3) * BARTA_SCALE * bu,
+                Random.nextDouble() * 3.0 * BARTA_SCALE * bu,
+            )
+            cone.rotation.set(Random.nextDouble() * PI, Random.nextDouble() * PI, side * (0.2 + Random.nextDouble() * 0.6))
+            group.add(cone)
+            shards.add(cone)
+        }
+
+        // The frost it lays down, and the cold haze over it.
+        val frost = Mesh(SphereGeometry(1.0, 12, 8), basic(0x45dcff, opacity = 0.07))
+        frost.scale.set(3.8 * BARTA_SCALE * bu, 1.2 * BARTA_SCALE * bu, 4.0 * BARTA_SCALE * bu)
+        frost.position.y = 0.8 * BARTA_SCALE * bu
+        group.add(frost)
+
+        iceWaves.add(
+            IceWave(
+                group, shards,
+                dirX = dirX, dirZ = dirZ,
+                speed = rangeUnits * bu / BARTA_TRAVEL_SECONDS,
+                life = BARTA_TRAVEL_SECONDS,
+                maxLife = BARTA_TRAVEL_SECONDS,
+            )
+        )
     }
 
     /** One of Barta's crystal spikes surging along the ground. */
@@ -739,6 +834,24 @@ class TechniqueFx(
         for (shell in shaderClocks) {
             shell.asDynamic().material.uniforms.uTime.value = fxClock
         }
+        val waveIter = iceWaves.iterator()
+        while (waveIter.hasNext()) {
+            val wave = waveIter.next()
+            wave.life -= deltaTime
+            if (wave.life <= 0) {
+                wave.group.parent?.remove(wave.group)
+                waveIter.remove()
+                continue
+            }
+            wave.group.position.x += wave.dirX * wave.speed * deltaTime
+            wave.group.position.z += wave.dirZ * wave.speed * deltaTime
+            // The shards ride the wave rather than sitting rigid on it.
+            for ((i, shard) in wave.shards.withIndex()) {
+                shard.rotation.z += sin(fxClock * 2.0 + i) * 0.004
+                shard.position.y += sin(fxClock * 7.0 + i) * 0.004 * bu
+            }
+        }
+
         val wheelIter = wheels.iterator()
         while (wheelIter.hasNext()) {
             val wheel = wheelIter.next()
@@ -937,6 +1050,12 @@ class TechniqueFx(
         const val MEGID_CORE_RADIUS = 0.42
         const val MEGID_SHELLS = 2
         const val MEGID_SHARDS = 8
+
+        /** Barta's travelling wall of ice. */
+        const val BARTA_SHARDS = 7
+        const val BARTA_SIDE_ICE = 10
+        const val BARTA_SCALE = 0.55
+        const val BARTA_TRAVEL_SECONDS = 0.5
         const val FOIE_SPIRAL_SPIN = 1.45
 
         /** Passes the surface position through; the flame is entirely the fragment's doing. */
