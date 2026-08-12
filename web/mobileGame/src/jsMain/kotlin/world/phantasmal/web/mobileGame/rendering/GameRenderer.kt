@@ -7437,7 +7437,7 @@ class GameRenderer(
             val r = Random.nextDouble() * radiusWorld
             crystal.position.set(x + sin(angle) * r, y, z + cos(angle) * r)
             crystal.rotation.y = Random.nextDouble() * 2 * PI
-            val s = scale * (0.7 + Random.nextDouble() * 0.6)
+            val s = scale * ICE_CRYSTAL_SCALE * (0.7 + Random.nextDouble() * 0.6)
             crystal.scale.set(s, s * (0.8 + Random.nextDouble() * 0.6), s)
             addEffect(
                 TimedEffect(
@@ -10953,7 +10953,7 @@ class GameRenderer(
         private const val SUPPORT_RADIUS_UNITS = 10.0
         private const val GRANTS_FLASH_SECONDS = 0.7
         private const val MEGID_SPRITE_UNITS = 0.9
-        private const val FREEZE_SPRITE_UNITS = 3.4
+        private const val FREEZE_SPRITE_UNITS = 2.2
 
         // --- Particle figures, in raw world units (particleentry.dat's own space). Counts,
         //     sizes and speeds credited to an entry are the game's own numbers; the pacing and
@@ -11497,6 +11497,13 @@ class GameRenderer(
 
         // The reference-scale spell furniture: ice formations, blast domes, ground lightning,
         // light pillars, debuff markers.
+        /**
+         * How large the crystal model itself comes out. The converted .xj is authored far
+         * bigger than a body wants -- at full size one shard swallowed the enemy it grew on.
+         * Callers still vary their own scale by the target's build; this trims all of them.
+         */
+        private const val ICE_CRYSTAL_SCALE = 0.45
+
         private const val ICE_CRYSTAL_COLOR = 0xbfe8ff
         private const val ICE_CRYSTAL_SECONDS = 0.8
         private const val DOME_SECONDS = 0.5
