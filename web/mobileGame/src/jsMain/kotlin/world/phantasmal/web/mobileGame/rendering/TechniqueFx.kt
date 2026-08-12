@@ -16,7 +16,13 @@ import world.phantasmal.web.externals.three.Float32BufferAttribute
 import world.phantasmal.web.externals.three.BufferGeometry
 import world.phantasmal.web.externals.three.Color
 import world.phantasmal.web.externals.three.CylinderGeometry
+import world.phantasmal.web.externals.three.CatmullRomCurve3
+import world.phantasmal.web.externals.three.DoubleSide
+import world.phantasmal.web.externals.three.Group
 import world.phantasmal.web.externals.three.IcosahedronGeometry
+import world.phantasmal.web.externals.three.ShaderMaterial
+import world.phantasmal.web.externals.three.TubeGeometry
+import world.phantasmal.web.externals.three.Vector3
 import world.phantasmal.web.externals.three.Mesh
 import world.phantasmal.web.externals.three.MeshBasicMaterial
 import world.phantasmal.web.externals.three.Object3D
@@ -265,11 +271,78 @@ class TechniqueFx(
     // ---------------------------------------------------------------- the spells
 
     /** Foie's flying body: a white-hot core with an ember glow shell. */
+    /**
+     * Foie's head: a procedural flame sphere rather than two tinted balls.
+     *
+     * The shell is a shader that walks fbm noise over the surface, so the fire crawls and
+     * licks instead of sitting still, shading from ember through gold to a white-hot core and
+     * carrying a fresnel rim that brightens where the sphere turns away. Inside it sit a soft
+     * hot core and two counter-rotating helices -- one red, one orange, each in its own glow
+     * tube -- which is what gives the orb a living centre when it flies past you.
+     *
+     * Trimmed for a phone against the desktop sketch this came from: subdivision 3 rather than
+     * 64 (which would have been tens of thousands of triangles for something the size of a
+     * fist), four noise octaves rather than five, and short tubes with few radial segments.
+     * Every one of these is drawn per fireball in flight, so the budget is small on purpose.
+     */
     fun foieCore(): Object3D {
-        val core = Mesh(SphereGeometry(0.18 * bu, 12, 10), basic(0xffffaa))
-        val shell = Mesh(SphereGeometry(0.28 * bu, 12, 10), basic(0xff6622, opacity = 0.5))
-        core.add(shell)
-        return core
+        val root = Group()
+
+        val flame = Mesh(
+            IcosahedronGeometry(FOIE_FLAME_RADIUS * bu, FOIE_FLAME_DETAIL),
+            ShaderMaterial(
+                obj {
+                    uniforms = obj { uTime = obj { value = 0.0 } }
+                    vertexShader = FOIE_VERTEX_SHADER
+                    fragmentShader = FOIE_FRAGMENT_SHADER
+                    transparent = true
+                    depthWrite = false
+                    blending = AdditiveBlending
+                    side = DoubleSide
+                }
+            ),
+        )
+        root.add(flame)
+        shaderClocks.add(flame)
+
+        // The soft heart inside the flame.
+        root.add(Mesh(SphereGeometry(0.34 * bu, 16, 12), basic(0xff7a12, opacity = 0.28)))
+
+        // The double helix: two filaments sharing an axis half a turn apart, so they wind
+        // around one another rather than sitting side by side.
+        val red = coreSpiral(0xff1708, 0.0)
+        val orange = coreSpiral(0xff8a08, PI)
+        root.add(red)
+        root.add(orange)
+        spirals.add(SpiralPair(red, orange))
+
+        return root
+    }
+
+    /** One filament of the core's helix, wrapped in a fatter, fainter copy of itself. */
+    private fun coreSpiral(colorHex: Int, phase: Double): Object3D {
+        val points = Array(FOIE_SPIRAL_SEGMENTS + 1) { i ->
+            val u = i.toDouble() / FOIE_SPIRAL_SEGMENTS
+            val angle = phase + u * 2.0 * PI * FOIE_SPIRAL_TURNS
+            // Fattest in the middle, pinched at both ends, so it reads as a spindle.
+            val r = FOIE_SPIRAL_RADIUS * bu * (0.30 + 0.70 * sin(PI * u))
+            Vector3(cos(angle) * r, sin(angle) * r, (u - 0.5) * FOIE_SPIRAL_LENGTH * bu)
+        }
+        val curve = CatmullRomCurve3(points)
+        val group = Group()
+        group.add(
+            Mesh(
+                TubeGeometry(curve, FOIE_SPIRAL_SEGMENTS, FOIE_SPIRAL_TUBE * bu * 2.7, 5, false),
+                basic(colorHex, opacity = 0.16),
+            )
+        )
+        group.add(
+            Mesh(
+                TubeGeometry(curve, FOIE_SPIRAL_SEGMENTS, FOIE_SPIRAL_TUBE * bu, 5, false),
+                basic(colorHex, opacity = 0.95),
+            )
+        )
+        return group
     }
 
     /**
@@ -564,7 +637,30 @@ class TechniqueFx(
 
     // ---------------------------------------------------------------- per-frame drive
 
+    /** Fireball shells whose shader clock has to be wound on each frame. */
+    private val shaderClocks = mutableListOf<Mesh>()
+
+    /** A fireball's two filaments, so they can be turned against each other. */
+    private class SpiralPair(val red: Object3D, val orange: Object3D)
+
+    private val spirals = mutableListOf<SpiralPair>()
+
+    private var fxClock = 0.0
+
     fun update(deltaTime: Double) {
+        // The fireballs' own life: the flame shader's clock, and the two filaments winding
+        // against one another inside each core.
+        fxClock += deltaTime
+        shaderClocks.retainAll { it.parent != null }
+        for (shell in shaderClocks) {
+            shell.asDynamic().material.uniforms.uTime.value = fxClock
+        }
+        spirals.retainAll { it.red.parent != null }
+        for (pair in spirals) {
+            pair.red.rotation.z += FOIE_SPIRAL_SPIN * deltaTime
+            pair.orange.rotation.z -= FOIE_SPIRAL_SPIN * 0.79 * deltaTime
+        }
+
         val cloudIterator = clouds.iterator()
         while (cloudIterator.hasNext()) {
             val c = cloudIterator.next()
@@ -660,4 +756,81 @@ class TechniqueFx(
         }
     }
 
+
+    private companion object {
+        const val FOIE_FLAME_RADIUS = 0.52
+        const val FOIE_FLAME_DETAIL = 3
+        const val FOIE_SPIRAL_SEGMENTS = 48
+        const val FOIE_SPIRAL_TURNS = 2.25
+        const val FOIE_SPIRAL_RADIUS = 0.27
+        const val FOIE_SPIRAL_LENGTH = 0.52
+        const val FOIE_SPIRAL_TUBE = 0.012
+        const val FOIE_SPIRAL_SPIN = 1.45
+
+        /** Passes the surface position through; the flame is entirely the fragment's doing. */
+        const val FOIE_VERTEX_SHADER = """
+            varying vec3 vNormal;
+            varying vec3 vPos;
+            void main() {
+                vNormal = normalize(normalMatrix * normal);
+                vPos = position;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        """
+
+        /**
+         * Value-noise fbm crawling over the sphere, biased upward so the tongues lick the way
+         * fire does, shaded ember -> gold -> white-hot and rimmed with a fresnel edge.
+         */
+        const val FOIE_FRAGMENT_SHADER = """
+            precision mediump float;
+            varying vec3 vNormal;
+            varying vec3 vPos;
+            uniform float uTime;
+
+            float hash(vec3 p) {
+                p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
+                p *= 17.0;
+                return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+            }
+
+            float noise(vec3 p) {
+                vec3 i = floor(p), f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x),
+                               mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+                           mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                               mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+            }
+
+            float fbm(vec3 p) {
+                float v = 0.0, a = 0.5;
+                for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; }
+                return v;
+            }
+
+            void main() {
+                vec3 p = normalize(vPos);
+                float n = fbm(p * 3.0 + vec3(0.0, uTime * 0.55, -uTime * 0.35));
+                float n2 = fbm(p * 7.0 - vec3(uTime * 0.35, 0.0, uTime * 0.6));
+
+                float tongue = smoothstep(0.05, 0.95, n * 0.75 + n2 * 0.45);
+                float directional = smoothstep(-0.15, 0.9, p.y + 0.35 * n);
+                float alpha = clamp(0.16 + tongue * 0.95 + directional * 0.35, 0.0, 1.0);
+
+                vec3 hot = vec3(1.0, 0.95, 0.52);
+                vec3 gold = vec3(1.0, 0.38, 0.025);
+                vec3 ember = vec3(0.42, 0.025, 0.005);
+
+                float heat = smoothstep(0.12, 0.72, tongue + directional * 0.25);
+                vec3 color = mix(ember, gold, heat);
+                color = mix(color, hot, smoothstep(0.55, 1.0, n2 + directional * 0.3));
+
+                float fresnel = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 2.4);
+                color += vec3(1.0, 0.25, 0.02) * fresnel * 1.5;
+
+                gl_FragColor = vec4(color, alpha);
+            }
+        """
+    }
 }

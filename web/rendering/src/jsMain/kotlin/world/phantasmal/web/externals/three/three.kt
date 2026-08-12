@@ -356,6 +356,24 @@ open external class Object3D {
     fun clone(recursive: Boolean = definedExternally): Object3D
 }
 
+external interface ShaderMaterialParameters
+
+external class ShaderMaterial(parameters: dynamic = definedExternally) : Material {
+    var uniforms: dynamic
+    var vertexShader: String
+    var fragmentShader: String
+}
+
+external class TubeGeometry(
+    path: dynamic,
+    tubularSegments: Int = definedExternally,
+    radius: Double = definedExternally,
+    radialSegments: Int = definedExternally,
+    closed: Boolean = definedExternally,
+) : BufferGeometry
+
+external class CatmullRomCurve3(points: Array<Vector3>)
+
 external class Group : Object3D
 
 open external class Mesh(
