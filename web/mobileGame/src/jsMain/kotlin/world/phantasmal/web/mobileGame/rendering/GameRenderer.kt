@@ -8653,7 +8653,14 @@ class GameRenderer(
                     p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit,
                     p.mesh.position.z + dirZ * worldUnit,
                 )
-                techniqueFx?.megidCore()?.let { orb.add(it) }
+                // In the world, not on the billboard -- the same reason Foie's flame is a
+                // sibling. A curse with orbiting shards has to keep its own orientation.
+                techniqueFx?.megidCore()?.let { core ->
+                    core.position.copy(orb.position)
+                    context.scene.add(core)
+                    projectileCores[orb] = core
+                }
+                orb.material.opacity = MEGID_GLOW_OPACITY
                 projectileTrails[orb] = "megid"
                 context.scene.add(orb)
                 megidShots.add(
@@ -9495,6 +9502,7 @@ class GameRenderer(
             val step = FOIE_SPEED_UNITS * worldUnit * deltaTime
             shot.sprite.position.x += shot.dirX * step
             shot.sprite.position.z += shot.dirZ * step
+            projectileCores[shot.sprite]?.position?.copy(shot.sprite.position)
             projectileTrails[shot.sprite]?.let { kind ->
                 val sp = shot.sprite.position
                 if (kind == "foie") techniqueFx?.foieTrail(sp.x, sp.y, sp.z, shot.dirX, shot.dirZ)
@@ -9508,6 +9516,7 @@ class GameRenderer(
                 )
             ) {
                 shot.sprite.parent?.remove(shot.sprite)
+                projectileCores.remove(shot.sprite)?.let { it.parent?.remove(it) }
                 projectileTrails.remove(shot.sprite)
                 shots.remove()
                 continue
@@ -9551,6 +9560,8 @@ class GameRenderer(
 
             if (hit || shot.remaining <= 0) {
                 shot.sprite.parent?.remove(shot.sprite)
+                projectileCores.remove(shot.sprite)?.let { it.parent?.remove(it) }
+                projectileTrails.remove(shot.sprite)
                 shots.remove()
             }
         }
@@ -10735,6 +10746,9 @@ class GameRenderer(
 
         /** The flat orb is only a glow now; the shader body is the fireball. */
         private const val FOIE_GLOW_OPACITY = 0.35
+
+        /** Megid's flat orb likewise steps back behind its void body. */
+        private const val MEGID_GLOW_OPACITY = 0.3
         private const val FOIE_FRAME_RATE = 18.0
         private const val FOIE_IMPACT_SECONDS = 0.5
 

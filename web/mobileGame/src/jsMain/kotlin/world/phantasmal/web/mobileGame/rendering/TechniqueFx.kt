@@ -610,14 +610,58 @@ class TechniqueFx(
 
     /** Megid's flying body: a genuinely dark void heart inside a violet aura. */
     fun megidCore(): Object3D {
-        // Normal blending and near-black: the centre must swallow light, not add it.
-        val core = Mesh(
-            SphereGeometry(0.3 * bu, 14, 12),
-            MeshBasicMaterial(obj { this.color = Color(0x050010) }),
+        val root = Group()
+
+        // The dark heart: normal blending and near-black, because the centre of a death curse
+        // has to swallow light rather than add it. Everything around it is additive.
+        root.add(
+            Mesh(
+                IcosahedronGeometry(MEGID_CORE_RADIUS * bu, 2),
+                MeshBasicMaterial(obj { this.color = Color(0x26002f) }),
+            )
         )
-        val rim = Mesh(SphereGeometry(0.42 * bu, 14, 12), basic(0x4b0082, opacity = 0.55))
-        core.add(rim)
-        return core
+        root.add(Mesh(IcosahedronGeometry(MEGID_CORE_RADIUS * 0.55 * bu, 1), basic(0x8b22ff, opacity = 0.65)))
+        root.add(Mesh(SphereGeometry(MEGID_CORE_RADIUS * 0.2 * bu, 10, 8), basic(0xd9a2ff, opacity = 0.8)))
+
+        // Wireframe shells, each turning at its own rate -- the containment around the void.
+        val shells = mutableListOf<Object3D>()
+        for (i in 0 until MEGID_SHELLS) {
+            val shell = Mesh(
+                SphereGeometry((MEGID_CORE_RADIUS * 1.15 + i * 0.18 * MEGID_CORE_RADIUS) * bu, 12, 8),
+                MeshBasicMaterial(obj {
+                    this.color = Color(if (i % 2 == 1) 0x5a00a8 else 0xb038ff)
+                    this.transparent = true
+                    this.opacity = 0.06 + i * 0.02
+                    this.blending = AdditiveBlending
+                    this.wireframe = true
+                }).also { it.depthWrite = false },
+            )
+            root.add(shell)
+            shells.add(shell)
+        }
+
+        // Shards caught in orbit around it.
+        val orbiting = mutableListOf<MegidShard>()
+        for (i in 0 until MEGID_SHARDS) {
+            val shard = Mesh(
+                OctahedronGeometry(MEGID_CORE_RADIUS * 0.16 * bu, 0),
+                basic(if (i % 3 == 0) 0xd7a0ff else 0x8d1eff, opacity = 0.3 + Random.nextDouble() * 0.5),
+            )
+            root.add(shard)
+            orbiting.add(
+                MegidShard(
+                    shard,
+                    angle = Random.nextDouble() * 2 * PI,
+                    radius = (0.9 + Random.nextDouble() * 0.9) * MEGID_CORE_RADIUS * bu,
+                    height = (0.3 + Random.nextDouble()) * MEGID_CORE_RADIUS * bu,
+                    speed = 0.7 + Random.nextDouble() * 2.0,
+                    phase = Random.nextDouble() * 10.0,
+                )
+            )
+        }
+
+        voids.add(VoidCore(root, shells, orbiting))
+        return root
     }
 
     /** Megid's tail: a violet wake dragged behind the void core. */
@@ -668,6 +712,25 @@ class TechniqueFx(
 
     private var fxClock = 0.0
 
+    /** One shard caught in a Megid core's orbit. */
+    private class MegidShard(
+        val mesh: Object3D,
+        var angle: Double,
+        val radius: Double,
+        val height: Double,
+        val speed: Double,
+        val phase: Double,
+    )
+
+    /** A live Megid core: its shells turn, its shards orbit, its heart beats. */
+    private class VoidCore(
+        val root: Object3D,
+        val shells: List<Object3D>,
+        val shards: List<MegidShard>,
+    )
+
+    private val voids = mutableListOf<VoidCore>()
+
     fun update(deltaTime: Double) {
         // The fireballs' own life: the flame shader's clock, and the two filaments winding
         // against one another inside each core.
@@ -713,6 +776,24 @@ class TechniqueFx(
                         backZ * (1.5 + Random.nextDouble() * 2.0) * bu,
                     )
                 }
+            }
+        }
+
+        voids.retainAll { it.root.parent != null }
+        for (core in voids) {
+            for ((i, shell) in core.shells.withIndex()) {
+                shell.rotation.x += deltaTime * (0.2 + i * 0.1)
+                shell.rotation.y += deltaTime * (0.5 + i * 0.15)
+            }
+            for (shard in core.shards) {
+                shard.angle += deltaTime * shard.speed
+                shard.mesh.position.set(
+                    cos(shard.angle) * shard.radius,
+                    sin(fxClock * 1.5 + shard.phase) * shard.height,
+                    sin(shard.angle) * shard.radius,
+                )
+                shard.mesh.rotation.x += deltaTime * 2.0
+                shard.mesh.rotation.y += deltaTime * 3.0
             }
         }
 
@@ -846,6 +927,16 @@ class TechniqueFx(
         const val GIFOIE_TAIL_MOTES = 4
         const val GIFOIE_TAIL_SIZE = 1.5
         const val GIFOIE_TAIL_LIFE = 0.5
+
+        /**
+         * Megid's void. Trimmed hard from the sketch this came from -- four wireframe shells,
+         * eighteen orbiting shards, thirty-five wisps, a thirty-sphere trail and a hundred
+         * motes is around two hundred meshes for one curse, and several can be in the air at
+         * once on a phone.
+         */
+        const val MEGID_CORE_RADIUS = 0.42
+        const val MEGID_SHELLS = 2
+        const val MEGID_SHARDS = 8
         const val FOIE_SPIRAL_SPIN = 1.45
 
         /** Passes the surface position through; the flame is entirely the fragment's doing. */
