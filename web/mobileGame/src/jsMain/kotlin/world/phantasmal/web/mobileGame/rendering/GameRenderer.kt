@@ -1235,6 +1235,7 @@ class GameRenderer(
         val toZ: Double,
         val groundY: Double,
         val duration: Double,
+        var remaining: Double = duration,
     )
 
     private val delsaberLeaps = mutableListOf<DelsaberLeap>()
@@ -1275,6 +1276,12 @@ class GameRenderer(
             if (distance < DELSABER_LEAP_MIN_UNITS * worldUnit) continue
             if (distance > DELSABER_LEAP_MAX_UNITS * worldUnit) continue
 
+            // The flight is timed on its own clock, never on the clip's. The jump animation is
+            // short, and crossing half a room inside it read as a teleport rather than a leap;
+            // the body is held for at least this long however brief the animation is.
+            val flightSeconds = maxOf(flight, DELSABER_LEAP_MIN_FLIGHT_SECONDS)
+            enemy.ai?.onStatusHeld(flightSeconds)
+
             // Land just inside its own reach rather than on top of the player.
             val stand = (enemyStats(enemy.slug).attackRange + 0.5) * worldUnit
             val travel = (distance - stand).coerceAtLeast(0.0)
@@ -1286,7 +1293,7 @@ class GameRenderer(
                     toX = enemy.mesh.position.x + dx / distance * travel,
                     toZ = enemy.mesh.position.z + dz / distance * travel,
                     groundY = enemy.mesh.position.y,
-                    duration = flight,
+                    duration = flightSeconds,
                 )
             )
             // Facing the landing, so it comes down looking at what it is about to cut.
@@ -1303,8 +1310,8 @@ class GameRenderer(
         val iterator = delsaberLeaps.iterator()
         while (iterator.hasNext()) {
             val leap = iterator.next()
-            val ai = leap.enemy.ai
-            val remaining = ai?.entranceRemaining ?: 0.0
+            leap.remaining -= deltaTime
+            val remaining = leap.remaining
             if (leap.enemy.isDead || remaining <= 0 || leap.duration <= 0) {
                 // Down, and the ordinary AI takes it from here.
                 if (!leap.enemy.isDead) {
@@ -6622,7 +6629,43 @@ class GameRenderer(
      * applied on the spot, the gained max HP arriving as healing like the real game -- and the
      * drop roll.
      */
+    /**
+     * The Mines' machines don't slump, they detonate: a flash inside the shell, then the shell
+     * itself thrown across the room in pieces. Bodies of flesh keep their ordinary death.
+     */
+    private fun spawnMachineWreck(enemy: Enemy) {
+        if (enemy.slug !in MACHINE_SPECIES) return
+        val x = enemy.mesh.position.x
+        val y = centerMassHeight(enemy)
+        val z = enemy.mesh.position.z
+
+        spawnExplosionDome(x, y, z, MACHINE_BLAST_UNITS * worldUnit, MACHINE_BLAST_COLOR)
+        val flash = effectSprite("burst_bright", MACHINE_BLAST_UNITS, colorHex = MACHINE_BLAST_COLOR)
+        flash.position.set(x, y, z)
+        addEffect(
+            TimedEffect(flash, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 4.0)
+        )
+
+        // The shell: hot fragments thrown on their own arcs, falling as they cool.
+        for (k in 0 until MACHINE_PART_COUNT) {
+            val angle = Random.nextDouble() * 2 * PI
+            val speed = (6.0 + Random.nextDouble() * 12.0) * worldUnit
+            spawnParticle(
+                if (k % 3 == 0) "burst_orange" else "burst_bright",
+                x, y, z,
+                sizeWorld = MACHINE_PART_SIZE_WORLD * (0.6 + Random.nextDouble() * 0.8),
+                colorHex = if (k % 4 == 0) MACHINE_BLAST_COLOR else MACHINE_PART_COLOR,
+                vx = cos(angle) * speed,
+                vy = (5.0 + Random.nextDouble() * 12.0) * worldUnit,
+                vz = sin(angle) * speed,
+                gravity = MACHINE_PART_GRAVITY,
+                seconds = 0.8 + Random.nextDouble() * 0.5,
+            )
+        }
+    }
+
     private fun onEnemyKilled(enemy: Enemy) {
+        spawnMachineWreck(enemy)
         // Hold the body until its death clip finishes; an enemy with no death clip has
         // duration 0 and is dropped on the next frame. The Dragon's death runs through its
         // own controller -- its generic AI came off when the fight was installed.
@@ -10327,9 +10370,15 @@ class GameRenderer(
         private const val DELSABER_LEAP_MAX_UNITS = 40.0
         private const val DELSABER_LEAP_HEIGHT_UNITS = 9.0
 
-        /** Out past this and it springs again rather than walking you down. */
-        private const val DELSABER_RELEAP_UNITS = 11.0
-        private const val DELSABER_RELEAP_COOLDOWN_SECONDS = 3.5
+        /**
+         * Out past this and it springs again rather than walking you down -- but only after a
+         * good recovery, so it stalks between vaults instead of pogoing across the room.
+         */
+        private const val DELSABER_RELEAP_UNITS = 16.0
+        private const val DELSABER_RELEAP_COOLDOWN_SECONDS = 9.0
+
+        /** However short the jump clip is, the body takes at least this long to cross. */
+        private const val DELSABER_LEAP_MIN_FLIGHT_SECONDS = 0.85
 
         private const val SORCERER_ENGAGE_UNITS = 34.0
         private const val SORCERER_FIRST_CAST_SECONDS = 1.2
@@ -10345,6 +10394,21 @@ class GameRenderer(
         private const val SORCERER_RESTA_AMOUNT = 60
         private const val SORCERER_RAFOIE_DAMAGE = 34
         private const val SORCERER_GIBARTA_DAMAGE = 26
+
+        /**
+         * The Mines' machines: the species that come apart rather than fall over. The Dubwitch
+         * pod goes with them -- it is a machine in the same room, and its death should read the
+         * same way.
+         */
+        private val MACHINE_SPECIES = setOf(
+            "Dubchic", "Gilchic", "Dubwitch", "Garanz", "Canadine", "Canane",
+        )
+        private const val MACHINE_BLAST_UNITS = 4.0
+        private const val MACHINE_BLAST_COLOR = 0xffb347
+        private const val MACHINE_PART_COLOR = 0xb9c4cf
+        private const val MACHINE_PART_COUNT = 26
+        private const val MACHINE_PART_SIZE_WORLD = 1.8
+        private const val MACHINE_PART_GRAVITY = 60.0
 
         private const val TECH_FLASH_SECONDS = 0.5
 
