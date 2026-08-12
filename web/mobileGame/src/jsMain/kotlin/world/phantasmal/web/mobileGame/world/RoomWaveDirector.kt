@@ -207,6 +207,19 @@ class RoomWaveDirector(
  * [override] names one by [SpawnLayout.name] instead, for testing a particular room's waves
  * repeatedly rather than getting a different area every load.
  */
+/**
+ * The terrain variants this area has a solo encounter table for, as geometry slugs. Empty for
+ * the forests, whose tables are untagged because one terrain serves them all.
+ *
+ * The free-roam geometry roll is limited to these. Several areas ship more terrain variants
+ * than tables -- Ruins 1 has five sets of rooms but only three tables -- and rolling one of the
+ * extras produced an area with no encounter *and* no Player Set to stand on, which dropped the
+ * player through the floor on arrival. Those variants aren't dead: quests designate them
+ * directly, which is what they exist for.
+ */
+fun AreaSpawnTable.soloGeometrySlugs(): List<String> =
+    layouts.filter { it.solo }.mapNotNull { it.geometry }.distinct()
+
 fun AreaSpawnTable.pickSoloLayout(override: String? = null, geometry: String? = null): SpawnLayout? =
     if (override != null) layouts.find { it.name == override }
     // A layout tagged with a geometry slug only fits that terrain (the caves); untagged tables

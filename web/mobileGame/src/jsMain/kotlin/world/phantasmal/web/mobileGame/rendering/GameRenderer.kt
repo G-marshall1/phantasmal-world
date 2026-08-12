@@ -138,6 +138,7 @@ import world.phantasmal.web.mobileGame.world.SpawnedEnemy
 import world.phantasmal.web.mobileGame.world.loadAreaSpawnTable
 import world.phantasmal.web.mobileGame.world.loadClipSet
 import world.phantasmal.web.mobileGame.world.pickSoloLayout
+import world.phantasmal.web.mobileGame.world.soloGeometrySlugs
 import world.phantasmal.web.mobileGame.world.NpcAssetLoader
 import world.phantasmal.web.mobileGame.world.PIONEER2_DOORS
 import world.phantasmal.web.mobileGame.world.PIONEER2_NPCS
@@ -3889,6 +3890,10 @@ class GameRenderer(
                 }
             }
 
+            // Loaded before the terrain: the encounter table decides which terrain variants
+            // are even eligible, and later supplies the arrival point and the waves.
+            val spawnTable = loadAreaSpawnTable(assetLoader, mapSlug)
+
             val mapAssetLoader = MapAssetLoader(assetLoader)
             val map = if (mapSlug in STAGE_SLUGS) {
                 mapAssetLoader.loadStage(mapSlug)
@@ -3904,6 +3909,10 @@ class GameRenderer(
                                 questGeometrySlug(def, floor, mapSlug)
                             }
                         }
+                        // Only variants this area actually has an encounter table for: the
+                        // spares carry no waves and no Player Set, and arriving on one dropped
+                        // the player out of the world.
+                        ?: spawnTable?.soloGeometrySlugs()?.randomOrNull()
                         ?: randomAreaLayoutSlug(mapSlug))
                         .also { resolvedGeometrySlug = it }
                 )
@@ -3963,9 +3972,29 @@ class GameRenderer(
                     def.objects.firstOrNull { it.area == floor && it.typeId == 0 }
                 }
             }
+
+            // The encounter table is chosen here rather than further down because the layout
+            // carries the area's own Player Set -- where the game actually stands you when you
+            // arrive. It is picked exactly once and reused below; rolling it twice would give
+            // the spawn point and the enemies two different layouts.
+            val questLayout = questDef?.let { def ->
+                QUEST_FLOOR_FOR_MAP[mapSlug]
+                    ?.takeIf { it in 1..10 }
+                    ?.let { floor -> questFieldLayout(def, floor) }
+            }
+            val layout = questLayout
+                ?: spawnTable?.pickSoloLayout(layoutOverride, resolvedGeometrySlug)
+
+            // Where the layout says to stand. The origin is no guide at all in the Ruins,
+            // whose rooms sit thousands of units out: four of Ruins 1's five variants have no
+            // floor over (0, 0) whatsoever, so arriving there dropped the player straight out
+            // of the world. Every free-roam layout ships Player Sets for exactly this.
+            val layoutSpawn = layout?.objects?.firstOrNull { it.typeId == 0 }
+
             val (originX, originZ) =
                 spawnOverride
                     ?: questSpawn?.let { it.x to it.z }
+                    ?: layoutSpawn?.let { it.x to it.z }
                     ?: STAGE_SPAWN_ORIGINS[mapSlug] ?: (.0 to .0)
             val isStage = mapSlug in STAGE_SLUGS
             val (spawnX, groundY, spawnZ) = if (spawnYOverride != null) {
@@ -3984,6 +4013,7 @@ class GameRenderer(
             // arrival point around the rim keeps the camera opening onto the fight.
             (facingOverride
                 ?: questSpawn?.yaw
+                ?: layoutSpawn?.yaw
                 ?: if (bossEncounter != null) atan2(-spawnX, -spawnZ) else null)
                 ?.let { mesh.rotation.y = it }
             cameraYawOverride?.let {
@@ -4152,21 +4182,9 @@ class GameRenderer(
                     blockContainmentPlanes = true,
                 )
 
-                // PSO's real encounter for this area: rooms that stay empty until you walk into
-                // them, then feed you their waves one at a time (see RoomWaveDirector). Replaces
-                // the arc of one-of-every-species that used to be dropped around the spawn point
-                // -- that was a load-test sweep over the converted models, never an encounter.
-                val spawnTable = loadAreaSpawnTable(assetLoader, mapSlug)
-                // During a quest the floor runs the quest's own encounter table -- its
-                // authored enemies, objects and wave events -- on the designated terrain.
-                val questLayout = questDef?.let { def ->
-                    QUEST_FLOOR_FOR_MAP[mapSlug]
-                        ?.takeIf { it in 1..10 }
-                        ?.let { floor -> questFieldLayout(def, floor) }
-                }
-                val layout = questLayout
-                    ?: spawnTable?.pickSoloLayout(layoutOverride, resolvedGeometrySlug)
-
+                // The spawn table and layout were both resolved above, where the arrival point
+                // needed them. (They replace the arc of one-of-every-species this used to drop
+                // around the player -- that was a load-test sweep, never an encounter.)
                 if (spawnTable != null && layout != null) {
                     val clipSets = mutableMapOf<String, EnemyClipSet>()
 
