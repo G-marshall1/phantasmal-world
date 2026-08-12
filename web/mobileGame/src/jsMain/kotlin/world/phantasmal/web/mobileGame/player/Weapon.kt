@@ -53,11 +53,19 @@ object Weapon {
      *
      * The pistols are here for the other reason: they are barrel-down-Y guns like the rifles
      * and take that family's own correction instead (see the note in [applyModelConvention]).
+     *
+     * The Wand is here on the same report that put the blanket turn in: "the but of the staff is
+     * the front and the top of the staff is the but". It is authored centred on its own middle
+     * rather than gripped at the origin (z [-6.18, 6.18], dead symmetric -- the Rod is the same
+     * at z [-11.33, 11.97], while the Cane's z [-3.55, 8.32] follows the Saber's grip-at-origin
+     * convention). For a centred model the half-turn is the only thing deciding which end leads,
+     * so dropping it is the whole fix.
      */
     private val NO_FACING_FLIP: Set<WeaponType> = setOf(
         WeaponType.SABER, WeaponType.SWORD, WeaponType.DOUBLE_SABER,
         WeaponType.RIFLE, WeaponType.SHOT, WeaponType.LAUNCHER,
         WeaponType.HANDGUN, WeaponType.MECHGUN,
+        WeaponType.WAND,
     )
 
     /**
