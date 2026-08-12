@@ -46,17 +46,24 @@ fun main(args: Array<String>) {
         return if (index in starValues.indices) starValues[index] else 0
     }
 
-    // Weapon series -> the WeaponType enum constant whose motion set swings it.
-    val seriesToType = mapOf(
-        0x01 to "SABER", 0x02 to "SWORD", 0x03 to "DAGGER", 0x04 to "PARTISAN",
-        0x05 to "SLICER", 0x06 to "HANDGUN", 0x07 to "RIFLE", 0x08 to "MECHGUN",
-        0x09 to "SHOT", 0x0A to "CANE", 0x0B to "ROD", 0x0C to "WAND",
-        0x0D to "CLAW", 0x0E to "DOUBLE_SABER", 0x0F to "CLAW", 0x10 to "KATANA",
-        0x29 to "KATANA", 0x4E to "LAUNCHER", 0x5C to "TWIN_SWORD",
-        // The Force rares: Psycho Wand (the game's best technique weapon) and the
-        // Caduceus/Mercurius Rod line. Both series swing with the Rod motion set, and both
-        // ship their own models -- see the technique-boost table in ClassRules.kt.
-        0x1D to "ROD", 0x22 to "ROD",
+    /**
+     * The client's own weapon class -> the WeaponType whose motion set swings it.
+     *
+     * `WeaponKind` is the field the game itself animates from, so this covers every weapon in
+     * the table rather than the handful of series anyone thought to list. It was verified
+     * against the twelve commons (Saber is 1 through Wand at 12) and then against the awkward
+     * cases: Psycho Wand reads 11, the Rod its own page calls it, where a hand-written guess
+     * had made it a Wand; Twinkle Star reads 12, a Wand, where a guess had made it a Twin
+     * Sword. Sange & Yasha and Musashi read 15 while Sange, Yasha and Yamigarasu read 16 --
+     * which is the line between the dual-wielded pairs and the single blades.
+     */
+    val kindToType = mapOf(
+        0 to "CLAW",            // knuckles: Brave Knuckle, Sonic Knuckle, Rocket Punch
+        1 to "SABER", 2 to "SWORD", 3 to "DAGGER", 4 to "PARTISAN", 5 to "SLICER",
+        6 to "HANDGUN", 7 to "RIFLE", 8 to "MECHGUN", 9 to "SHOT",
+        10 to "CANE", 11 to "ROD", 12 to "WAND",
+        13 to "CLAW", 14 to "DOUBLE_SABER", 15 to "TWIN_SWORD", 16 to "KATANA",
+        17 to "LAUNCHER", 18 to "CARD",
     )
 
     class W(
@@ -88,7 +95,7 @@ fun main(args: Array<String>) {
         when {
             code.startsWith("00") && code.length == 6 -> {
                 val series = code.substring(2, 4).toInt(16)
-                val type = seriesToType[series]
+                val type = kindToType[f("WeaponKind")]
                 if (type == null) {
                     if (series != 0) skippedSeries.getOrPut(series) { mutableListOf() }.add(name)
                     continue

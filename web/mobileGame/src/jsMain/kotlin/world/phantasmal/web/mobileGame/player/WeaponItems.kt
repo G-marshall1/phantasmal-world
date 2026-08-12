@@ -50,16 +50,32 @@ private val BASE_MODEL_FOR_TYPE: Map<WeaponType, String> = mapOf(
     WeaponType.WAND to "Wand", WeaponType.CLAW to "Claw", WeaponType.DOUBLE_SABER to "DoubleSaber",
     WeaponType.KATANA to "Yamigarasu", WeaponType.TWIN_SWORD to "TwinkleStar",
     WeaponType.LAUNCHER to "PanzerFaust",
+    // The talis family (Talis, Mahu, Hitogata) throws a card; the fan is the closest thing
+    // the converted set has to one, and it reads correctly in a Force's hand.
+    WeaponType.CARD to "FlightFan",
+    // Bare hands have no item of their own, but a fallback keeps resolveModelSlug total.
+    WeaponType.FIST to "Claw",
 )
 
 private fun normalizedForModelMatch(name: String): String =
     name.filter { it.isLetterOrDigit() }.lowercase()
 
+/**
+ * A looser key for the same purpose, with every "s" dropped as well. The catalogue and the
+ * converted models disagree constantly about possessives -- "BRINGER'S RIFLE" against
+ * BringerRifle, "HEAVEN PUNISHER" against HeavensPunisher -- and that single letter was the
+ * only thing standing between dozens of rares and the art we already ship for them.
+ */
+private fun looseModelMatch(name: String): String =
+    normalizedForModelMatch(name).filter { it != 's' }
+
 /** Shipped model whose slug matches the item's name, else the class's base model. */
 private fun resolveModelSlug(sourceName: String, type: WeaponType): String {
     val wanted = normalizedForModelMatch(sourceName)
-    return WEAPON_TYPES.keys.find { normalizedForModelMatch(it) == wanted }
-        ?: BASE_MODEL_FOR_TYPE.getValue(type)
+    WEAPON_TYPES.keys.find { normalizedForModelMatch(it) == wanted }?.let { return it }
+    val loose = looseModelMatch(sourceName)
+    WEAPON_TYPES.keys.find { looseModelMatch(it) == loose }?.let { return it }
+    return BASE_MODEL_FOR_TYPE.getValue(type)
 }
 
 /** The full generated catalogue as runtime tiers, in item-code order. */
