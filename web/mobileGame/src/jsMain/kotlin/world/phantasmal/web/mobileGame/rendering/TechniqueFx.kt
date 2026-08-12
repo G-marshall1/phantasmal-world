@@ -160,8 +160,27 @@ class TechniqueFx(
         }).also { it.depthWrite = false }
 
     // ---------------------------------------------------------------- orbiters
+    // Nothing populates these any more: Gifoie was their only caller and now rides Wheels,
+    // which carry a whole flame body rather than one sprite. Kept because the machinery is
+    // sound and the next circling effect can use it without being rebuilt.
 
     /** One flame circling the caster: Gifoie's wheel is made of these. */
+    /** One of Gifoie's fires: a body carried around a centre on an opening orbit. */
+    private class Wheel(
+        val body: Object3D,
+        val centerX: Double,
+        val centerY: Double,
+        val centerZ: Double,
+        val angle0: Double,
+        val spin: Double,
+        val radiusFrom: Double,
+        val radiusTo: Double,
+        var life: Double,
+        val maxLife: Double,
+    )
+
+    private val wheels = mutableListOf<Wheel>()
+
     private class Orbiter(
         val sprite: Sprite,
         val centerX: Double,
@@ -182,36 +201,30 @@ class TechniqueFx(
      * outward turn by turn until the ring dissipates at its rim.
      */
     fun gifoie(x: Double, y: Double, z: Double) {
-        val arms = 3
-        val flamesPerArm = 5
-        for (arm in 0 until arms) {
-            for (i in 0 until flamesPerArm) {
-                val material = SpriteMaterial(obj {
-                    this.map = texture("foie_flame_0")
-                    this.color = Color(if (i < 2) 0xffcc44 else 0xff5522)
-                    this.transparent = true
-                    this.opacity = 1.0
-                    this.blending = AdditiveBlending
-                    this.depthWrite = false
-                })
-                val sprite = Sprite(material)
-                val size = (1.3 + i * 0.15) * bu
-                sprite.scale.set(size, size, 1.0)
-                scene.add(sprite)
-                orbiters.add(
-                    Orbiter(
-                        sprite,
-                        x, y + 1.2 * bu, z,
-                        angle0 = arm * 2 * PI / arms - i * 0.35,
-                        spin = 4.2,
-                        radiusFrom = 0.8 * bu,
-                        radiusTo = 6.5 * bu,
-                        life = 2.2, maxLife = 2.2,
-                    )
+        // Three fires, not fifteen sprites: the same procedural flame Foie throws, set a third
+        // of a turn apart so they can never overlap, wheeling around the caster while their
+        // orbit opens outward. Evenly spaced is what keeps them reading as three distinct
+        // fires rather than one smeared ring.
+        for (i in 0 until GIFOIE_FLAME_COUNT) {
+            val body = flameBody(GIFOIE_FLAME_RADIUS)
+            scene.add(body)
+            wheels.add(
+                Wheel(
+                    body,
+                    centerX = x,
+                    centerY = y + GIFOIE_RIDE_HEIGHT * bu,
+                    centerZ = z,
+                    angle0 = i * 2.0 * PI / GIFOIE_FLAME_COUNT,
+                    spin = GIFOIE_SPIN,
+                    radiusFrom = GIFOIE_RADIUS_FROM * bu,
+                    radiusTo = GIFOIE_RADIUS_TO * bu,
+                    life = GIFOIE_LIFE,
+                    maxLife = GIFOIE_LIFE,
                 )
-            }
+            )
         }
     }
+
 
     // ---------------------------------------------------------------- bolts
 
@@ -285,11 +298,18 @@ class TechniqueFx(
      * fist), four noise octaves rather than five, and short tubes with few radial segments.
      * Every one of these is drawn per fireball in flight, so the budget is small on purpose.
      */
-    fun foieCore(): Object3D {
+    fun foieCore(): Object3D = flameBody(FOIE_FLAME_RADIUS)
+
+    /**
+     * One procedural flame: the shader shell, a soft heart, and the two counter-wound
+     * filaments. Shared by Foie's head and by each of Gifoie's three wheeling fires, so they
+     * are visibly the same fire at different sizes.
+     */
+    private fun flameBody(radiusUnits: Double): Object3D {
         val root = Group()
 
         val flame = Mesh(
-            IcosahedronGeometry(FOIE_FLAME_RADIUS * bu, FOIE_FLAME_DETAIL),
+            IcosahedronGeometry(radiusUnits * bu, FOIE_FLAME_DETAIL),
             ShaderMaterial(
                 obj {
                     uniforms = obj { uTime = obj { value = 0.0 } }
@@ -306,12 +326,12 @@ class TechniqueFx(
         shaderClocks.add(flame)
 
         // The soft heart inside the flame.
-        root.add(Mesh(SphereGeometry(0.34 * bu, 16, 12), basic(0xff7a12, opacity = 0.28)))
+        root.add(Mesh(SphereGeometry(radiusUnits * 0.65 * bu, 14, 10), basic(0xff7a12, opacity = 0.28)))
 
         // The double helix: two filaments sharing an axis half a turn apart, so they wind
         // around one another rather than sitting side by side.
-        val red = coreSpiral(0xff1708, 0.0)
-        val orange = coreSpiral(0xff8a08, PI)
+        val red = coreSpiral(0xff1708, 0.0, radiusUnits)
+        val orange = coreSpiral(0xff8a08, PI, radiusUnits)
         root.add(red)
         root.add(orange)
         spirals.add(SpiralPair(red, orange))
@@ -320,25 +340,25 @@ class TechniqueFx(
     }
 
     /** One filament of the core's helix, wrapped in a fatter, fainter copy of itself. */
-    private fun coreSpiral(colorHex: Int, phase: Double): Object3D {
+    private fun coreSpiral(colorHex: Int, phase: Double, radiusUnits: Double): Object3D {
         val points = Array(FOIE_SPIRAL_SEGMENTS + 1) { i ->
             val u = i.toDouble() / FOIE_SPIRAL_SEGMENTS
             val angle = phase + u * 2.0 * PI * FOIE_SPIRAL_TURNS
             // Fattest in the middle, pinched at both ends, so it reads as a spindle.
-            val r = FOIE_SPIRAL_RADIUS * bu * (0.30 + 0.70 * sin(PI * u))
-            Vector3(cos(angle) * r, sin(angle) * r, (u - 0.5) * FOIE_SPIRAL_LENGTH * bu)
+            val r = radiusUnits * FOIE_SPIRAL_RADIUS_FRACTION * bu * (0.30 + 0.70 * sin(PI * u))
+            Vector3(cos(angle) * r, sin(angle) * r, (u - 0.5) * radiusUnits * FOIE_SPIRAL_LENGTH_FRACTION * bu)
         }
         val curve = CatmullRomCurve3(points)
         val group = Group()
         group.add(
             Mesh(
-                TubeGeometry(curve, FOIE_SPIRAL_SEGMENTS, FOIE_SPIRAL_TUBE * bu * 2.7, 5, false),
+                TubeGeometry(curve, FOIE_SPIRAL_SEGMENTS, radiusUnits * FOIE_SPIRAL_TUBE_FRACTION * bu * 2.7, 5, false),
                 basic(colorHex, opacity = 0.16),
             )
         )
         group.add(
             Mesh(
-                TubeGeometry(curve, FOIE_SPIRAL_SEGMENTS, FOIE_SPIRAL_TUBE * bu, 5, false),
+                TubeGeometry(curve, FOIE_SPIRAL_SEGMENTS, radiusUnits * FOIE_SPIRAL_TUBE_FRACTION * bu, 5, false),
                 basic(colorHex, opacity = 0.95),
             )
         )
@@ -655,6 +675,25 @@ class TechniqueFx(
         for (shell in shaderClocks) {
             shell.asDynamic().material.uniforms.uTime.value = fxClock
         }
+        val wheelIter = wheels.iterator()
+        while (wheelIter.hasNext()) {
+            val wheel = wheelIter.next()
+            wheel.life -= deltaTime
+            if (wheel.life <= 0) {
+                wheel.body.parent?.remove(wheel.body)
+                wheelIter.remove()
+                continue
+            }
+            val t = 1.0 - wheel.life / wheel.maxLife
+            val angle = wheel.angle0 + wheel.spin * t
+            val radius = wheel.radiusFrom + (wheel.radiusTo - wheel.radiusFrom) * t
+            wheel.body.position.set(
+                wheel.centerX + cos(angle) * radius,
+                wheel.centerY,
+                wheel.centerZ + sin(angle) * radius,
+            )
+        }
+
         spirals.retainAll { it.red.parent != null }
         for (pair in spirals) {
             pair.red.rotation.z += FOIE_SPIRAL_SPIN * deltaTime
@@ -758,13 +797,23 @@ class TechniqueFx(
 
 
     private companion object {
-        const val FOIE_FLAME_RADIUS = 0.30
+        const val FOIE_FLAME_RADIUS = 0.40
         const val FOIE_FLAME_DETAIL = 3
         const val FOIE_SPIRAL_SEGMENTS = 48
         const val FOIE_SPIRAL_TURNS = 2.25
-        const val FOIE_SPIRAL_RADIUS = 0.16
-        const val FOIE_SPIRAL_LENGTH = 0.32
-        const val FOIE_SPIRAL_TUBE = 0.012
+        /** The helix, as fractions of whichever flame it lives inside. */
+        const val FOIE_SPIRAL_RADIUS_FRACTION = 0.53
+        const val FOIE_SPIRAL_LENGTH_FRACTION = 1.05
+        const val FOIE_SPIRAL_TUBE_FRACTION = 0.04
+
+        /** Gifoie's three fires and the wheel they ride. */
+        const val GIFOIE_FLAME_RADIUS = 0.62
+        const val GIFOIE_FLAME_COUNT = 3
+        const val GIFOIE_RIDE_HEIGHT = 1.2
+        const val GIFOIE_SPIN = 9.0
+        const val GIFOIE_RADIUS_FROM = 0.9
+        const val GIFOIE_RADIUS_TO = 6.5
+        const val GIFOIE_LIFE = 2.2
         const val FOIE_SPIRAL_SPIN = 1.45
 
         /** Passes the surface position through; the flame is entirely the fragment's doing. */
