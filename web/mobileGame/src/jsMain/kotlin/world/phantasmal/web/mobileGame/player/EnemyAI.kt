@@ -193,6 +193,20 @@ class EnemyAI(
      */
     val entranceRemaining: Double get() = appearRemaining
 
+    /**
+     * Replays the entrance clip on demand and holds the enemy inert for its length -- what a
+     * Delsaber does to vault at a player who is backing away from it. No-op for a species with
+     * no entrance of its own.
+     */
+    fun beginEntrance(): Double {
+        val motion = appearMotion ?: return 0.0
+        if (appearRemaining > 0) return appearRemaining
+        appearRemaining = (motion.frameCount - 1) / PSO_FRAME_RATE_DOUBLE
+        cancelSwing()
+        playClip(motion, oneShot = true)
+        return appearRemaining
+    }
+
     init {
         if (appearMotion != null) {
             appearRemaining = (appearMotion.frameCount - 1) / PSO_FRAME_RATE_DOUBLE

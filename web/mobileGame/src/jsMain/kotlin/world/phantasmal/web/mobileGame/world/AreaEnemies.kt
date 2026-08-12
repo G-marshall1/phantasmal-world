@@ -98,6 +98,11 @@ private val RUINS: List<AreaEnemy> = listOf(
     AreaEnemy("SoDimenian", BOOMA_WALK, BOOMA_ATTACK),
     AreaEnemy("Delsaber", "walk_df1_s_kil_body.njm", "atack_df1_s_kil_body.njm"),
     AreaEnemy("ChaosSorcerer", "wait_re4_b_body.njm", "attack1_re4_b_body.njm"),
+    // The Sorcerer's Bees. Registered here even though no placement names one, because the
+    // preloader only loads species this table knows: without a row the Bee is skipped, its
+    // spawn returns null, and the Sorcerer fights alone. It has no clips of its own, so its
+    // master's idle stands in for both -- the case this file's own note describes.
+    AreaEnemy("SorcererBee", "wait_re4_b_body.njm", "wait_re4_b_body.njm"),
     AreaEnemy("DarkBelra", "walk_re7_b_body.njm", "rattack_re7_b_body.njm"),
     AreaEnemy("DarkGunner", "move_re5_b_body.njm", "attack_re5_b_body.njm"),
     AreaEnemy("ChaosBringer", "walk_bm8_s_kb_body.njm", "kiri_bm8_s_kb_body.njm"),

@@ -1240,17 +1240,33 @@ class GameRenderer(
     private val delsaberLeaps = mutableListOf<DelsaberLeap>()
     private val delsabersSeen = mutableSetOf<Enemy>()
 
+    /** Stops a Delsaber chain-vaulting: it must recover before it can spring again. */
+    private val delsaberLeapCooldown = HashMap<Enemy, Double>()
+
     private fun updateDelsabers(deltaTime: Double) {
         val p = player ?: return
 
-        // A Delsaber that has just appeared, and is far enough away for a leap to mean
-        // anything, gets one aimed at the player.
+        // A Delsaber leaps to reach you: on arrival, and again whenever it finds itself out of
+        // reach with its feet under it. Closing a room on foot is what made it feel slow even
+        // after its pace went up -- an assassin crosses the gap in one movement.
         for (enemy in enemies) {
             if (enemy.slug != "Delsaber" || enemy.isDead) continue
-            if (!delsabersSeen.add(enemy)) continue
-
             val ai = enemy.ai ?: continue
-            val flight = ai.entranceRemaining
+
+            val first = delsabersSeen.add(enemy)
+            var flight = ai.entranceRemaining
+            if (!first && flight <= 0 && delsaberLeaps.none { it.enemy === enemy }) {
+                val gapX = p.mesh.position.x - enemy.mesh.position.x
+                val gapZ = p.mesh.position.z - enemy.mesh.position.z
+                val gap = sqrt(gapX * gapX + gapZ * gapZ)
+                val cooldown = delsaberLeapCooldown[enemy] ?: 0.0
+                if (cooldown <= 0 && gap > DELSABER_RELEAP_UNITS * worldUnit &&
+                    gap < DELSABER_LEAP_MAX_UNITS * worldUnit
+                ) {
+                    flight = ai.beginEntrance()
+                    delsaberLeapCooldown[enemy] = DELSABER_RELEAP_COOLDOWN_SECONDS
+                }
+            }
             if (flight <= 0) continue
 
             val dx = p.mesh.position.x - enemy.mesh.position.x
@@ -1278,6 +1294,11 @@ class GameRenderer(
         }
 
         delsabersSeen.retainAll { !it.isDead }
+        for (key in delsaberLeapCooldown.keys.toList()) {
+            val left = (delsaberLeapCooldown[key] ?: 0.0) - deltaTime
+            if (left <= 0 || key.isDead) delsaberLeapCooldown.remove(key)
+            else delsaberLeapCooldown[key] = left
+        }
 
         val iterator = delsaberLeaps.iterator()
         while (iterator.hasNext()) {
@@ -10305,6 +10326,10 @@ class GameRenderer(
         private const val DELSABER_LEAP_MIN_UNITS = 6.0
         private const val DELSABER_LEAP_MAX_UNITS = 40.0
         private const val DELSABER_LEAP_HEIGHT_UNITS = 9.0
+
+        /** Out past this and it springs again rather than walking you down. */
+        private const val DELSABER_RELEAP_UNITS = 11.0
+        private const val DELSABER_RELEAP_COOLDOWN_SECONDS = 3.5
 
         private const val SORCERER_ENGAGE_UNITS = 34.0
         private const val SORCERER_FIRST_CAST_SECONDS = 1.2
