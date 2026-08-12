@@ -327,9 +327,13 @@ val FOREST_ENEMY_STATS: Map<String, EnemyStats> = mapOf(
         hp = 450, atp = 100, dfp = 18, ata = 70, evp = 0, lck = 5,
         hitboxRadius = 1.8, attackRange = 2.6, experience = 30, dropRate = 90,
     ),
+    // A Bulclaw flies like the Claws it carries, and sat buried to its waist without a hover
+    // of its own. It rides higher than a loose Claw: the body is nearly twice as wide, so the
+    // same height would still have left its underside in the floor.
     "BulclawOpen" to EnemyStats(
         hp = 200, atp = 77, dfp = 12, ata = 60, evp = 0, lck = 6,
         hitboxRadius = 1.6, attackRange = 2.0, experience = 24, dropRate = 60,
+        hoverUnits = 5.4,
     ),
     // Claws fly. They come out of a Bulclaw's shell already airborne and stay there, riding at
     // about the chest-to-shoulder height of the player they're clawing at -- with no hover at
