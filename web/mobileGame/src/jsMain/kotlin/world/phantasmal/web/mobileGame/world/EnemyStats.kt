@@ -27,6 +27,12 @@ class EnemyStats(
      * hit -- a Monest's 3.0 makes it a wall that even a dagger reaches, a Mothmant's 0.4 makes it
      * something narrow weapons slip past.
      */
+    /**
+     * Chase pace as a multiple of the shared rate. One is the ordinary Booma's plod; a species
+     * that hunts rather than shambles carries its own figure -- the extension point EnemyAI's
+     * own speed comment has always described.
+     */
+    val speedFactor: Double = 1.0,
     val hitboxRadius: Double,
     /**
      * How close, centre to centre, this species gets before it stops and strikes. Measured from
@@ -302,8 +308,12 @@ val FOREST_ENEMY_STATS: Map<String, EnemyStats> = mapOf(
         hp = 330, atp = 85, dfp = 20, ata = 75, evp = 0, lck = 10,
         hitboxRadius = 1.2, attackRange = 1.6, experience = 26, dropRate = 40,
     ),
+    // An assassin, not a shambler: it closes at nearly twice the pace of anything else down
+    // here, and enters a room by vaulting into it (its jump clip is wired as the appear
+    // animation -- see EnemyAnimations).
     "Delsaber" to EnemyStats(
         hp = 400, atp = 85, dfp = 20, ata = 72, evp = 0, lck = 10,
+        speedFactor = 1.9,
         hitboxRadius = 1.4, attackRange = 2.2, experience = 25, dropRate = 70,
     ),
     // Floats, and throws its attacks from well outside arm's reach.
@@ -423,6 +433,7 @@ fun enemyStats(slug: String): EnemyStats = mergedStatsCache.getOrPut(slug) {
         rangedRangeUnits = hand.rangedRangeUnits,
         fleeRangeUnits = hand.fleeRangeUnits,
         hoverUnits = hand.hoverUnits,
+        speedFactor = hand.speedFactor,
         modelScale = hand.modelScale,
         experience = row.exp,
         dropRate = hand.dropRate,

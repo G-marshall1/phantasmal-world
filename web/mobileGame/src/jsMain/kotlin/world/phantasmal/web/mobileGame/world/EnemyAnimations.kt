@@ -237,6 +237,9 @@ private val DELSABER = EnemyAnimationSet(
     wait = "wait_df1_s_kil_body.njm",
     damage = "damage_df1_s_kil_body.njm",
     death = "dead_df1_s_kil_body.njm",
+    // The entrance everyone remembers: a Delsaber doesn't walk into the room, it vaults in and
+    // lands on you. Its own jump clip drives that (see EnemyAI's appear/entrance handling).
+    appear = "jump_df1_s_kil_body.njm",
     attackAlt = "nail_df1_s_kil_body.njm",
 )
 

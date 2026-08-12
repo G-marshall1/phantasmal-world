@@ -4332,6 +4332,7 @@ class GameRenderer(
                             isStationary = stats.isStationary,
                             strikesWhileRooted = stats.strikesWhileRooted,
                             hoverUnits = stats.hoverUnits,
+                            speedFactor = stats.speedFactor,
                             hiveClips = clips.hive,
                             rangedRangeUnits = stats.rangedRangeUnits,
                             fleeRangeUnits = stats.fleeRangeUnits,

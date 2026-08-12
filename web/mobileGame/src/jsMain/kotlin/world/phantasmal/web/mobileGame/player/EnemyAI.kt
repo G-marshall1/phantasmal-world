@@ -83,6 +83,8 @@ class EnemyAI(
     private val strikesWhileRooted: Boolean = false,
     /** Hover height for flying species, in PSO units -- a Mothmant never touches the ground. */
     hoverUnits: Double = 0.0,
+    /** This species' own pace as a multiple of the shared chase rate -- see EnemyStats. */
+    private val speedFactor: Double = 1.0,
     /** A hive's deploy-and-collapse clips. Null for everything that isn't one. */
     private val hiveClips: world.phantasmal.web.mobileGame.world.HiveClips? = null,
     /** How close the player must come before a hanging hive drops, in PSO units. */
@@ -115,8 +117,8 @@ class EnemyAI(
      * own multiplier when there's a reason for one.
      */
     private val speed =
-        if (unitScale > 0) unitScale / CharacterController.HITBOX_RADIUS_FACTOR * SPEED_FACTOR
-        else bSphereRadius * SPEED_FACTOR
+        (if (unitScale > 0) unitScale / CharacterController.HITBOX_RADIUS_FACTOR * SPEED_FACTOR
+        else bSphereRadius * SPEED_FACTOR) * speedFactor
 
     private val aggroRadius = bSphereRadius * AGGRO_RADIUS_FACTOR
 
