@@ -7010,6 +7010,9 @@ class GameRenderer(
     /** Projectiles that shed a particle trail as they fly, by kind ("foie"/"megid"). */
     private val projectileTrails = HashMap<Sprite, String>()
 
+    /** A round's 3D flame body, flown alongside it in world space -- see the Foie cast. */
+    private val projectileCores = HashMap<Sprite, Object3D>()
+
     /** Megid in flight: rolls its kill on contact rather than dealing damage. */
     private val megidShots = mutableListOf<TechProjectile>()
 
@@ -7953,13 +7956,26 @@ class GameRenderer(
             Technique.FOIE -> {
                 // The fireball is technic_pt.xvm's own 8-frame orb, cycled in flight.
                 val frames = (0 until 8).map { effectTexture("foie_orb_$it") }
+                // The old flat orb stays as a soft glow behind the flame body rather than as
+                // the fireball itself -- two full-strength fireballs in one place read as a
+                // smear.
                 val orb = effectSprite("foie_orb_0", FOIE_SPRITE_UNITS, colorHex = FOIE_COLOR)
+                orb.material.opacity = FOIE_GLOW_OPACITY
                 orb.position.set(
                     p.mesh.position.x + dirX * worldUnit,
                     p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit,
                     p.mesh.position.z + dirZ * worldUnit,
                 )
-                techniqueFx?.foieCore()?.let { orb.add(it) }
+                // The flame body hangs in the world rather than on the billboard. A Sprite is
+                // turned to face the camera every frame, and anything parented to one inherits
+                // that -- which flattened the fireball into a card that changed shape with the
+                // way you were facing. As a sibling it keeps its own orientation, and the
+                // mover carries it along with the round.
+                techniqueFx?.foieCore()?.let { core ->
+                    core.position.copy(orb.position)
+                    context.scene.add(core)
+                    projectileCores[orb] = core
+                }
                 projectileTrails[orb] = "foie"
                 context.scene.add(orb)
                 techProjectiles.add(
@@ -9343,6 +9359,7 @@ class GameRenderer(
                 proj.frames[(proj.age * FOIE_FRAME_RATE).toInt() % proj.frames.size]
             proj.sprite.position.x += proj.dirX * FOIE_SPEED_UNITS * worldUnit * deltaTime
             proj.sprite.position.z += proj.dirZ * FOIE_SPEED_UNITS * worldUnit * deltaTime
+            projectileCores[proj.sprite]?.position?.copy(proj.sprite.position)
             projectileTrails[proj.sprite]?.let { kind ->
                 val sp = proj.sprite.position
                 if (kind == "foie") techniqueFx?.foieTrail(sp.x, sp.y, sp.z, proj.dirX, proj.dirZ)
@@ -9396,6 +9413,8 @@ class GameRenderer(
             }
             if (hit || proj.remaining <= 0) {
                 proj.sprite.parent?.remove(proj.sprite)
+                projectileCores.remove(proj.sprite)?.let { it.parent?.remove(it) }
+                projectileTrails.remove(proj.sprite)
                 projectiles.remove()
             }
         }
@@ -10643,6 +10662,9 @@ class GameRenderer(
         private const val LAUNCHER_BLAST_UNITS = 5.0
 
         private const val FOIE_SPRITE_UNITS = 1.0
+
+        /** The flat orb is only a glow now; the shader body is the fireball. */
+        private const val FOIE_GLOW_OPACITY = 0.35
         private const val FOIE_FRAME_RATE = 18.0
         private const val FOIE_IMPACT_SECONDS = 0.5
 

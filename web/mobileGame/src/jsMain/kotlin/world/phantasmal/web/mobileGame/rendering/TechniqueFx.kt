@@ -758,12 +758,12 @@ class TechniqueFx(
 
 
     private companion object {
-        const val FOIE_FLAME_RADIUS = 0.52
+        const val FOIE_FLAME_RADIUS = 0.30
         const val FOIE_FLAME_DETAIL = 3
         const val FOIE_SPIRAL_SEGMENTS = 48
         const val FOIE_SPIRAL_TURNS = 2.25
-        const val FOIE_SPIRAL_RADIUS = 0.27
-        const val FOIE_SPIRAL_LENGTH = 0.52
+        const val FOIE_SPIRAL_RADIUS = 0.16
+        const val FOIE_SPIRAL_LENGTH = 0.32
         const val FOIE_SPIRAL_TUBE = 0.012
         const val FOIE_SPIRAL_SPIN = 1.45
 
