@@ -10626,7 +10626,7 @@ class GameRenderer(
         private const val MACHINE_PART_COUNT = 24
 
         /** Big pieces, thrown hard: plating, not sparks. */
-        private const val MACHINE_PART_SIZE_WORLD = 3.6
+        private const val MACHINE_PART_SIZE_WORLD = 5.5
         private const val MACHINE_PART_SPEED_MIN = 18.0
         private const val MACHINE_PART_SPEED_MAX = 40.0
         private const val MACHINE_PART_LIFT_MIN = 10.0
@@ -10821,10 +10821,14 @@ class GameRenderer(
 
         /** The maps a field teleporter may actually leave for today. */
         private val OPEN_MAPS = setOf(
-            "pioneer2", "forest01", "forest02", "bossArea1",
+            "pioneer2", "forest01", "forest02",
             "cave01", "cave02", "cave03",
             "mines01", "mines02",
             "ruins01", "ruins02", "ruins03",
+            // All four arenas. Only the Dragon's was listed, which is why every other boss
+            // teleporter answered "that area hasn't opened yet" -- a gate left over from when
+            // its was the only arena built, long after the other three were.
+            "bossArea1", "bossArea2", "bossArea3", "bossArea4",
         )
 
         /**
