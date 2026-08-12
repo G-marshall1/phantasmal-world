@@ -4519,15 +4519,22 @@ class GameRenderer(
                     ?: layoutSpawn?.let { it.x to it.z }
                     ?: STAGE_SPAWN_ORIGINS[mapSlug] ?: (.0 to .0)
             val isStage = mapSlug in STAGE_SLUGS
-            val (spawnX, groundY, spawnZ) = if (spawnYOverride != null) {
-                Triple(originX, spawnYOverride, originZ)
-            } else (
-                if (isStage) {
-                    findNearestStableGroundHeight(map.walkableCollisionObject, originX, originZ)
-                } else {
-                    findNearestGroundHeight(map.walkableCollisionObject, originX, originZ)
-                }
-                ) ?: Triple(originX, .0, originZ)
+            // Only the Dragon's arena ships a floor object set; the rest are the stage shell
+            // alone, so a ground search from the middle of one finds whatever the shell has
+            // down there -- which dropped the player in well below the fight. These arenas
+            // state their own deck height instead of guessing at it.
+            val arenaFloorY = BOSS_ARENA_SPAWN_Y[mapSlug]
+            val (spawnX, groundY, spawnZ) = when {
+                spawnYOverride != null -> Triple(originX, spawnYOverride, originZ)
+                arenaFloorY != null -> Triple(originX, arenaFloorY, originZ)
+                else -> (
+                    if (isStage) {
+                        findNearestStableGroundHeight(map.walkableCollisionObject, originX, originZ)
+                    } else {
+                        findNearestGroundHeight(map.walkableCollisionObject, originX, originZ)
+                    }
+                    ) ?: Triple(originX, .0, originZ)
+            }
             mesh.position.set(spawnX, groundY, spawnZ)
             console.log("Player spawn: $spawnX $groundY $spawnZ ($mapSlug)")
             // Boss arenas: arrive facing the field's centre (the boss waits there) unless a
@@ -11065,6 +11072,20 @@ class GameRenderer(
         )
 
         /** The floor set each boss arena stands its fight on -- see the loose object specs. */
+        /**
+         * The deck height a boss arena stands the player on. Only the Dragon's arena ships a
+         * floor object set (see [BOSS_ARENA_FLOOR_PARTS]); in the others the walkable set is
+         * the stage shell alone, and a ground search inside one finds whatever the shell has
+         * far below the fight -- which is how arriving for Dark Falz put the player under the
+         * map. Their decks are all authored at zero, which is also where each fight stands its
+         * boss.
+         */
+        private val BOSS_ARENA_SPAWN_Y: Map<String, Double> = mapOf(
+            "bossArea2" to 0.0,
+            "bossArea3" to 0.0,
+            "bossArea4" to 0.0,
+        )
+
         private val BOSS_ARENA_FLOOR_PARTS: Map<String, List<String>> = mapOf(
             "bossArea1" to listOf(
                 "BossArena1Floor", "BossArena1FloorPlate", "BossArena1Vent",
