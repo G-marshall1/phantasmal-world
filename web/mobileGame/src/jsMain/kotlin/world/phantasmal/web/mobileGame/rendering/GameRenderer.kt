@@ -6767,37 +6767,82 @@ class GameRenderer(
      * drop roll.
      */
     /**
-     * The Mines' machines don't slump, they detonate: a flash inside the shell, then the shell
-     * itself thrown across the room in pieces. Bodies of flesh keep their ordinary death.
+     * A machine's death, in the order it happens: it drops, current cracks through the shell
+     * while it lies there, and only then does it go up -- throwing its plating across the room.
+     * Killing it doesn't detonate it; the fuse does.
      */
+    private class MachineWreck(
+        val x: Double,
+        val y: Double,
+        val z: Double,
+        var fuse: Double,
+        var sparkTimer: Double = 0.0,
+    )
+
+    private val machineWrecks = mutableListOf<MachineWreck>()
+
     private fun spawnMachineWreck(enemy: Enemy) {
         if (enemy.slug !in MACHINE_SPECIES) return
-        val x = enemy.mesh.position.x
-        val y = centerMassHeight(enemy)
-        val z = enemy.mesh.position.z
-
-        spawnExplosionDome(x, y, z, MACHINE_BLAST_UNITS * worldUnit, MACHINE_BLAST_COLOR)
-        val flash = effectSprite("burst_bright", MACHINE_BLAST_UNITS, colorHex = MACHINE_BLAST_COLOR)
-        flash.position.set(x, y, z)
-        addEffect(
-            TimedEffect(flash, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 4.0)
-        )
-
-        // The shell: hot fragments thrown on their own arcs, falling as they cool.
-        for (k in 0 until MACHINE_PART_COUNT) {
-            val angle = Random.nextDouble() * 2 * PI
-            val speed = (6.0 + Random.nextDouble() * 12.0) * worldUnit
-            spawnParticle(
-                if (k % 3 == 0) "burst_orange" else "burst_bright",
-                x, y, z,
-                sizeWorld = MACHINE_PART_SIZE_WORLD * (0.6 + Random.nextDouble() * 0.8),
-                colorHex = if (k % 4 == 0) MACHINE_BLAST_COLOR else MACHINE_PART_COLOR,
-                vx = cos(angle) * speed,
-                vy = (5.0 + Random.nextDouble() * 12.0) * worldUnit,
-                vz = sin(angle) * speed,
-                gravity = MACHINE_PART_GRAVITY,
-                seconds = 0.8 + Random.nextDouble() * 0.5,
+        machineWrecks.add(
+            MachineWreck(
+                enemy.mesh.position.x,
+                centerMassHeight(enemy),
+                enemy.mesh.position.z,
+                fuse = MACHINE_FUSE_SECONDS,
             )
+        )
+    }
+
+    private fun updateMachineWrecks(deltaTime: Double) {
+        val iterator = machineWrecks.iterator()
+        while (iterator.hasNext()) {
+            val wreck = iterator.next()
+            wreck.fuse -= deltaTime
+
+            if (wreck.fuse > 0) {
+                // Lying there with the current running through it: arcs crawling over the
+                // shell, faster as it goes, until the thing lets go.
+                wreck.sparkTimer -= deltaTime
+                if (wreck.sparkTimer <= 0) {
+                    wreck.sparkTimer = MACHINE_SPARK_INTERVAL
+                    spawnLightningCrawl(
+                        wreck.x, wreck.y - 1.0 * worldUnit, wreck.z,
+                        count = 3, spreadWorld = MACHINE_SPARK_SPREAD_UNITS * worldUnit,
+                    )
+                    spawnZondeSparks(wreck.x, wreck.y, wreck.z)
+                }
+                continue
+            }
+
+            // And then it goes. A tight flash rather than a fireball -- the size belongs to
+            // what comes out of it, not to the blast.
+            spawnExplosionDome(wreck.x, wreck.y, wreck.z, MACHINE_BLAST_UNITS * worldUnit, MACHINE_BLAST_COLOR)
+            val flash = effectSprite("burst_bright", MACHINE_BLAST_UNITS, colorHex = MACHINE_BLAST_COLOR)
+            flash.position.set(wreck.x, wreck.y, wreck.z)
+            addEffect(
+                TimedEffect(flash, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 2.0)
+            )
+
+            // The plating: big pieces thrown hard and far, tumbling down well away from where
+            // the machine stood.
+            for (k in 0 until MACHINE_PART_COUNT) {
+                val angle = Random.nextDouble() * 2 * PI
+                val speed = (MACHINE_PART_SPEED_MIN +
+                    Random.nextDouble() * (MACHINE_PART_SPEED_MAX - MACHINE_PART_SPEED_MIN)) * worldUnit
+                spawnParticle(
+                    if (k % 3 == 0) "burst_orange" else "burst_bright",
+                    wreck.x, wreck.y, wreck.z,
+                    sizeWorld = MACHINE_PART_SIZE_WORLD * (0.7 + Random.nextDouble() * 0.7),
+                    colorHex = if (k % 4 == 0) MACHINE_BLAST_COLOR else MACHINE_PART_COLOR,
+                    vx = cos(angle) * speed,
+                    vy = (MACHINE_PART_LIFT_MIN +
+                        Random.nextDouble() * (MACHINE_PART_LIFT_MAX - MACHINE_PART_LIFT_MIN)) * worldUnit,
+                    vz = sin(angle) * speed,
+                    gravity = MACHINE_PART_GRAVITY,
+                    seconds = 1.1 + Random.nextDouble() * 0.7,
+                )
+            }
+            iterator.remove()
         }
     }
 
@@ -9934,6 +9979,7 @@ class GameRenderer(
                 updateSorcerers(deltaTime)
                 updateDelsabers(deltaTime)
                 updateCanadines(deltaTime)
+                updateMachineWrecks(deltaTime)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
@@ -10573,12 +10619,24 @@ class GameRenderer(
         private val MACHINE_SPECIES = setOf(
             "Dubchic", "Gilchic", "Dubwitch", "Garanz", "Canadine", "Canane",
         )
-        private const val MACHINE_BLAST_UNITS = 4.0
+        /** The blast itself stays small -- what sells it is the plating, not the fireball. */
+        private const val MACHINE_BLAST_UNITS = 2.2
         private const val MACHINE_BLAST_COLOR = 0xffb347
         private const val MACHINE_PART_COLOR = 0xb9c4cf
-        private const val MACHINE_PART_COUNT = 26
-        private const val MACHINE_PART_SIZE_WORLD = 1.8
-        private const val MACHINE_PART_GRAVITY = 60.0
+        private const val MACHINE_PART_COUNT = 24
+
+        /** Big pieces, thrown hard: plating, not sparks. */
+        private const val MACHINE_PART_SIZE_WORLD = 3.6
+        private const val MACHINE_PART_SPEED_MIN = 18.0
+        private const val MACHINE_PART_SPEED_MAX = 40.0
+        private const val MACHINE_PART_LIFT_MIN = 10.0
+        private const val MACHINE_PART_LIFT_MAX = 24.0
+        private const val MACHINE_PART_GRAVITY = 55.0
+
+        /** How long it lies there with the current running through it before it lets go. */
+        private const val MACHINE_FUSE_SECONDS = 0.9
+        private const val MACHINE_SPARK_INTERVAL = 0.12
+        private const val MACHINE_SPARK_SPREAD_UNITS = 3.0
 
         /**
          * The Canadine's two patterns. It snipes from CANADINE_HIGH_UNITS -- above a blade's
