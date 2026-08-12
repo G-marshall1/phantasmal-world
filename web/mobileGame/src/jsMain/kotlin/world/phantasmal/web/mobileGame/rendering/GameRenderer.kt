@@ -1219,6 +1219,92 @@ class GameRenderer(
     }
 
     /**
+     * A Delsaber's entrance: it vaults across the room and lands on you.
+     *
+     * The jump clip alone only played in place -- an animation with nowhere to go. This carries
+     * the body along with it: the leap starts the moment the Delsaber appears, arcs from where
+     * it stood to a spot just inside its own reach of the player, and hands back to the ordinary
+     * AI on landing, which is already standing next to you and swings. The clip's own length is
+     * the flight time, so the body lands as the animation does.
+     */
+    private class DelsaberLeap(
+        val enemy: Enemy,
+        val fromX: Double,
+        val fromZ: Double,
+        val toX: Double,
+        val toZ: Double,
+        val groundY: Double,
+        val duration: Double,
+    )
+
+    private val delsaberLeaps = mutableListOf<DelsaberLeap>()
+    private val delsabersSeen = mutableSetOf<Enemy>()
+
+    private fun updateDelsabers(deltaTime: Double) {
+        val p = player ?: return
+
+        // A Delsaber that has just appeared, and is far enough away for a leap to mean
+        // anything, gets one aimed at the player.
+        for (enemy in enemies) {
+            if (enemy.slug != "Delsaber" || enemy.isDead) continue
+            if (!delsabersSeen.add(enemy)) continue
+
+            val ai = enemy.ai ?: continue
+            val flight = ai.entranceRemaining
+            if (flight <= 0) continue
+
+            val dx = p.mesh.position.x - enemy.mesh.position.x
+            val dz = p.mesh.position.z - enemy.mesh.position.z
+            val distance = sqrt(dx * dx + dz * dz)
+            if (distance < DELSABER_LEAP_MIN_UNITS * worldUnit) continue
+            if (distance > DELSABER_LEAP_MAX_UNITS * worldUnit) continue
+
+            // Land just inside its own reach rather than on top of the player.
+            val stand = (enemyStats(enemy.slug).attackRange + 0.5) * worldUnit
+            val travel = (distance - stand).coerceAtLeast(0.0)
+            delsaberLeaps.add(
+                DelsaberLeap(
+                    enemy,
+                    fromX = enemy.mesh.position.x,
+                    fromZ = enemy.mesh.position.z,
+                    toX = enemy.mesh.position.x + dx / distance * travel,
+                    toZ = enemy.mesh.position.z + dz / distance * travel,
+                    groundY = enemy.mesh.position.y,
+                    duration = flight,
+                )
+            )
+            // Facing the landing, so it comes down looking at what it is about to cut.
+            enemy.mesh.rotation.y = atan2(dx, dz)
+        }
+
+        delsabersSeen.retainAll { !it.isDead }
+
+        val iterator = delsaberLeaps.iterator()
+        while (iterator.hasNext()) {
+            val leap = iterator.next()
+            val ai = leap.enemy.ai
+            val remaining = ai?.entranceRemaining ?: 0.0
+            if (leap.enemy.isDead || remaining <= 0 || leap.duration <= 0) {
+                // Down, and the ordinary AI takes it from here.
+                if (!leap.enemy.isDead) {
+                    leap.enemy.mesh.position.x = leap.toX
+                    leap.enemy.mesh.position.z = leap.toZ
+                    leap.enemy.mesh.position.y = leap.groundY
+                }
+                iterator.remove()
+                continue
+            }
+
+            val t = (1.0 - remaining / leap.duration).coerceIn(0.0, 1.0)
+            leap.enemy.mesh.position.x = leap.fromX + (leap.toX - leap.fromX) * t
+            leap.enemy.mesh.position.z = leap.fromZ + (leap.toZ - leap.fromZ) * t
+            // A parabola: highest at the middle of the flight, back on the floor at the end.
+            leap.enemy.mesh.position.y =
+                leap.groundY + 4.0 * DELSABER_LEAP_HEIGHT_UNITS * worldUnit * t * (1.0 - t)
+        }
+    }
+
+    /**
      * A Chaos Sorcerer and the pair of Bees flanking it.
      *
      * The wiki's fight, rather than the orb-lobber this used to be: it holds still to cast,
@@ -9613,6 +9699,7 @@ class GameRenderer(
                 techniqueFx?.update(deltaTime)
                 updatePlayerTraps(deltaTime)
                 updateSorcerers(deltaTime)
+                updateDelsabers(deltaTime)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
@@ -10211,6 +10298,14 @@ class GameRenderer(
          * The Chaos Sorcerer's fight. Damage figures are this project's own -- the wiki
          * publishes the techniques it casts but not what they land for on a monster.
          */
+        /**
+         * A Delsaber's entrance leap: how far it will cross to reach you, and how high it goes
+         * doing it. Below the minimum it simply walks -- a hop of two units reads as a stumble.
+         */
+        private const val DELSABER_LEAP_MIN_UNITS = 6.0
+        private const val DELSABER_LEAP_MAX_UNITS = 40.0
+        private const val DELSABER_LEAP_HEIGHT_UNITS = 9.0
+
         private const val SORCERER_ENGAGE_UNITS = 34.0
         private const val SORCERER_FIRST_CAST_SECONDS = 1.2
         private const val SORCERER_CAST_GAP_SECONDS = 2.6

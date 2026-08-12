@@ -186,6 +186,13 @@ class EnemyAI(
     /** Counts down the spawn entrance, during which the enemy neither moves nor attacks. */
     private var appearRemaining = 0.0
 
+    /**
+     * How much of the entrance clip is still to play, in seconds; zero once the enemy is loose.
+     * A caller that wants to carry the body somewhere during that clip -- a Delsaber's leap into
+     * the room -- reads this to know the window it owns and how far through it is.
+     */
+    val entranceRemaining: Double get() = appearRemaining
+
     init {
         if (appearMotion != null) {
             appearRemaining = (appearMotion.frameCount - 1) / PSO_FRAME_RATE_DOUBLE
