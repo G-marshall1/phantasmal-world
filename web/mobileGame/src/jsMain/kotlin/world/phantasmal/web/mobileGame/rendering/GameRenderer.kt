@@ -7016,15 +7016,101 @@ class GameRenderer(
     // --- Gunfire ---
 
     /** A round in flight: psov2's own gun_bullet prop, purely visual. */
+    /** One barrel's firing pattern: how many rounds, how wide, how fast, and whether they burst. */
+    private data class Quad(
+        val rounds: Int,
+        val spread: Double,
+        val speed: Double,
+        val bursts: Boolean,
+    )
+
     private class Bullet(
         val mesh: Object3D,
         val dirX: Double,
         val dirY: Double,
         val dirZ: Double,
         var remaining: Double,
+        /** Rounds differ by weapon: a launcher's bomb is far slower than a rifle's shot. */
+        val speedUnits: Double = BULLET_SPEED_UNITS,
+        /** A launcher's bomb bursts where it stops; everything else simply ends. */
+        val bursts: Boolean = false,
     )
 
     private val bullets = mutableListOf<Bullet>()
+
+    /**
+     * A thrown slicer blade: out to the end of its arc and back to the hand that threw it,
+     * spinning the whole way. A slicer was swinging like a sword at nine units' reach, which is
+     * the range of a throw with none of the picture. The damage is still the weapon's own
+     * strike -- this is the blade you watch make the trip.
+     */
+    private class ThrownBlade(
+        val mesh: Object3D,
+        val fromX: Double,
+        val fromZ: Double,
+        val dirX: Double,
+        val dirZ: Double,
+        val reach: Double,
+        val height: Double,
+        val duration: Double,
+        var elapsed: Double = 0.0,
+    )
+
+    private val thrownBlades = mutableListOf<ThrownBlade>()
+
+    /** Sends the equipped slicer out on its arc. */
+    private fun throwSlicer(p: Player) {
+        val slug = equippedItem?.tier?.modelSlug ?: "Slicer"
+        MainScope().launch {
+            val blade = try {
+                WeaponAssetLoader(assetLoader).loadWeapon(slug)
+            } catch (e: Throwable) {
+                return@launch
+            }
+            val yaw = p.mesh.rotation.y
+            val height = p.mesh.position.y + SLICER_THROW_HEIGHT_UNITS * worldUnit
+            blade.position.set(p.mesh.position.x, height, p.mesh.position.z)
+            context.scene.add(blade)
+            thrownBlades.add(
+                ThrownBlade(
+                    blade,
+                    fromX = p.mesh.position.x,
+                    fromZ = p.mesh.position.z,
+                    dirX = sin(yaw), dirZ = cos(yaw),
+                    reach = p.combat.reach * worldUnit,
+                    height = height,
+                    duration = SLICER_THROW_SECONDS,
+                )
+            )
+        }
+    }
+
+    private fun updateThrownBlades(deltaTime: Double) {
+        val iterator = thrownBlades.iterator()
+        while (iterator.hasNext()) {
+            val blade = iterator.next()
+            blade.elapsed += deltaTime
+            val t = (blade.elapsed / blade.duration).coerceIn(0.0, 1.0)
+            // Out and back: furthest at the halfway point, home again at the end.
+            val along = sin(t * PI) * blade.reach
+            val origin = player?.mesh?.position
+            blade.mesh.position.set(
+                blade.fromX + blade.dirX * along,
+                blade.height,
+                blade.fromZ + blade.dirZ * along,
+            )
+            // Spinning flat, the way a thrown blade travels.
+            blade.mesh.rotation.y += SLICER_SPIN_PER_SECOND * deltaTime
+            blade.mesh.rotation.x = PI / 2
+
+            if (t >= 1.0) {
+                // Home. If the thrower has moved, it still ends at their hand.
+                origin?.let { blade.mesh.position.set(it.x, blade.height, it.z) }
+                blade.mesh.parent?.remove(blade.mesh)
+                iterator.remove()
+            }
+        }
+    }
 
     /**
      * Sends a round down the barrel when a firearm goes off. The shot itself is resolved by the
@@ -7090,14 +7176,44 @@ class GameRenderer(
                 }
             }
 
-            context.scene.add(mesh)
-            // Long enough to carry the full lock range, with a little over so a target sitting
-            // right on the edge is still reached rather than watched from a foot away.
+            // What leaves the barrel depends on the barrel. A shot throws a spread of pellets,
+            // a mechgun a burst down one line, a launcher one slow bomb that bursts where it
+            // lands; a handgun and a rifle each put a single round where they are pointed.
+            val (rounds, spreadRadians, speed, bursts) = when (p.weaponType) {
+                WeaponType.SHOT -> Quad(SHOT_PELLETS, SHOT_SPREAD_RADIANS, BULLET_SPEED_UNITS, false)
+                WeaponType.MECHGUN -> Quad(MECHGUN_ROUNDS, MECHGUN_SPREAD_RADIANS, BULLET_SPEED_UNITS * 1.1, false)
+                WeaponType.LAUNCHER -> Quad(1, 0.0, LAUNCHER_SPEED_UNITS, true)
+                WeaponType.RIFLE -> Quad(1, 0.0, BULLET_SPEED_UNITS * 1.35, false)
+                else -> Quad(1, 0.0, BULLET_SPEED_UNITS, false)
+            }
+
             val flightSeconds = maxOf(
                 BULLET_LIFETIME_SECONDS,
-                focusRangeUnits(p.weaponType, p.characterClass) / BULLET_SPEED_UNITS * BULLET_RANGE_OVERSHOOT,
+                focusRangeUnits(p.weaponType, p.characterClass) / speed * BULLET_RANGE_OVERSHOOT,
             )
-            bullets.add(Bullet(mesh, flightX, flightY, flightZ, flightSeconds))
+
+            for (round in 0 until rounds) {
+                // The first round keeps the aim; the rest fan off it.
+                val fan =
+                    if (rounds <= 1) 0.0
+                    else (round.toDouble() / (rounds - 1) - 0.5) * spreadRadians
+                val cosF = cos(fan)
+                val sinF = sin(fan)
+                val dirX2 = flightX * cosF - flightZ * sinF
+                val dirZ2 = flightX * sinF + flightZ * cosF
+
+                val roundMesh = if (round == 0) mesh else ObjectAssetLoader(assetLoader).loadObject("GunBullet")
+                if (round > 0) {
+                    roundMesh.position.copy(mesh.position)
+                    roundMesh.rotation.set(.0, yaw, .0)
+                    context.scene.add(roundMesh)
+                }
+                if (p.weaponType == WeaponType.LAUNCHER) roundMesh.scale.set(2.0, 2.0, 2.0)
+
+                bullets.add(
+                    Bullet(roundMesh, dirX2, flightY, dirZ2, flightSeconds, speed, bursts)
+                )
+            }
         }
     }
 
@@ -7139,7 +7255,7 @@ class GameRenderer(
             val bullet = iterator.next()
             bullet.remaining -= deltaTime
 
-            val step = BULLET_SPEED_UNITS * worldUnit * deltaTime
+            val step = bullet.speedUnits * worldUnit * deltaTime
             bullet.mesh.position.x += bullet.dirX * step
             bullet.mesh.position.y += bullet.dirY * step
             bullet.mesh.position.z += bullet.dirZ * step
@@ -7168,6 +7284,18 @@ class GameRenderer(
                 }
             }
 
+            if ((stopped || bullet.remaining <= 0) && bullet.bursts) {
+                // The launcher's bomb: it goes off wherever it stopped. Purely what you see --
+                // the damage was settled by the weapon's own strike, and paying twice for one
+                // shot would make a launcher quietly the best weapon in the game.
+                spawnExplosionDome(
+                    bullet.mesh.position.x, bullet.mesh.position.y, bullet.mesh.position.z,
+                    LAUNCHER_BLAST_UNITS * worldUnit, FOIE_COLOR,
+                )
+                spawnFoieImpact(
+                    bullet.mesh.position.x, bullet.mesh.position.y, bullet.mesh.position.z,
+                )
+            }
             if (stopped || bullet.remaining <= 0) {
                 bullet.mesh.parent?.remove(bullet.mesh)
                 iterator.remove()
@@ -9642,6 +9770,10 @@ class GameRenderer(
         },
         )
 
+        // A slicer isn't swung, it's thrown: the blade leaves the hand, runs its arc and
+        // comes back. The strike itself is already the weapon's own wide, multi-target cone.
+        if (started && p.weaponType == WeaponType.SLICER) throwSlicer(p)
+
         // A firearm puts a round down the barrel on every swing that actually starts.
         if (started && p.weaponType.itemIcon == ItemIcon.RANGED) {
             fireBullet(p)
@@ -9980,6 +10112,7 @@ class GameRenderer(
                 updateDelsabers(deltaTime)
                 updateCanadines(deltaTime)
                 updateMachineWrecks(deltaTime)
+                updateThrownBlades(deltaTime)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
@@ -10495,6 +10628,19 @@ class GameRenderer(
 
         /** How far past the lock's edge a round carries, so edge targets are actually reached. */
         private const val BULLET_RANGE_OVERSHOOT = 1.15
+
+        /** What each barrel throws. A shot fans, a mechgun stitches, a launcher lobs. */
+        /** The slicer's throw: how long the round trip takes and how it rides. */
+        private const val SLICER_THROW_SECONDS = 0.55
+        private const val SLICER_THROW_HEIGHT_UNITS = 3.4
+        private const val SLICER_SPIN_PER_SECOND = 26.0
+
+        private const val SHOT_PELLETS = 5
+        private const val SHOT_SPREAD_RADIANS = 0.55
+        private const val MECHGUN_ROUNDS = 3
+        private const val MECHGUN_SPREAD_RADIANS = 0.09
+        private const val LAUNCHER_SPEED_UNITS = 34.0
+        private const val LAUNCHER_BLAST_UNITS = 5.0
 
         private const val FOIE_SPRITE_UNITS = 1.0
         private const val FOIE_FRAME_RATE = 18.0
