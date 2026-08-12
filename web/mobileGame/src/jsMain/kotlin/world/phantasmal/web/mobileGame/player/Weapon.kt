@@ -89,22 +89,55 @@ object Weapon {
         assetLoader: AssetLoader,
         mesh: SkinnedMesh,
         slug: String = "Saber",
+        photonColor: Int? = null,
     ): List<Object3D> {
         val type = weaponType(slug)
         val loader = WeaponAssetLoader(assetLoader)
 
         val attachments = mutableListOf<Object3D>()
-        attachments.add(attachToBone(loader.loadWeapon(slug), type, mesh, RIGHT_HAND_BONE_INDEX))
+        attachments.add(
+            attachToBone(loader.loadWeapon(slug).also { tintPhoton(it, photonColor) },
+                type, mesh, RIGHT_HAND_BONE_INDEX)
+        )
 
         if (type in DUAL_WIELDED) {
             // A second, independently built model -- the same mesh can't hang off two bones.
             leftHandBoneIndex(mesh)?.let { boneIndex ->
-                attachments.add(attachToBone(loader.loadWeapon(slug), type, mesh, boneIndex))
+                attachments.add(
+                    attachToBone(loader.loadWeapon(slug).also { tintPhoton(it, photonColor) },
+                        type, mesh, boneIndex)
+                )
             }
         }
 
         return attachments
     }
+
+    /**
+     * Lights a common weapon with its tier's photon colour -- how PSO states a common's rank on
+     * the model rather than in a menu, so a Gladius reads as gold across the room.
+     *
+     * Emissive rather than diffuse: the blade is meant to be a light source, and tinting the
+     * base colour instead would just stain the hilt and grip along with it. Rares pass null and
+     * keep their own authored materials, which is the point of having their own models.
+     *
+     * Materials on these meshes are an array, one per texture -- reading a single `.material`
+     * silently misses most of the model, the same trap the rare box tinting hit.
+     */
+    private fun tintPhoton(mesh: Mesh, photonColor: Int?) {
+        if (photonColor == null) return
+        val material = mesh.asDynamic().material ?: return
+        val list = if (material is Array<*>) material.toList() else listOf(material)
+        for (entry in list) {
+            val m = entry.asDynamic()
+            if (m?.emissive != null) {
+                m.emissive.setHex(photonColor)
+                m.emissiveIntensity = PHOTON_EMISSIVE
+            }
+        }
+    }
+
+    private const val PHOTON_EMISSIVE = 0.85
 
     private fun attachToBone(
         weaponMesh: Mesh,

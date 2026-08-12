@@ -19,6 +19,8 @@ class WeaponTier(
     val atpMax: Int,
     val ata: Int,
     val stars: Int,
+    /** The client's own item code -- its low byte is the tier within the series. */
+    val code: String = "",
     /**
      * The converted model shown in hand. Resolved against the shipped model set by name where a
      * match exists; anything else is held as its class's base model, since the asset set has no
@@ -88,6 +90,7 @@ val ALL_WEAPON_TIERS: List<WeaponTier> = GeneratedItemCatalog.weapons.map { w ->
         atpMax = w.atpMax,
         ata = w.ata,
         stars = w.stars,
+        code = w.code,
         modelSlug = resolveModelSlug(w.name, type),
         maxGrind = w.maxGrind,
         atpRequired = w.atpRequired,
@@ -131,6 +134,42 @@ val SPECIALTY_TIERS: List<WeaponTier> = listOf(
 
 /** Saves store tiers by name -- the lookup the restore path uses. */
 fun weaponTierByName(name: String): WeaponTier? = ALL_WEAPON_TIERS.find { it.name == name }
+
+/**
+ * The five common tiers of a weapon series, weakest first, or null for a rare.
+ *
+ * The client's item codes carry this outright: a series occupies one code prefix and its low
+ * byte counts up through the commons, so 000100-000104 is Saber, Brand, Buster, Pallasch,
+ * Gladius, and 000105 onward in the same prefix is where that series' rares live. Reading the
+ * tier off the code means every one of the 901 weapons is placed without a name table.
+ */
+val WeaponTier.photonTier: Int?
+    get() {
+        val low = code.takeLast(2).toIntOrNull(16) ?: return null
+        return if (low in 0..4) low + 1 else null
+    }
+
+/** A true rare: a red box, and 9 stars or better. */
+val WeaponTier.isRare: Boolean get() = stars >= 9
+
+/**
+ * The photon colour a common weapon glows with, which is how PSO states a common's tier on the
+ * model itself: green, blue, purple, red, gold. Technique weapons stop at red -- they have four
+ * tiers, not five -- so a gold cane is simply never reached.
+ */
+val WeaponTier.photonColor: Int?
+    get() = when (photonTier) {
+        1 -> 0x44ff66
+        2 -> 0x3d7bff
+        3 -> 0xa64dff
+        4 -> 0xff3b3b
+        5 -> if (type == WeaponType.ROD || type == WeaponType.WAND || type == WeaponType.CANE) {
+            0xff3b3b
+        } else {
+            0xffc832
+        }
+        else -> null
+    }
 
 /**
  * TESTING AID: the `?arms?` chat command's grant -- the base tier of every line plus each

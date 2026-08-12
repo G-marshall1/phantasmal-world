@@ -92,6 +92,7 @@ import world.phantasmal.web.mobileGame.player.HANDGUN_LINE
 import world.phantasmal.web.mobileGame.player.SABER_LINE
 import world.phantasmal.web.mobileGame.player.SpecialFamily
 import world.phantasmal.web.mobileGame.player.ALL_WEAPON_TIERS
+import world.phantasmal.web.mobileGame.player.photonColor
 import world.phantasmal.web.mobileGame.player.Weapon
 import world.phantasmal.web.mobileGame.player.WeaponItem
 import world.phantasmal.web.mobileGame.player.rollForestWeaponDrop
@@ -6656,7 +6657,8 @@ class GameRenderer(
             )
             val knockedDown = anims.knockedDown?.let { loadPlayerClip(animationPath(it)) }
             val attacks = anims.attacks.map { loadPlayerClip(animationPath(it)) }
-            val attachment = Weapon.attach(assetLoader, p.mesh, item.tier.modelSlug)
+            val attachment =
+                Weapon.attach(assetLoader, p.mesh, item.tier.modelSlug, item.tier.photonColor)
 
             // Guard against a stale switch finishing after a newer one started.
             if (equippedItem !== item) {

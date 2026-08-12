@@ -16,6 +16,7 @@ import world.phantasmal.web.mobileGame.input.toolIconStyle
 import world.phantasmal.web.mobileGame.player.itemIcon
 import world.phantasmal.web.mobileGame.player.iconCell
 import world.phantasmal.web.mobileGame.player.TECH_DISK_ICON_CELL
+import world.phantasmal.web.mobileGame.player.isRare
 import world.phantasmal.web.mobileGame.player.ActionPaletteConfig
 import world.phantasmal.web.mobileGame.player.BaseStats
 import world.phantasmal.web.mobileGame.player.Mag
@@ -557,11 +558,14 @@ row.disposableTap {
             (document.createElement("div") as HTMLElement).also { v ->
                 v.className = "pw-menu-slot-v"
                 v.textContent = item.displayName
+                v.style.color = rarityTextColor(item)
                 row.appendChild(v)
             }
             (document.createElement("div") as HTMLElement).also { d ->
                 d.className = "pw-menu-slot-d"
-                d.textContent = "Tap to equip  (${item.atpMin}-${item.atpMin + item.atpSpread} ATP)"
+                d.textContent =
+                    "Tap to equip  (${item.atpMin}-${item.atpMin + item.atpSpread} ATP)  " +
+                        starRating(item.tier.stars)
                 row.appendChild(d)
             }
             listeners.add(
@@ -1399,3 +1403,27 @@ enum class MenuSection(
     STATUS("Status", "A full breakdown of your character's attributes."),
     QUEST("Quest Board", "Take on quests. No quest system yet.", available = false),
 }
+
+/**
+ * PSO's three inventory text colours, which state an item's tier before you read a single stat:
+ * white for a plain common, green for a common that dropped carrying a special attribute and
+ * still needs the Tekker, and yellow for a rare the Tekker has already appraised.
+ *
+ * An unappraised rare is deliberately not yellow -- it is a "????" that has not earned its
+ * colour yet, and showing it gold would give away what the Tekker is for.
+ */
+private fun rarityTextColor(item: WeaponItem): String = when {
+    item.unidentified -> UNAPPRAISED_TEXT
+    item.tier.isRare -> RARE_TEXT
+    item.specialAttack != null -> SPECIAL_TEXT
+    else -> COMMON_TEXT
+}
+
+/** The star ranking, as the detail line's suffix. Blank below one star. */
+private fun starRating(stars: Int): String =
+    if (stars <= 0) "" else "${stars}\u2605"
+
+private const val COMMON_TEXT = "#ffffff"
+private const val SPECIAL_TEXT = "#5ce65c"
+private const val RARE_TEXT = "#ffd23f"
+private const val UNAPPRAISED_TEXT = "#c8c8c8"
