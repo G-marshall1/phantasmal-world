@@ -91,6 +91,7 @@ import world.phantasmal.web.mobileGame.player.CANE_LINE
 import world.phantasmal.web.mobileGame.player.HANDGUN_LINE
 import world.phantasmal.web.mobileGame.player.SABER_LINE
 import world.phantasmal.web.mobileGame.player.SpecialFamily
+import world.phantasmal.web.mobileGame.player.ALL_WEAPON_TIERS
 import world.phantasmal.web.mobileGame.player.Weapon
 import world.phantasmal.web.mobileGame.player.WeaponItem
 import world.phantasmal.web.mobileGame.player.rollForestWeaponDrop
@@ -6786,7 +6787,7 @@ class GameRenderer(
 
             // Last, so it writes over what the save just restored rather than under it: the
             // Mag in particular is rebuilt from the save several lines above.
-            if (!s.endgameKitGranted && s.name.trim().equals(ENDGAME_KIT_CHARACTER, ignoreCase = true)) {
+            if (!s.endgameKitGranted) {
                 grantEndgameKit(p, s)
             }
         }
@@ -6869,10 +6870,17 @@ class GameRenderer(
         p.totalExp = totalExpForLevel(MAX_LEVEL)
         p.level = MAX_LEVEL
 
-        // A Force's Mag: 5 DEF to keep it fed and standing, the other 195 in MIND (+390 MST).
+        val profession = professionOf(p.characterClass)
+
+        // The Mag each profession actually wants: 5 DEF to keep it fed and standing, and the
+        // other 195 levels in the stat that class fights with -- POW for a Hunter, DEX for a
+        // Ranger's accuracy, MIND for a Force's techniques.
+        val focused = 195 * Mag.EXP_PER_LEVEL
         val raised = Mag(
             defExp = 5 * Mag.EXP_PER_LEVEL,
-            mindExp = 195 * Mag.EXP_PER_LEVEL,
+            powExp = if (profession == Profession.HUNTER) focused else 0,
+            dexExp = if (profession == Profession.RANGER) focused else 0,
+            mindExp = if (profession == Profession.FORCE) focused else 0,
             synchro = Mag.MAX_SYNCHRO,
             iq = Mag.MAX_IQ,
             form = "Kalki",
@@ -6896,16 +6904,27 @@ class GameRenderer(
             synchro = evolved.synchro, iq = evolved.iq, form = third,
         )
 
-        weaponTierByName("Psycho Wand")?.let { p.bankWeapons.add(WeaponItem(it)) }
+        p.bankWeapons.addAll(weaponRackFor(p.characterClass))
+
         frameSpecByName("Aura Field")?.let { spec ->
             p.bankFrames.add(FrameItem(spec, dfp = spec.dfpMax, evp = spec.evpMax, slots = 4))
         }
-        barrierSpecByName("Red Ring")?.let { p.bankBarriers.add(rollBarrier(it)) }
+        barrierSpecByName("Red Ring")?.let { spec -> p.bankBarriers.add(rollBarrier(spec)) }
         p.bankUnits.addAll(
-            listOf(
-                UnitType.GENERAL_MIND, UnitType.GENERAL_MIND,
-                UnitType.GENERAL_TP, UnitType.GENERAL_HP,
-            )
+            when (profession) {
+                Profession.HUNTER -> listOf(
+                    UnitType.KNIGHT_POWER, UnitType.GENERAL_POWER,
+                    UnitType.GENERAL_HP, UnitType.GENERAL_BODY,
+                )
+                Profession.RANGER -> listOf(
+                    UnitType.MARKSMAN_ARM, UnitType.GENERAL_ARM,
+                    UnitType.GENERAL_HP, UnitType.GENERAL_BODY,
+                )
+                Profession.FORCE -> listOf(
+                    UnitType.GENERAL_MIND, UnitType.GENERAL_MIND,
+                    UnitType.GENERAL_TP, UnitType.GENERAL_HP,
+                )
+            }
         )
         p.bankMeseta = MAX_MESETA
 
@@ -6916,7 +6935,34 @@ class GameRenderer(
         playerStatusPanel.setTp(p.tp, p.stats.tp)
         playerStatusPanel.setLevel(p.level)
 
-        showToast("Lv.200. The checkroom is holding your commission, ${s.name}")
+        showToast("Lv.200. The checkroom is holding your rack, ${s.name}")
+    }
+
+    /**
+     * One of every weapon [characterClass] can actually draw, for testing how each is placed,
+     * how it animates and what it throws.
+     *
+     * Deduplicated by model rather than by item: the catalogue is 901 weapons but only 228
+     * models, so granting every name would be hundreds of copies of the same object in hand and
+     * would bury the handful that differ. One per distinct model is exactly the set where
+     * something can look wrong.
+     *
+     * Every weapon class the character can hold is then checked for separately and topped up if
+     * the dedupe missed it, since animation, reach and projectile behaviour are keyed on
+     * [WeaponType] -- a class whose only rifle shares the base rifle model still needs a rifle
+     * in the rack to test firing with.
+     */
+    private fun weaponRackFor(characterClass: CharacterClass): List<WeaponItem> {
+        val usable = ALL_WEAPON_TIERS.filter { it.usableBy(characterClass) }
+        val rack = usable.distinctBy { it.modelSlug }.toMutableList()
+
+        for (type in WeaponType.values()) {
+            if (rack.none { it.type == type }) {
+                usable.firstOrNull { it.type == type }?.let { rack.add(it) }
+            }
+        }
+
+        return rack.map { WeaponItem(it, grind = 0, specialAttack = null) }
     }
 
     /**
