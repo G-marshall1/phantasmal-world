@@ -1242,14 +1242,20 @@ class GameRenderer(
 
     private val sorcerers = mutableListOf<SorcererState>()
 
-    /** Where a Bee rides relative to its Sorcerer: one on each side, at its own height. */
+    /**
+     * Where a Bee rides: over its Sorcerer's shoulder, one to each side. Out along the
+     * Sorcerer's own right vector -- so the pair stays square to it however it turns -- and
+     * lifted to shoulder height rather than sitting at the height of its master's waist.
+     */
     private fun placeBee(state: SorcererState, bee: Enemy, side: Double) {
         val yaw = state.enemy.mesh.rotation.y
         bee.mesh.position.set(
             state.enemy.mesh.position.x + cos(yaw) * side * SORCERER_BEE_OFFSET_UNITS * worldUnit,
-            state.enemy.mesh.position.y,
+            state.enemy.mesh.position.y + SORCERER_BEE_SHOULDER_UNITS * worldUnit,
             state.enemy.mesh.position.z - sin(yaw) * side * SORCERER_BEE_OFFSET_UNITS * worldUnit,
         )
+        // Facing where its Sorcerer faces, so the pair reads as one formation.
+        bee.mesh.rotation.y = yaw
     }
 
     private fun spawnSorcererBees(state: SorcererState) {
@@ -10203,6 +10209,9 @@ class GameRenderer(
         private const val SORCERER_CAST_GAP_SECONDS = 2.6
         private const val SORCERER_INTERRUPT_SECONDS = 1.8
         private const val SORCERER_BEE_OFFSET_UNITS = 3.2
+
+        /** How far above the Sorcerer's own origin a Bee rides -- its shoulder line. */
+        private const val SORCERER_BEE_SHOULDER_UNITS = 3.0
         private const val SORCERER_REAPPEAR_MIN_UNITS = 12.0
         private const val SORCERER_REAPPEAR_MAX_UNITS = 24.0
         private const val SORCERER_BEE_RECOVERY_VANISHES = 2

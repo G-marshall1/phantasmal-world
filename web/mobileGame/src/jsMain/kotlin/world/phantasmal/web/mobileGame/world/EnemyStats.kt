@@ -338,7 +338,11 @@ val FOREST_ENEMY_STATS: Map<String, EnemyStats> = mapOf(
         hp = 200, atp = 214, dfp = 20, ata = 60, evp = 80, lck = 0,
         hitboxRadius = 0.7, attackRange = 0.0, isStationary = true,
         experience = 4, dropRate = 0,
-        hoverUnits = 5.0,
+        // No hover of its own: a Bee doesn't hold a height above the floor, it holds a station
+        // beside its Sorcerer's shoulders, and the Sorcerer places it every frame. Leaving a
+        // hover here would have its own AI drag it back down to a fixed height each frame,
+        // fighting that placement.
+        hoverUnits = 0.0,
         resistances = Resistances(fire = 0, ice = 0, thunder = 80, dark = 80, light = 0, special = 100),
     ),
     // A tower of a thing: slow, huge, and its arm strikes carry across half a room.
