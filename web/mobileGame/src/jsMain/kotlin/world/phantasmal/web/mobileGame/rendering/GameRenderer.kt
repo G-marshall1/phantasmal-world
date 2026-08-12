@@ -1219,6 +1219,199 @@ class GameRenderer(
     }
 
     /**
+     * A Chaos Sorcerer and the pair of Bees flanking it.
+     *
+     * The wiki's fight, rather than the orb-lobber this used to be: it holds still to cast,
+     * working a fixed rotation of two offensive techniques and then a heal -- Rafoie, Gibarta,
+     * Resta in Episode 1 on Normal -- and between casts it vanishes and reappears somewhere
+     * else. The right-hand Bee carries its offence, the left-hand Bee its Resta, and both can
+     * be targeted and destroyed. Killing the Bee it is casting through interrupts the technique
+     * and makes it vanish; after a couple of vanishes it gets its Bees back. The Sorcerer
+     * itself can't be stunned or interrupted.
+     */
+    private class SorcererState(
+        val enemy: Enemy,
+        var rightBee: Enemy? = null,
+        var leftBee: Enemy? = null,
+        var step: Int = 0,
+        var timer: Double = SORCERER_FIRST_CAST_SECONDS,
+        var casting: Boolean = false,
+        var vanishesSinceLoss: Int = 0,
+        var lostBees: Boolean = false,
+    )
+
+    private val sorcerers = mutableListOf<SorcererState>()
+
+    /** Where a Bee rides relative to its Sorcerer: one on each side, at its own height. */
+    private fun placeBee(state: SorcererState, bee: Enemy, side: Double) {
+        val yaw = state.enemy.mesh.rotation.y
+        bee.mesh.position.set(
+            state.enemy.mesh.position.x + cos(yaw) * side * SORCERER_BEE_OFFSET_UNITS * worldUnit,
+            state.enemy.mesh.position.y,
+            state.enemy.mesh.position.z - sin(yaw) * side * SORCERER_BEE_OFFSET_UNITS * worldUnit,
+        )
+    }
+
+    private fun spawnSorcererBees(state: SorcererState) {
+        val e = state.enemy
+        state.rightBee = spawnEnemy?.invoke("SorcererBee", e.mesh.position.x, e.mesh.position.y, e.mesh.position.z, e.mesh.rotation.y)
+        state.leftBee = spawnEnemy?.invoke("SorcererBee", e.mesh.position.x, e.mesh.position.y, e.mesh.position.z, e.mesh.rotation.y)
+        state.rightBee?.let { placeBee(state, it, 1.0) }
+        state.leftBee?.let { placeBee(state, it, -1.0) }
+        state.lostBees = false
+        state.vanishesSinceLoss = 0
+    }
+
+    /** Puts the Sorcerer somewhere else in the room -- its between-casts disappearance. */
+    private fun sorcererVanish(state: SorcererState) {
+        val p = player ?: return
+        val angle = Random.nextDouble() * 2 * PI
+        val distance = (SORCERER_REAPPEAR_MIN_UNITS +
+            Random.nextDouble() * (SORCERER_REAPPEAR_MAX_UNITS - SORCERER_REAPPEAR_MIN_UNITS)) * worldUnit
+        val x = p.mesh.position.x + sin(angle) * distance
+        val z = p.mesh.position.z + cos(angle) * distance
+
+        // The going and the arriving both flare, so it reads as a translocation rather than a
+        // teleport bug.
+        for (spot in listOf(state.enemy.mesh.position.x to state.enemy.mesh.position.z, x to z)) {
+            val flare = effectSprite("flare_blue", 4.0, colorHex = SORCERER_ORB_COLOR)
+            flare.position.set(spot.first, state.enemy.mesh.position.y, spot.second)
+            addEffect(TimedEffect(flare, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS, growPerSecond = 3.0))
+        }
+
+        state.enemy.mesh.position.x = x
+        state.enemy.mesh.position.z = z
+        state.enemy.mesh.rotation.y = atan2(
+            p.mesh.position.x - x, p.mesh.position.z - z,
+        )
+
+        state.vanishesSinceLoss++
+        if (state.lostBees && state.vanishesSinceLoss >= SORCERER_BEE_RECOVERY_VANISHES) {
+            spawnSorcererBees(state)
+        }
+    }
+
+    private fun updateSorcerers(deltaTime: Double) {
+        val p = player ?: return
+
+        // Newly spawned Sorcerers get their pair.
+        for (enemy in enemies) {
+            if (enemy.slug != "ChaosSorcerer" || enemy.isDead) continue
+            if (sorcerers.none { it.enemy === enemy }) {
+                val state = SorcererState(enemy)
+                sorcerers.add(state)
+                spawnSorcererBees(state)
+            }
+        }
+
+        val iterator = sorcerers.iterator()
+        while (iterator.hasNext()) {
+            val state = iterator.next()
+            if (state.enemy.isDead) {
+                // The Bees die with their Sorcerer.
+                listOfNotNull(state.rightBee, state.leftBee).forEach { bee ->
+                    if (!bee.isDead) {
+                        bee.hp = 0
+                        onEnemyKilled(bee)
+                    }
+                }
+                iterator.remove()
+                continue
+            }
+
+            // A destroyed Bee stops being this Sorcerer's, and the loss starts the clock on
+            // getting a replacement pair.
+            for (side in 0..1) {
+                val bee = if (side == 0) state.rightBee else state.leftBee
+                if (bee != null && bee.isDead) {
+                    if (side == 0) state.rightBee = null else state.leftBee = null
+                    state.lostBees = true
+                    state.vanishesSinceLoss = 0
+                    // Losing the Bee it is casting through interrupts the technique outright.
+                    if (state.casting) {
+                        state.casting = false
+                        state.timer = SORCERER_INTERRUPT_SECONDS
+                        sorcererVanish(state)
+                    }
+                }
+            }
+
+            // The Bees hold station beside their Sorcerer wherever it goes.
+            state.rightBee?.let { placeBee(state, it, 1.0) }
+            state.leftBee?.let { placeBee(state, it, -1.0) }
+
+            if (isPeacefulHub) continue
+            val dx = p.mesh.position.x - state.enemy.mesh.position.x
+            val dz = p.mesh.position.z - state.enemy.mesh.position.z
+            val engageRange = SORCERER_ENGAGE_UNITS * worldUnit
+            if (dx * dx + dz * dz > engageRange * engageRange) continue
+
+            state.timer -= deltaTime
+            if (state.timer > 0) continue
+
+            // Rotation: two offensive techniques, then a heal. The right Bee carries the
+            // offence, the left Bee the Resta -- and a technique with no Bee to carry it
+            // simply doesn't happen.
+            val heal = state.step == 2
+            val carrier = if (heal) state.leftBee else state.rightBee
+            state.step = (state.step + 1) % 3
+
+            if (carrier == null) {
+                // No Bee for this one: it skips the cast and moves on.
+                state.timer = SORCERER_CAST_GAP_SECONDS
+                sorcererVanish(state)
+                continue
+            }
+
+            state.enemy.mesh.rotation.y = atan2(dx, dz)
+            state.casting = true
+
+            val from = carrier.mesh.position
+            when {
+                heal -> {
+                    // Resta: it mends itself from the left-hand Bee.
+                    state.enemy.hp = (state.enemy.hp + SORCERER_RESTA_AMOUNT)
+                        .coerceAtMost(enemyStats(state.enemy.slug).hp)
+                    techniqueFx?.supportPulse(
+                        state.enemy.mesh.position.x, state.enemy.mesh.position.y,
+                        state.enemy.mesh.position.z, 0x00ff7f,
+                    )
+                    spawnHealLights(
+                        state.enemy.mesh.position.x, state.enemy.mesh.position.y,
+                        state.enemy.mesh.position.z, RESTA_COLOR,
+                    )
+                }
+                state.step == 1 -> {
+                    // Rafoie: it bursts on the player's own ground.
+                    techniqueFx?.rafoie(
+                        p.mesh.position.x,
+                        p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit,
+                        p.mesh.position.z,
+                        RAFOIE_RADIUS_UNITS * worldUnit,
+                    )
+                    spawnExplosionDome(
+                        p.mesh.position.x, p.mesh.position.y + PLAYER_CENTER_MASS_UNITS * worldUnit,
+                        p.mesh.position.z, RAFOIE_RADIUS_UNITS * worldUnit, FOIE_COLOR,
+                    )
+                    hurtPlayerFlat(p, SORCERER_RAFOIE_DAMAGE)
+                }
+                else -> {
+                    // Gibarta: a freezing bolt from the right-hand Bee.
+                    techniqueFx?.gibarta(
+                        from.x, from.y, from.z,
+                        sin(state.enemy.mesh.rotation.y), cos(state.enemy.mesh.rotation.y),
+                    )
+                    hurtPlayerFlat(p, SORCERER_GIBARTA_DAMAGE)
+                }
+            }
+
+            state.casting = false
+            state.timer = SORCERER_CAST_GAP_SECONDS
+            sorcererVanish(state)
+        }
+    }
+
+    /**
      * The Ruins' ceiling pillar: it hangs high over its spot until someone walks underneath,
      * then comes down like a hammer -- crushing damage in a small circle -- rests a moment,
      * and winds back up to do it again. Never disarmed, only avoided.
@@ -4397,15 +4590,9 @@ class GameRenderer(
                                         colorHex = CANADINE_ZAP_COLOR,
                                         sizeUnits = 0.6,
                                     )
-                                    // The Sorcerer's technique orb.
-                                    "ChaosSorcerer" -> fireEnemyShot(
-                                        enemy,
-                                        speedUnits = SORCERER_ORB_SPEED_UNITS,
-                                        damage = SORCERER_ORB_DAMAGE,
-                                        poisons = false,
-                                        colorHex = SORCERER_ORB_COLOR,
-                                        sizeUnits = 0.9,
-                                    )
+                                    // The Sorcerer casts real techniques on its own rotation
+                                    // rather than lobbing a generic orb -- see updateSorcerers.
+                                    "ChaosSorcerer" -> Unit
                                     // A Belra's arm strike crosses half the room.
                                     "DarkBelra" -> fireEnemyShot(
                                         enemy,
@@ -9412,6 +9599,7 @@ class GameRenderer(
                 questVm?.update(p.mesh.position.x, p.mesh.position.z)
                 techniqueFx?.update(deltaTime)
                 updatePlayerTraps(deltaTime)
+                updateSorcerers(deltaTime)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
@@ -10005,6 +10193,22 @@ class GameRenderer(
         private const val BOX_BURST_SPEED_UNITS = 11.0
         private const val BOX_BURST_MOTE_SIZE = 1.6
         private const val SHARD_PIECES_PER_SLUG = 4
+
+        /**
+         * The Chaos Sorcerer's fight. Damage figures are this project's own -- the wiki
+         * publishes the techniques it casts but not what they land for on a monster.
+         */
+        private const val SORCERER_ENGAGE_UNITS = 34.0
+        private const val SORCERER_FIRST_CAST_SECONDS = 1.2
+        private const val SORCERER_CAST_GAP_SECONDS = 2.6
+        private const val SORCERER_INTERRUPT_SECONDS = 1.8
+        private const val SORCERER_BEE_OFFSET_UNITS = 3.2
+        private const val SORCERER_REAPPEAR_MIN_UNITS = 12.0
+        private const val SORCERER_REAPPEAR_MAX_UNITS = 24.0
+        private const val SORCERER_BEE_RECOVERY_VANISHES = 2
+        private const val SORCERER_RESTA_AMOUNT = 60
+        private const val SORCERER_RAFOIE_DAMAGE = 34
+        private const val SORCERER_GIBARTA_DAMAGE = 26
 
         private const val TECH_FLASH_SECONDS = 0.5
 

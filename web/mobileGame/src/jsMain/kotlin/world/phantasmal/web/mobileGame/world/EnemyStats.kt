@@ -316,11 +316,30 @@ val FOREST_ENEMY_STATS: Map<String, EnemyStats> = mapOf(
         speedFactor = 1.9,
         hitboxRadius = 1.4, attackRange = 2.2, experience = 25, dropRate = 70,
     ),
-    // Floats, and throws its attacks from well outside arm's reach.
+    // Floats well clear of the floor -- at 2.4 the robe clipped through it -- and throws its
+    // techniques from well outside arm's reach. It never closes: it holds still to cast, then
+    // vanishes and reappears somewhere else (see the Sorcerer rotation in GameRenderer).
     "ChaosSorcerer" to EnemyStats(
         hp = 300, atp = 65, dfp = 6, ata = 65, evp = 0, lck = 0,
         hitboxRadius = 1.2, attackRange = 2.0, experience = 24, dropRate = 80,
-        hoverUnits = 2.4, rangedRangeUnits = 30.0,
+        // Rooted: a Sorcerer never walks anywhere. It holds its ground to cast and moves only
+        // by vanishing, which its own controller drives -- leaving the chase AI switched on
+        // had it shuffling toward the player between teleports.
+        isStationary = true,
+        hoverUnits = 5.0, rangedRangeUnits = 30.0,
+    ),
+    /**
+     * A Sorcerer's Bee -- the pair of bits flanking it, the right one casting its offence and
+     * the left its Resta. Stats are the wiki's Episode 1 card: 200 HP, 4 XP, and the Dark
+     * attribute's resistances. Rooted, because a Bee holds its station beside its Sorcerer
+     * rather than chasing; killing one is what interrupts the cast.
+     */
+    "SorcererBee" to EnemyStats(
+        hp = 200, atp = 214, dfp = 20, ata = 60, evp = 80, lck = 0,
+        hitboxRadius = 0.7, attackRange = 0.0, isStationary = true,
+        experience = 4, dropRate = 0,
+        hoverUnits = 5.0,
+        resistances = Resistances(fire = 0, ice = 0, thunder = 80, dark = 80, light = 0, special = 100),
     ),
     // A tower of a thing: slow, huge, and its arm strikes carry across half a room.
     "DarkBelra" to EnemyStats(

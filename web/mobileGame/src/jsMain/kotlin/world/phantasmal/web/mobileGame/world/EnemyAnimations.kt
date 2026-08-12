@@ -243,6 +243,12 @@ private val DELSABER = EnemyAnimationSet(
     attackAlt = "nail_df1_s_kil_body.njm",
 )
 
+private val SORCERER_BEE = EnemyAnimationSet(
+    wait = "wait_re4_b_body.njm",
+    damage = "wait_re4_b_body.njm",
+    death = "wait_re4_b_body.njm",
+)
+
 private val CHAOS_SORCERER = EnemyAnimationSet(
     wait = "wait_re4_b_body.njm",
     damage = "damage_re4_b_body.njm",
@@ -306,6 +312,9 @@ val ENEMY_ANIMATIONS: Map<String, EnemyAnimationSet> = mapOf(
     "SinowGold" to SINOW,
     "Delsaber" to DELSABER,
     "ChaosSorcerer" to CHAOS_SORCERER,
+    // A Bee has no clips of its own -- it hangs at its station -- so it borrows the Sorcerer's
+    // idle to give the loader something to hold still on.
+    "SorcererBee" to SORCERER_BEE,
     "DarkBelra" to DARK_BELRA,
     "DarkGunner" to DARK_GUNNER,
     "ChaosBringer" to CHAOS_BRINGER,
