@@ -177,6 +177,7 @@ class TechniqueFx(
         val radiusTo: Double,
         var life: Double,
         val maxLife: Double,
+        var tailTimer: Double = 0.0,
     )
 
     private val wheels = mutableListOf<Wheel>()
@@ -687,11 +688,32 @@ class TechniqueFx(
             val t = 1.0 - wheel.life / wheel.maxLife
             val angle = wheel.angle0 + wheel.spin * t
             val radius = wheel.radiusFrom + (wheel.radiusTo - wheel.radiusFrom) * t
-            wheel.body.position.set(
-                wheel.centerX + cos(angle) * radius,
-                wheel.centerY,
-                wheel.centerZ + sin(angle) * radius,
-            )
+            val fx = wheel.centerX + cos(angle) * radius
+            val fz = wheel.centerZ + sin(angle) * radius
+            wheel.body.position.set(fx, wheel.centerY, fz)
+
+            // The tail: embers shed behind the fire, thrown backwards along the tangent it is
+            // travelling so the trail curves with the wheel instead of pointing straight out.
+            wheel.tailTimer -= deltaTime
+            if (wheel.tailTimer <= 0) {
+                wheel.tailTimer = GIFOIE_TAIL_INTERVAL
+                val backX = sin(angle)
+                val backZ = -cos(angle)
+                cloud(
+                    count = GIFOIE_TAIL_MOTES, colorHex = 0xff5511,
+                    size = GIFOIE_TAIL_SIZE * bu, textureName = "burst_orange",
+                    life = GIFOIE_TAIL_LIFE, drag = 1.4, opacity = 1.0,
+                ) {
+                    doubleArrayOf(
+                        fx + (Random.nextDouble() - 0.5) * 0.3 * bu,
+                        wheel.centerY + (Random.nextDouble() - 0.5) * 0.3 * bu,
+                        fz + (Random.nextDouble() - 0.5) * 0.3 * bu,
+                        backX * (1.5 + Random.nextDouble() * 2.0) * bu,
+                        (Random.nextDouble() - 0.3) * bu,
+                        backZ * (1.5 + Random.nextDouble() * 2.0) * bu,
+                    )
+                }
+            }
         }
 
         spirals.retainAll { it.red.parent != null }
@@ -796,8 +818,12 @@ class TechniqueFx(
     }
 
 
-    private companion object {
-        const val FOIE_FLAME_RADIUS = 0.40
+    /**
+     * Gifoie's wheel is shared with the renderer: the fires are what deal the damage, so both
+     * have to agree exactly on where they are at any moment. See updateGifoieFields.
+     */
+    companion object {
+        const val FOIE_FLAME_RADIUS = 0.50
         const val FOIE_FLAME_DETAIL = 3
         const val FOIE_SPIRAL_SEGMENTS = 48
         const val FOIE_SPIRAL_TURNS = 2.25
@@ -812,8 +838,14 @@ class TechniqueFx(
         const val GIFOIE_RIDE_HEIGHT = 1.2
         const val GIFOIE_SPIN = 9.0
         const val GIFOIE_RADIUS_FROM = 0.9
-        const val GIFOIE_RADIUS_TO = 6.5
+        const val GIFOIE_RADIUS_TO = 9.0
         const val GIFOIE_LIFE = 2.2
+
+        /** The embers each fire sheds as it goes round. */
+        const val GIFOIE_TAIL_INTERVAL = 0.04
+        const val GIFOIE_TAIL_MOTES = 4
+        const val GIFOIE_TAIL_SIZE = 1.5
+        const val GIFOIE_TAIL_LIFE = 0.5
         const val FOIE_SPIRAL_SPIN = 1.45
 
         /** Passes the surface position through; the flame is entirely the fragment's doing. */

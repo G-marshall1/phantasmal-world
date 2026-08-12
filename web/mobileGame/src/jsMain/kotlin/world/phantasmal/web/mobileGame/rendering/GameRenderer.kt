@@ -1241,6 +1241,80 @@ class GameRenderer(
 
     private val canadines = mutableListOf<CanadineState>()
 
+    /**
+     * A live Gifoie: three fires wheeling out from where it was cast, burning whatever they
+     * pass through. The renderer walks the same orbit TechniqueFx draws -- both read one set
+     * of constants -- so the fire that burns you is the fire you can see.
+     */
+    private class GifoieField(
+        val centerX: Double,
+        val centerY: Double,
+        val centerZ: Double,
+        val power: Int,
+        val mst: Int,
+        val boost: Double,
+        var life: Double,
+        val maxLife: Double = life,
+        /** When each body was last burned, so one pass is one hit however long it lingers. */
+        val lastBurn: HashMap<Enemy, Double> = HashMap(),
+        var clock: Double = 0.0,
+    )
+
+    private val gifoieFields = mutableListOf<GifoieField>()
+
+    private fun updateGifoieFields(deltaTime: Double) {
+        val iterator = gifoieFields.iterator()
+        while (iterator.hasNext()) {
+            val field = iterator.next()
+            field.life -= deltaTime
+            field.clock += deltaTime
+            if (field.life <= 0) {
+                iterator.remove()
+                continue
+            }
+
+            val t = 1.0 - field.life / field.maxLife
+            val radius = (TechniqueFx.GIFOIE_RADIUS_FROM +
+                (TechniqueFx.GIFOIE_RADIUS_TO - TechniqueFx.GIFOIE_RADIUS_FROM) * t) * worldUnit
+            val burn = GIFOIE_FLAME_BURN_UNITS * worldUnit
+
+            for (i in 0 until TechniqueFx.GIFOIE_FLAME_COUNT) {
+                val angle = i * 2.0 * PI / TechniqueFx.GIFOIE_FLAME_COUNT +
+                    TechniqueFx.GIFOIE_SPIN * t
+                val fx = field.centerX + cos(angle) * radius
+                val fz = field.centerZ + sin(angle) * radius
+
+                for (enemy in enemies) {
+                    if (enemy.isDead || enemy.untargetable) continue
+                    if (field.clock - (field.lastBurn[enemy] ?: -99.0) < GIFOIE_REBURN_SECONDS) continue
+
+                    var burned = false
+                    for (pt in areaHitPoints(enemy, fx, fz, burn)) {
+                        val dx = pt[0] - fx
+                        val dz = pt[2] - fz
+                        val reach = burn + enemy.hitboxRadius
+                        if (dx * dx + dz * dz > reach * reach) continue
+                        hurtEnemyAt(
+                            enemy,
+                            techniqueDamage(field.power, field.mst, enemy.resistances.fire, field.boost),
+                            pt[0], pt[1], pt[2],
+                        )
+                        burned = true
+                    }
+                    if (burned) field.lastBurn[enemy] = field.clock
+                }
+
+                for (box in fieldBoxes) {
+                    if (box.broken) continue
+                    val dx = box.x - fx
+                    val dz = box.z - fz
+                    val reach = burn + box.radius
+                    if (dx * dx + dz * dz <= reach * reach) smashBox(box)
+                }
+            }
+        }
+    }
+
     private fun updateCanadines(deltaTime: Double) {
         val p = player ?: return
 
@@ -8149,26 +8223,21 @@ class GameRenderer(
                 // The fire SPREADS: the spiral starts at the caster's feet and winds outward,
                 // wider with every turn, and each enemy burns when the ring actually reaches
                 // them -- not all at once inside a fixed circle.
-                for (enemy in enemiesWithin(p.mesh.position.x, p.mesh.position.z, GIFOIE_RADIUS_UNITS)) {
-                    // One burn per targetable region on a multi-part boss, each on the ring's
-                    // own clock -- the wheel visibly sweeps the head before it reaches the tail.
-                    for (pt in areaHitPoints(
-                        enemy, p.mesh.position.x, p.mesh.position.z, GIFOIE_RADIUS_UNITS * worldUnit,
-                    )) {
-                        val dx = pt[0] - p.mesh.position.x
-                        val dz = pt[2] - p.mesh.position.z
-                        val arrival =
-                            sqrt(dx * dx + dz * dz) / (GIFOIE_RADIUS_UNITS * worldUnit) * GIFOIE_SECONDS
-                        delayedTechActions.add(DelayedAction(arrival) {
-                            if (!enemy.isDead) {
-                                hurtEnemyAt(
-                                    enemy, techniqueDamage(power, mst, enemy.resistances.fire, boost),
-                                    pt[0], pt[1], pt[2],
-                                )
-                            }
-                        })
-                    }
-                }
+                // The fires themselves do the burning. Nothing is scheduled up front: a wheel
+                // that sweeps an enemy burns it, and the next time round burns it again, which
+                // is what makes standing inside Gifoie steadily worse rather than one ticket
+                // punched as the ring arrives.
+                gifoieFields.add(
+                    GifoieField(
+                        centerX = p.mesh.position.x,
+                        centerY = p.mesh.position.y,
+                        centerZ = p.mesh.position.z,
+                        power = power,
+                        mst = mst,
+                        boost = boost,
+                        life = TechniqueFx.GIFOIE_LIFE,
+                    )
+                )
                 // Three arms of fire spiralling outward for the spell's whole turn: a train of
                 // short-lived flames whose orbit radius grows with time, so the eye sees fire
                 // travelling AND spreading.
@@ -10132,6 +10201,7 @@ class GameRenderer(
                 updateCanadines(deltaTime)
                 updateMachineWrecks(deltaTime)
                 updateThrownBlades(deltaTime)
+                updateGifoieFields(deltaTime)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
@@ -10833,6 +10903,14 @@ class GameRenderer(
         private const val CANADINE_BOLT_RADIUS_UNITS = 3.4
         private const val CANADINE_BOLT_DAMAGE = 24
         private const val CANADINE_LASER_COLOR = 0xff2b2b
+
+        /**
+         * How wide each of Gifoie's fires burns, and how soon one may burn the same body
+         * again -- long enough that a single pass is a single hit, short enough that the next
+         * fire coming round is a fresh one.
+         */
+        private const val GIFOIE_FLAME_BURN_UNITS = 3.2
+        private const val GIFOIE_REBURN_SECONDS = 0.3
 
         private const val TECH_FLASH_SECONDS = 0.5
 
