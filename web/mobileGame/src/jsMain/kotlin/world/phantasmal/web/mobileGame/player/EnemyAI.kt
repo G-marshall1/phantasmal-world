@@ -415,6 +415,18 @@ class EnemyAI(
         healthFraction: Double = 1.0,
     ): Boolean {
         attackCooldownRemaining -= deltaTime
+
+        // A flyer holds its height whether or not it is going anywhere. Hover used to be
+        // applied only by the movement helpers, so a rooted one -- a Sorcerer, its Bees --
+        // simply sat at whatever height it was placed at, which is the floor. Re-seating it
+        // here also catches a flyer moved by something other than its own AI, like the
+        // Sorcerer's teleport.
+        if (hoverHeight > 0) {
+            findGroundHeight(walkable, mesh.position.x, mesh.position.z)?.let {
+                mesh.position.y = it + hoverHeight
+            }
+        }
+
         // Runs down whether or not the enemy is reacting, so the window to act always arrives.
         if (flinchLockoutRemaining > 0) flinchLockoutRemaining -= deltaTime
 
