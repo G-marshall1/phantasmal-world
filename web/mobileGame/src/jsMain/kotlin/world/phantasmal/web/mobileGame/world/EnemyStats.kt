@@ -331,9 +331,13 @@ val FOREST_ENEMY_STATS: Map<String, EnemyStats> = mapOf(
         hp = 200, atp = 77, dfp = 12, ata = 60, evp = 0, lck = 6,
         hitboxRadius = 1.6, attackRange = 2.0, experience = 24, dropRate = 60,
     ),
+    // Claws fly. They come out of a Bulclaw's shell already airborne and stay there, riding at
+    // about the chest-to-shoulder height of the player they're clawing at -- with no hover at
+    // all the model sat half-buried in the floor.
     "Claw" to EnemyStats(
         hp = 150, atp = 55, dfp = 12, ata = 60, evp = 0, lck = 4,
         hitboxRadius = 0.9, attackRange = 1.2, experience = 6, dropRate = 25,
+        hoverUnits = 4.2,
     ),
 )
 
