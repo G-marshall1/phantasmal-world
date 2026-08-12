@@ -1235,6 +1235,8 @@ class GameRenderer(
         var markX: Double = 0.0,
         var markZ: Double = 0.0,
         var strafe: Double = 1.0,
+        /** Set the first time it wakes; it never stands back up after that. */
+        var roused: Boolean = false,
     )
 
     private val canadines = mutableListOf<CanadineState>()
@@ -1264,10 +1266,17 @@ class GameRenderer(
             val dx = p.mesh.position.x - enemy.mesh.position.x
             val dz = p.mesh.position.z - enemy.mesh.position.z
             val distance = sqrt(dx * dx + dz * dz)
-            if (distance > CANADINE_ENGAGE_UNITS * worldUnit) {
+            if (!state.roused && distance > CANADINE_ENGAGE_UNITS * worldUnit) {
+                // Asleep on its perch: upright, and no altitude of its own yet.
+                enemy.mesh.rotation.x = .0
                 enemy.ai?.hoverOverride = null
                 continue
             }
+
+            // Roused it tips flat and stays flat -- it never stands upright again, whether it
+            // is up sniping or down in your face.
+            state.roused = true
+            enemy.mesh.rotation.x = CANADINE_FLAT_PITCH
 
             state.timer -= deltaTime
 
@@ -1278,12 +1287,19 @@ class GameRenderer(
                 state.markX = p.mesh.position.x
                 state.markZ = p.mesh.position.z
 
-                // The sight itself: a red mark refreshed under the player every frame, so it
-                // reads as a beam resting on them rather than a decal dropped once.
+                // The sight: a red line running from the Canadine to the player, redrawn every
+                // frame so it visibly tracks them, with a ring where it lands. It stops the
+                // instant the bolt is loosed -- which is what makes the last resting place of
+                // the beam the place that gets hit.
                 if (state.timer > 0) {
+                    beamBetween(
+                        enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z,
+                        state.markX, p.mesh.position.y + CANADINE_LASER_HEIGHT_UNITS * worldUnit, state.markZ,
+                        CANADINE_LASER_COLOR, CANADINE_LASER_THICKNESS_WORLD, CANADINE_FRAME_SECONDS,
+                    )
                     val mark = effectGroundQuad("ring_red", 2.4, 2.4, 0.0, CANADINE_LASER_COLOR)
                     mark.position.set(state.markX, p.mesh.position.y + 0.2 * worldUnit, state.markZ)
-                    addEffect(TimedEffect(mark, 0.12, 0.12))
+                    addEffect(TimedEffect(mark, CANADINE_FRAME_SECONDS, CANADINE_FRAME_SECONDS))
                 } else {
                     // The bolt lands where the laser rested, not where the player now is.
                     val bolt = effectSprite("zonde_bolt", 3.0, 10.0, colorHex = ZONDE_COLOR)
@@ -1314,6 +1330,21 @@ class GameRenderer(
                     enemy.mesh.position.x += rightX * step
                     enemy.mesh.position.z += rightZ * step
                 }
+                // In close it arcs lightning across its own two prongs and puts it through
+                // whoever is standing there.
+                if (distance <= CANADINE_ZAP_REACH_UNITS * worldUnit) {
+                    val span = CANADINE_PRONG_SPAN_UNITS * worldUnit
+                    val yaw = enemy.mesh.rotation.y
+                    val rightX = cos(yaw) * span
+                    val rightZ = -sin(yaw) * span
+                    beamBetween(
+                        enemy.mesh.position.x + rightX, enemy.mesh.position.y, enemy.mesh.position.z + rightZ,
+                        enemy.mesh.position.x - rightX, enemy.mesh.position.y, enemy.mesh.position.z - rightZ,
+                        ZONDE_COLOR, CANADINE_ARC_THICKNESS_WORLD, CANADINE_FRAME_SECONDS * 2,
+                    )
+                    spawnZondeSparks(enemy.mesh.position.x, enemy.mesh.position.y, enemy.mesh.position.z)
+                }
+
                 if (state.timer <= 0) {
                     state.high = true
                     state.timer = CANADINE_LOCK_SECONDS
@@ -8669,6 +8700,36 @@ class GameRenderer(
         addEffect(TimedEffect(plane, TECH_FLASH_SECONDS, TECH_FLASH_SECONDS))
     }
 
+    /**
+     * A straight beam between two points, held for [seconds]. Same billboarded plane
+     * [boltBetween] uses, but plain and in whatever colour the caller wants -- a Canadine's
+     * laser sight is a steady red line, not a lightning arc.
+     */
+    private fun beamBetween(
+        x1: Double, y1: Double, z1: Double,
+        x2: Double, y2: Double, z2: Double,
+        colorHex: Int,
+        thickness: Double,
+        seconds: Double,
+    ) {
+        val dx = x2 - x1
+        val dz = z2 - z1
+        val length = sqrt(dx * dx + dz * dz).coerceAtLeast(0.001)
+        val plane = Mesh(
+            PlaneGeometry(length, thickness),
+            MeshBasicMaterial(obj {
+                map = effectTexture("burst_bright")
+                color = Color(colorHex)
+                blending = AdditiveBlending
+                transparent = true
+                side = DoubleSide
+            }).also { it.depthWrite = false },
+        )
+        plane.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2)
+        plane.rotation.y = atan2(dx, dz) - PI / 2
+        addEffect(TimedEffect(plane, seconds, seconds))
+    }
+
     /** The orbit swirl the support casts wrap a body in -- six motes climbing a helix. */
     private fun supportSwirl(x: Double, baseY: Double, z: Double, colorHex: Int) {
         for (k in 0 until 6) {
@@ -10527,7 +10588,19 @@ class GameRenderer(
          */
         private const val CANADINE_ENGAGE_UNITS = 26.0
         private const val CANADINE_HIGH_UNITS = 11.0
-        private const val CANADINE_LOW_UNITS = 2.2
+        /** Hip to chest on the player it is buzzing around, not ankle height. */
+        private const val CANADINE_LOW_UNITS = 3.8
+
+        /** Flat out, nose forward: the pose it takes the moment it wakes and never leaves. */
+        private const val CANADINE_FLAT_PITCH = -PI / 2
+
+        /** One frame's worth, for the effects redrawn continuously. */
+        private const val CANADINE_FRAME_SECONDS = 0.1
+        private const val CANADINE_LASER_HEIGHT_UNITS = 1.2
+        private const val CANADINE_LASER_THICKNESS_WORLD = 0.35
+        private const val CANADINE_ARC_THICKNESS_WORLD = 1.1
+        private const val CANADINE_PRONG_SPAN_UNITS = 1.1
+        private const val CANADINE_ZAP_REACH_UNITS = 3.2
         private const val CANADINE_LOCK_SECONDS = 2.2
         private const val CANADINE_DIVE_SECONDS = 5.0
         private const val CANADINE_STRAFE_UNITS = 9.0
