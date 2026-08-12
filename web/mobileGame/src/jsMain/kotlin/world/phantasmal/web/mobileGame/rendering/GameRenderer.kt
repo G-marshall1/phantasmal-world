@@ -4394,6 +4394,13 @@ class GameRenderer(
                     // loaded too even though no placement ever names it.
                     val speciesToLoad = layout.enemies.mapTo(mutableSetOf()) { it.slug }
                     if ("Monest" in speciesToLoad) speciesToLoad.add("Mothmant")
+                    // A Sorcerer brings a pair of Bees with it that no placement ever names,
+                    // for the same reason a hive brings Mothmants. Without this the Bees fail
+                    // to spawn silently -- spawnFieldEnemy returns null for anything whose
+                    // model and clips weren't loaded up front -- and the Sorcerer fights alone.
+                    if ("ChaosSorcerer" in speciesToLoad || "GranSorcerer" in speciesToLoad) {
+                        speciesToLoad.add("SorcererBee")
+                    }
                     // Every rare twin of anything placed, so a 1-in-512 roll at spawn time
                     // always has its model warm -- a roll that had to fetch first would
                     // silently produce nothing.
