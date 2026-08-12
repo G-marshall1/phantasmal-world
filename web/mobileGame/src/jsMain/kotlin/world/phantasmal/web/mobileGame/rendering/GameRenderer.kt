@@ -1315,6 +1315,103 @@ class GameRenderer(
         }
     }
 
+    /**
+     * The marks a buff or debuff leaves on a body while it lasts, rather than a flash at the
+     * moment of casting. Each is a ring of motes: Shifta flickers red around the hands that
+     * throw the blows, Deband climbs blue from the feet to the hips of the body it armours,
+     * and the two curses run the other way -- Jellen falling red down an enemy from hip to
+     * foot, Zalure the same in blue.
+     */
+    private var buffAuraTimer = 0.0
+
+    private fun ringOfMotes(
+        x: Double, y: Double, z: Double,
+        radiusUnits: Double,
+        colorHex: Int,
+        riseUnits: Double,
+        count: Int,
+        sizeWorld: Double,
+    ) {
+        for (k in 0 until count) {
+            val angle = Random.nextDouble() * 2 * PI
+            val r = radiusUnits * worldUnit * (0.85 + Random.nextDouble() * 0.3)
+            spawnParticle(
+                "burst_bright",
+                x + cos(angle) * r,
+                y,
+                z + sin(angle) * r,
+                sizeWorld = sizeWorld,
+                colorHex = colorHex,
+                vy = riseUnits * worldUnit,
+                seconds = BUFF_MOTE_SECONDS,
+            )
+        }
+    }
+
+    private fun updateBuffAuras(deltaTime: Double) {
+        buffAuraTimer -= deltaTime
+        if (buffAuraTimer > 0) return
+        buffAuraTimer = BUFF_AURA_INTERVAL
+
+        player?.let { p ->
+            playerStatusPanel.setBuffs(p.shiftaRemaining > 0, p.debandRemaining > 0)
+
+            if (p.hp > 0 && p.shiftaRemaining > 0) {
+                // A tight ring at the hands, flickering rather than steady -- the size varies
+                // per emission, which is what reads as a flash instead of a halo.
+                ringOfMotes(
+                    p.mesh.position.x,
+                    p.mesh.position.y + SHIFTA_HAND_HEIGHT_UNITS * worldUnit,
+                    p.mesh.position.z,
+                    radiusUnits = SHIFTA_RING_UNITS,
+                    colorHex = SHIFTA_AURA_COLOR,
+                    riseUnits = 0.6,
+                    count = BUFF_MOTES,
+                    sizeWorld = BUFF_MOTE_SIZE * (0.7 + Random.nextDouble() * 0.8),
+                )
+            }
+            if (p.hp > 0 && p.debandRemaining > 0) {
+                // Climbing the legs: emitted at the feet with enough lift to reach the hips.
+                ringOfMotes(
+                    p.mesh.position.x,
+                    p.mesh.position.y + 0.2 * worldUnit,
+                    p.mesh.position.z,
+                    radiusUnits = DEBAND_RING_UNITS,
+                    colorHex = DEBAND_AURA_COLOR,
+                    riseUnits = DEBAND_CLIMB_UNITS,
+                    count = BUFF_MOTES,
+                    sizeWorld = BUFF_MOTE_SIZE,
+                )
+            }
+        }
+
+        for (enemy in enemies) {
+            if (enemy.isDead) continue
+            val hip = centerMassHeight(enemy)
+            if (enemy.jellenRemaining > 0) {
+                // Falling from the hips: sapped strength running out of it into the floor.
+                ringOfMotes(
+                    enemy.mesh.position.x, hip, enemy.mesh.position.z,
+                    radiusUnits = enemy.hitboxRadius / worldUnit * 1.1,
+                    colorHex = JELLEN_AURA_COLOR,
+                    riseUnits = -DEBAND_CLIMB_UNITS,
+                    count = BUFF_MOTES,
+                    sizeWorld = BUFF_MOTE_SIZE,
+                )
+            }
+            if (enemy.zalureRemaining > 0) {
+                ringOfMotes(
+                    enemy.mesh.position.x, hip, enemy.mesh.position.z,
+                    radiusUnits = enemy.hitboxRadius / worldUnit * 1.1,
+                    colorHex = ZALURE_AURA_COLOR,
+                    riseUnits = -DEBAND_CLIMB_UNITS,
+                    count = BUFF_MOTES,
+                    sizeWorld = BUFF_MOTE_SIZE,
+                )
+            }
+        }
+    }
+
     private fun updateCanadines(deltaTime: Double) {
         val p = player ?: return
 
@@ -10216,6 +10313,7 @@ class GameRenderer(
                 updateMachineWrecks(deltaTime)
                 updateThrownBlades(deltaTime)
                 updateGifoieFields(deltaTime)
+                updateBuffAuras(deltaTime)
                 updateSlimes(p, deltaTime)
                 updateFieldTraps(p, deltaTime)
                 updateFieldPillars(p, deltaTime)
@@ -10928,6 +11026,24 @@ class GameRenderer(
          */
         private const val GIFOIE_FLAME_BURN_UNITS = 3.2
         private const val GIFOIE_REBURN_SECONDS = 0.3
+
+        /**
+         * The living marks of the four support techniques. Emitted in bursts on a timer rather
+         * than every frame: a ring per frame for the length of a buff is thousands of sprites
+         * for something that only has to read as a shimmer.
+         */
+        private const val BUFF_AURA_INTERVAL = 0.12
+        private const val BUFF_MOTES = 7
+        private const val BUFF_MOTE_SIZE = 1.5
+        private const val BUFF_MOTE_SECONDS = 0.45
+        private const val SHIFTA_AURA_COLOR = 0xff3020
+        private const val DEBAND_AURA_COLOR = 0x4090ff
+        private const val JELLEN_AURA_COLOR = 0xff2a2a
+        private const val ZALURE_AURA_COLOR = 0x2a7dff
+        private const val SHIFTA_HAND_HEIGHT_UNITS = 4.2
+        private const val SHIFTA_RING_UNITS = 1.4
+        private const val DEBAND_RING_UNITS = 1.6
+        private const val DEBAND_CLIMB_UNITS = 7.0
 
         private const val TECH_FLASH_SECONDS = 0.5
 

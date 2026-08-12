@@ -6,6 +6,7 @@ import org.w3c.dom.pointerevents.PointerEvent
 import world.phantasmal.core.disposable.Disposable
 import world.phantasmal.core.disposable.TrackedDisposable
 import world.phantasmal.webui.dom.disposableListener
+import world.phantasmal.web.mobileGame.player.Technique
 
 /**
  * Top-left status HUD, replicating the real PSO v2/PC in-game HUD, whose every element tracks a
@@ -88,6 +89,8 @@ class PlayerStatusPanel(
     private val tpClip: HTMLElement
     private val tpValue: SpriteLabel
     private val pbRingFill: HTMLElement
+    private val shiftaIcon: HTMLElement
+    private val debandIcon: HTMLElement
 
     private var lastPbTenths = -1
 
@@ -175,6 +178,39 @@ class PlayerStatusPanel(
             below.appendChild(it)
         }
         SpriteLabel(nameEl, displaySize = TEXT_SIZE).setText(characterName)
+
+        // --- Buff strip: what is currently running on this character, beside their plate ---
+        val buffs = (document.createElement("div") as HTMLElement).also {
+            it.className = "pw-hud-buffs"
+            below.appendChild(it)
+        }
+        shiftaIcon = buffIcon(buffs, Technique.SHIFTA)
+        debandIcon = buffIcon(buffs, Technique.DEBAND)
+    }
+
+    /**
+     * One slot in the buff strip, carrying the technique's own hex tile -- the same art the
+     * action palette casts it from, so the icon that grants the buff is the icon that reports it.
+     * Built hidden; [setBuffs] is what brings it up.
+     */
+    private fun buffIcon(parent: HTMLElement, technique: Technique): HTMLElement =
+        (document.createElement("div") as HTMLElement).also { el ->
+            el.className = "pw-hud-buff"
+            el.style.cssText += hudSpriteStyle(
+                HudSprites.hexTile(technique.icon.iconCol, technique.icon.iconRow),
+                BUFF_ICON_SCALE,
+            )
+            el.style.display = "none"
+            parent.appendChild(el)
+        }
+
+    /**
+     * Shows the buffs standing on this character. In a party this is the local player's plate;
+     * the same call drives an ally's once there are allies to drive it for.
+     */
+    fun setBuffs(shifta: Boolean, deband: Boolean) {
+        shiftaIcon.style.display = if (shifta) "block" else "none"
+        debandIcon.style.display = if (deband) "block" else "none"
     }
 
     private val deathOverlay = (document.createElement("div") as HTMLElement).also { el ->
@@ -311,6 +347,12 @@ class PlayerStatusPanel(
     companion object {
         private const val BAR_W = 168.0
         private const val BAR_H = 14.0
+        /**
+         * The buff strip's tiles, a shade under the palette's so the report reads as smaller
+         * than the button that caused it.
+         */
+        private const val BUFF_ICON_SCALE = 0.34
+
         private const val TEXT_SIZE = 15
         private const val HEX_SCALE = 1.0
 
@@ -440,6 +482,21 @@ class PlayerStatusPanel(
               align-items: center;
               gap: 12px;
               margin: -2px 0 0 14px;
+            }
+            .pw-hud-buffs {
+              display: flex;
+              align-items: center;
+              gap: 5px;
+            }
+            /* The tiles breathe, so a buff reads as running rather than as a static badge. */
+            .pw-hud-buff {
+              width: 22px;
+              height: 22px;
+              animation: pw-hud-buff-pulse 1.5s ease-in-out infinite;
+            }
+            @keyframes pw-hud-buff-pulse {
+              0%, 100% { opacity: 0.72; transform: scale(0.94); }
+              50%      { opacity: 1;    transform: scale(1.06); }
             }
             .pw-hud-lv {
               padding: 2px 12px;
