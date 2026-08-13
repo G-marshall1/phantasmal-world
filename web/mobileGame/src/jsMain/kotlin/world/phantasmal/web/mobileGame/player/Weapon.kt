@@ -2,6 +2,7 @@ package world.phantasmal.web.mobileGame.player
 
 import kotlin.math.PI
 import world.phantasmal.web.core.loading.AssetLoader
+import world.phantasmal.web.externals.three.Box3
 import world.phantasmal.web.externals.three.Group
 import world.phantasmal.web.externals.three.Mesh
 import world.phantasmal.web.externals.three.Object3D
@@ -173,7 +174,7 @@ object Weapon {
         // points whatever axis the model was authored on.
         val facing = Group().apply {
             add(weaponMesh)
-            if (type !in NO_FACING_FLIP) rotation.y = PI
+            if (needsFacingFlip(weaponMesh, type)) rotation.y = PI
         }
 
         val aligned = Group().apply {
@@ -189,6 +190,47 @@ object Weapon {
 
         mesh.skeleton.bones[boneIndex].add(weapon)
         return weapon
+    }
+
+    /**
+     * Whether this particular model still needs the half-turn, asked of the geometry rather than
+     * of a list of weapon families.
+     *
+     * The blanket turn was applied to everything outside [NO_FACING_FLIP] on the assumption that
+     * a model not known-good was authored backwards. That assumption is wrong often enough to
+     * keep producing reports -- the wand, then the partisan, the toy hammer and the wok. Many
+     * models already follow the saber's convention of running out +Z from the grip, and turning
+     * those reverses a weapon that was correct to begin with.
+     *
+     * So the question is asked of the model: with its own normalization applied, does its bulk
+     * sit forward of the grip? If it does it is already pointing the right way and is left
+     * alone; only a model whose mass sits behind the origin gets turned. [NO_FACING_FLIP] stays
+     * as an override for the families whose answer is settled -- the guns in particular are
+     * authored down -Y rather than along Z, so their Z extent says nothing useful.
+     */
+    private fun needsFacingFlip(weaponMesh: Mesh, type: WeaponType): Boolean {
+        if (type in NO_FACING_FLIP) return false
+
+        val geometry = weaponMesh.asDynamic().geometry ?: return true
+        if (geometry.boundingBox == null) geometry.computeBoundingBox()
+
+        // Measured through the model's own rotation, so a model normalized by
+        // applyModelConvention is judged as it will actually hang.
+        val box = Box3()
+        box.min.set(
+            geometry.boundingBox.min.x as Double,
+            geometry.boundingBox.min.y as Double,
+            geometry.boundingBox.min.z as Double,
+        )
+        box.max.set(
+            geometry.boundingBox.max.x as Double,
+            geometry.boundingBox.max.y as Double,
+            geometry.boundingBox.max.z as Double,
+        )
+        weaponMesh.updateMatrix()
+        box.applyMatrix4(weaponMesh.matrix)
+
+        return (box.min.z + box.max.z) <= 0.0
     }
 
     /**
