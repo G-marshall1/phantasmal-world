@@ -127,13 +127,32 @@ object Weapon {
     private fun tintPhoton(mesh: Mesh, photonColor: Int?) {
         if (photonColor == null) return
         val material = mesh.asDynamic().material ?: return
-        val list = if (material is Array<*>) material.toList() else listOf(material)
-        for (entry in list) {
-            val m = entry.asDynamic()
-            if (m?.emissive != null) {
-                m.emissive.setHex(photonColor)
-                m.emissiveIntensity = PHOTON_EMISSIVE
-            }
+
+        // Walked by index rather than turned into a Kotlin list. `material` is dynamic, so any
+        // Kotlin collection call on it is emitted as a *JavaScript* method call on the value --
+        // and a JS array has no `toList`, so it threw. That throw landed inside the equip
+        // coroutine, which is why a failed tint stopped the new model being attached at all
+        // and the old weapon stayed in hand.
+        if (js("Array.isArray")(material) as Boolean) {
+            val count = material.length as Int
+            for (i in 0 until count) applyPhoton(material[i], photonColor)
+        } else {
+            applyPhoton(material, photonColor)
+        }
+    }
+
+    /**
+     * Lights one material. Not every converted model uses a material that *has* an emissive
+     * channel -- the plain unlit ones have no such property -- so this tints the base colour
+     * for those instead of silently doing nothing.
+     */
+    private fun applyPhoton(material: dynamic, photonColor: Int) {
+        if (material == null) return
+        if (material.emissive != null) {
+            material.emissive.setHex(photonColor)
+            material.emissiveIntensity = PHOTON_EMISSIVE
+        } else if (material.color != null) {
+            material.color.setHex(photonColor)
         }
     }
 

@@ -1419,9 +1419,23 @@ private fun rarityTextColor(item: WeaponItem): String = when {
     else -> COMMON_TEXT
 }
 
-/** The star ranking, as the detail line's suffix. Blank below one star. */
-private fun starRating(stars: Int): String =
-    if (stars <= 0) "" else "${stars}\u2605"
+/**
+ * The star ranking for the detail line.
+ *
+ * The client's own field is not uniform, which is why commons were rendering blank: rares carry
+ * their true rating (GALATINE stores 12 and is a 12-star), but the five common tiers of a series
+ * store 0 through 4 -- Saber 0, Brand 1, Buster 2, Pallasch 3, Gladius 4 -- so the common band
+ * is stored one below what it displays. Everything under the 9-star rare threshold is therefore
+ * shifted up by one, which puts the common tiers at 1-5 and the specialty commons above them,
+ * matching the 1-4 standard / 5-8 high-tier common bands.
+ */
+private fun starRating(stars: Int): String {
+    val shown = if (stars >= RARE_STAR_THRESHOLD) stars else stars + 1
+    return "$shown\u2605"
+}
+
+private const val RARE_STAR_THRESHOLD = 9
+
 
 private const val COMMON_TEXT = "#ffffff"
 private const val SPECIAL_TEXT = "#5ce65c"
