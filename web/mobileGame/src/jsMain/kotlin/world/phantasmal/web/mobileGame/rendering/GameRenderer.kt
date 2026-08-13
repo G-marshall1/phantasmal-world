@@ -6657,8 +6657,9 @@ class GameRenderer(
             )
             val knockedDown = anims.knockedDown?.let { loadPlayerClip(animationPath(it)) }
             val attacks = anims.attacks.map { loadPlayerClip(animationPath(it)) }
-            val attachment =
-                Weapon.attach(assetLoader, p.mesh, item.tier.modelSlug, item.tier.photonColor)
+            val attachment = Weapon.attach(
+                assetLoader, p.mesh, item.tier.modelSlug, item.tier.photonColor, item.tier.type,
+            )
 
             // Guard against a stale switch finishing after a newer one started.
             if (equippedItem !== item) {

@@ -79,7 +79,7 @@ object Weapon {
      * held in one fist.
      */
     private val DUAL_WIELDED: Set<WeaponType> = setOf(
-        WeaponType.DAGGER, WeaponType.MECHGUN, WeaponType.TWIN_SWORD,
+        WeaponType.DAGGER, WeaponType.MECHGUN, WeaponType.TWIN_SWORD, WeaponType.CLAW,
     )
 
     /**
@@ -91,8 +91,14 @@ object Weapon {
         mesh: SkinnedMesh,
         slug: String = "Saber",
         photonColor: Int? = null,
+        weaponType: WeaponType? = null,
     ): List<Object3D> {
-        val type = weaponType(slug)
+        // The item's own type when the caller knows it, and only a guess from the model's name
+        // when it doesn't. Inferring it from the slug was silently wrong for every weapon whose
+        // model is named after the item rather than the family -- a dagger held as AkikoWok
+        // matched no family, so it got neither its off-hand copy nor its facing correction,
+        // which is exactly how daggers and claws ended up one-handed and backwards.
+        val type = weaponType ?: weaponType(slug)
         val loader = WeaponAssetLoader(assetLoader)
 
         val attachments = mutableListOf<Object3D>()
