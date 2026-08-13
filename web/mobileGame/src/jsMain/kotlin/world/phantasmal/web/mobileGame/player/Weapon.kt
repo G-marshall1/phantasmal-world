@@ -1,6 +1,7 @@
 package world.phantasmal.web.mobileGame.player
 
 import kotlin.math.PI
+import kotlin.math.abs
 import world.phantasmal.web.core.loading.AssetLoader
 import world.phantasmal.web.externals.three.Box3
 import world.phantasmal.web.externals.three.Group
@@ -42,6 +43,13 @@ object Weapon {
     private const val POSITION_Z = 0.39
 
     private const val ALIGN_BLADE_TO_Y = -PI / 2
+
+    /**
+     * How much narrower or wider than the right hand a bone may sit and still be accepted as its
+     * mirror. Loose enough for a skeleton that isn't perfectly symmetric, tight enough that no
+     * bone near the centre line can ever qualify.
+     */
+    private const val MIRROR_WIDTH_TOLERANCE = 0.4
 
     /**
      * The families that do NOT take the blanket half-turn, for one of two reasons.
@@ -268,6 +276,15 @@ object Weapon {
             if (index == RIGHT_HAND_BONE_INDEX) continue
             bones[index].getWorldPosition(probe)
             mesh.worldToLocal(probe)
+
+            // Must actually be on the other side of the character, and roughly as far out as
+            // the right hand is. Without this the nearest "mirror" of a hand held close to the
+            // body is a bone on the centre line -- the head -- which is exactly where the
+            // off-hand mechgun, rocket punch and maracas were ending up.
+            val onFarSide = probe.x * right.x < 0
+            val comparablyWide = abs(abs(probe.x) - abs(right.x)) <= abs(right.x) * MIRROR_WIDTH_TOLERANCE
+            if (!onFarSide || !comparablyWide) continue
+
             // The mirror of (x, y, z) is (-x, y, z) in the character's own space.
             val dx = probe.x + right.x
             val dy = probe.y - right.y
