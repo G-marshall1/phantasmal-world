@@ -143,18 +143,23 @@ object Weapon {
     }
 
     /**
-     * Lights one material. Not every converted model uses a material that *has* an emissive
-     * channel -- the plain unlit ones have no such property -- so this tints the base colour
-     * for those instead of silently doing nothing.
+     * Lights one material, and only ever through its emissive channel.
+     *
+     * An earlier version fell back to the base colour when a material had no emissive property,
+     * so that something would show on the unlit materials most of these models carry. That was
+     * a mistake: base colour is the whole model's paint, not its glow, so every weapon came out
+     * uniformly repainted -- and since a rack deduplicated by model is mostly the base tier of
+     * each series, that repaint was overwhelmingly tier one's green.
+     *
+     * A weapon whose material cannot glow is now left exactly as its texture authored it. The
+     * photon colour is a light, and a material with nowhere to put a light does not get one;
+     * showing the tier there needs a real glow rather than a stain.
      */
     private fun applyPhoton(material: dynamic, photonColor: Int) {
         if (material == null) return
-        if (material.emissive != null) {
-            material.emissive.setHex(photonColor)
-            material.emissiveIntensity = PHOTON_EMISSIVE
-        } else if (material.color != null) {
-            material.color.setHex(photonColor)
-        }
+        if (material.emissive == null) return
+        material.emissive.setHex(photonColor)
+        material.emissiveIntensity = PHOTON_EMISSIVE
     }
 
     private const val PHOTON_EMISSIVE = 0.85
